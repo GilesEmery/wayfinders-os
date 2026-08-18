@@ -11,6 +11,28 @@ export const transferableSkillsDefinition: LMUModuleDefinition = {
   version: "1.0.0",
   status: "draft",
   requiredModules: ["success-stories"],
+  stages: [
+    { id: "introduction", title: "Introduction" },
+    { id: "realistic", title: "Realistic" },
+    { id: "social", title: "Social" },
+    { id: "conventional", title: "Conventional" },
+    { id: "artistic", title: "Artistic" },
+    { id: "enterprising", title: "Enterprising" },
+    { id: "investigative", title: "Investigative" },
+    { id: "patterns", title: "Pattern Review" },
+    { id: "ranking", title: "Adaptive Skill Ranking" },
+    { id: "review", title: "Full Ranked Skills Review" },
+    { id: "final", title: "Final Top 5" },
+    { id: "finish", title: "Finish Section" },
+  ],
+  instructionalMedia: {
+    intro: {
+      provider: "youtube",
+      videoId: "sqKzN0zT49c",
+      title: "Transferable Skills instructional video",
+      description: "Use your Success Stories to notice the skills you repeatedly bring with you.",
+    },
+  },
   allowedExperiences: [
     "life-mapping-u-original",
     "lmu-student",

@@ -1,0 +1,12 @@
+export interface XFactorQuestion { id: string; title: string; question: string; examples: string[]; maxResponses: 4 }
+export const xFactorQuestions: XFactorQuestion[] = [
+  { id: "tools", title: "Tools & Technology", question: "Are there special tools, instruments, machines, computer programs, or technologies that you have learned how to use?", examples: ["Adobe Illustrator", "Excel", "woodworking tools", "camera equipment", "CRM software"], maxResponses: 4 },
+  { id: "processes", title: "Processes & Systems", question: "Are there specific processes that you have learned through your education, jobs, volunteering, side work, or other experiences?", examples: ["strategic planning", "onboarding", "project management", "research methods", "budgeting"], maxResponses: 4 },
+  { id: "people", title: "People & Groups You Know", question: "Are there specific kinds of people or groups you have gotten to know through your work, volunteering, community, education, or other experiences?", examples: ["entrepreneurs", "young adults", "nonprofit leaders", "teachers", "refugees"], maxResponses: 4 },
+  { id: "training-have", title: "Training You Already Have", question: "What kinds of special training have you received through your education, jobs, volunteering, or training you have pursued on your own?", examples: ["conflict management", "coaching", "first aid", "disciple-making", "leadership development"], maxResponses: 4 },
+  { id: "hobbies", title: "Hobbies", question: "What are some of your hobbies?", examples: ["photography", "cooking", "hiking", "music", "gardening"], maxResponses: 4 },
+  { id: "difference", title: "Ways You Make a Difference", question: "What are some of the ways you are currently making a difference in the lives of others?", examples: ["mentoring", "volunteering", "coaching", "caring for family", "community leadership"], maxResponses: 4 },
+  { id: "interests", title: "Areas That Interest You", question: "What kinds of businesses, career fields, departments, sectors, nonprofits, or areas of impact seem interesting to you as you think about the future?", examples: ["education", "healthcare", "entrepreneurship", "technology", "community development"], maxResponses: 4 },
+  { id: "training-want", title: "Training You Want", question: "What types of training would you be interested in receiving or pursuing?", examples: ["fundraising", "public speaking", "management", "counseling", "data analysis"], maxResponses: 4 },
+];
+export const xFactorQuestionById = new Map(xFactorQuestions.map((question) => [question.id, question]));

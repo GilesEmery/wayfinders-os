@@ -1,0 +1,52 @@
+export interface SupervisorPainPoint { id: string; originalLabel: string; displayLabel: string; label: string; examplePrompts: [string, string] }
+const displayLabelOverrides: Record<string, string> = {
+  "Thing or computer centered organization": "Prioritizes systems or technology over people",
+  "Clock-watchers": "Overly focused on employees’ hours rather than contribution",
+  "Whatever you do, it’s not enough": "Rarely satisfied or fails to recognize progress",
+  "Direct and controlling leadership": "Overly controlling leadership",
+  "Never involved with decision making": "Does not involve employees in decisions that affect their work",
+  "Unable to get those who can help or with authority": "Does not provide access to people who can help or make decisions",
+  "Weight or responsibility without proper authority": "Gives responsibility without enough authority",
+  "Does not initiate job/career development": "Does not support employee growth or career development",
+  "No sense of organizational goals, plans, priorities": "Does not provide clear organizational goals, plans, or priorities",
+  "Insufficient authority to lead or complete job": "Does not give enough authority to carry out assigned responsibilities",
+  "Lack of boundaries with employees time/schedule": "Does not respect boundaries around employees’ time and schedules",
+};
+const slug = (label: string) => label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+const item = (originalLabel: string, first: string, second: string): SupervisorPainPoint => ({ id: slug(originalLabel), originalLabel, displayLabel: displayLabelOverrides[originalLabel] ?? originalLabel, label: displayLabelOverrides[originalLabel] ?? originalLabel, examplePrompts: [first, second] });
+
+export const supervisorPainPoints: SupervisorPainPoint[] = [
+  item("Refusal to deal with or admit conflict", "I value a supervisor who addresses difficult issues directly rather than allowing problems to continue beneath the surface.", "I work best with a leader who can name conflict honestly and help people work through it with clarity and care."),
+  item("Thing or computer centered organization", "I value leadership that remembers people matter as much as systems, technology, and productivity.", "I work best in an environment where supervisors pay attention to both the work being accomplished and the people doing it."),
+  item("Performance problems unaddressed", "I value a supervisor who addresses performance concerns clearly and helps people understand what needs to improve.", "I work best with leaders who deal with problems early and provide useful feedback rather than allowing issues to grow."),
+  item("Clock-watchers", "I value supervisors who focus on meaningful contribution and results rather than watching every minute of the workday.", "I work best with leaders who trust people to manage their responsibilities while still maintaining clear expectations."),
+  item("Too many rules", "I value leadership that creates enough structure to help people succeed without adding unnecessary restrictions.", "I work best with supervisors who use good judgment and allow flexibility when rigid rules are not helpful."),
+  item("Inadequate reviews, evaluation, planning", "I value a supervisor who regularly gives thoughtful feedback and helps me understand how I am doing.", "I work best with leaders who plan ahead, evaluate progress, and make time for meaningful conversations about performance."),
+  item("Inaction regarding equal opportunity", "I value leaders who actively create fair opportunities for people to contribute, grow, and be recognized.", "I work best with supervisors who notice inequity and take appropriate action rather than ignoring it."),
+  item("Obsessed with bottom line", "I value supervisors who care about results while also considering people, purpose, and long-term health.", "I work best with leaders who balance financial responsibility with the well-being of the team."),
+  item("Whatever you do, it’s not enough", "I value a supervisor who recognizes good work while still helping me continue to grow.", "I work best with leaders who communicate realistic expectations and acknowledge progress and contribution."),
+  item("Public criticism of employees by supervisor", "I value supervisors who handle difficult feedback privately and respectfully.", "I work best with leaders who protect people's dignity while still being honest about what needs to change."),
+  item("Cliques within the tiers of employees", "I value leadership that builds an inclusive culture where people are not excluded from information or opportunity.", "I work best with supervisors who encourage connection across roles rather than reinforcing insider groups."),
+  item("Talking down to people", "I value a supervisor who communicates with respect regardless of someone's role or level of experience.", "I work best with leaders who explain, challenge, and correct without making people feel small."),
+  item("Direct and controlling leadership", "I value a supervisor who provides clear direction while still allowing people meaningful ownership of their work.", "I work best with leaders who invite input, delegate responsibility, and trust others to contribute."),
+  item("Lack of recognition and appreciation", "I value a supervisor who notices good work and expresses genuine appreciation for people's contribution.", "I work best with leaders who recognize effort, progress, and impact rather than only pointing out what is missing."),
+  item("Never involved with decision making", "I value supervisors who involve the right people in decisions that affect their work.", "I work best with leaders who seek input and allow people to contribute perspective before important decisions are made."),
+  item("Lack of control over your own work", "I value a supervisor who gives me appropriate freedom to make decisions about how I accomplish my responsibilities.", "I work best with leaders who set clear outcomes and then trust me with meaningful ownership."),
+  item("Lack of face to face time with manager", "I value a supervisor who makes regular time for meaningful conversation and connection.", "I work best with leaders who remain accessible enough to provide guidance, feedback, and support when needed."),
+  item("Heavy bureaucracy", "I value leaders who simplify unnecessary processes and help people move work forward effectively.", "I work best with supervisors who understand necessary structure without allowing procedures to become barriers to progress."),
+  item("Status over substance", "I value supervisors who care more about good work and meaningful contribution than position or appearance.", "I work best with leaders who use authority to serve the work rather than to reinforce their own status."),
+  item("Supervisor fails to give detailed info about tasks", "I value supervisors who communicate expectations clearly enough for me to understand what success looks like.", "I work best with leaders who provide the context and information I need without leaving important expectations unclear."),
+  item("Unclear job description", "I value leadership that clearly defines responsibilities, priorities, and expectations.", "I work best when my supervisor helps me understand what I own and how my role contributes to the larger work."),
+  item("Unable to get those who can help or with authority", "I value a supervisor who helps connect me with the people or authority needed to move important work forward.", "I work best with leaders who remove unnecessary barriers and help me access the support I need."),
+  item("Can’t see how my role fits into the big picture", "I value a supervisor who helps me understand how my work contributes to the larger purpose and goals.", "I work best with leaders who connect everyday responsibilities to the bigger picture."),
+  item("Weight or responsibility without proper authority", "I value supervisors who give people enough authority to carry the responsibilities they are expected to own.", "I work best when accountability and decision-making authority are appropriately aligned."),
+  item("Lack of cross-team communication", "I value leaders who encourage clear communication and collaboration across teams.", "I work best with supervisors who help people share information rather than allowing teams to operate in isolation."),
+  item("Does not initiate job/career development", "I value a supervisor who takes an active interest in my growth and development.", "I work best with leaders who help me recognize opportunities to learn, stretch, and prepare for future responsibility."),
+  item("No sense of organizational goals, plans, priorities", "I value supervisors who communicate clear priorities and help the team understand where the organization is going.", "I work best with leaders who provide enough direction for people to make decisions that support shared goals."),
+  item("Insufficient authority to lead or complete job", "I value supervisors who give me the authority needed to carry out the responsibilities they assign.", "I work best when leaders trust me to make appropriate decisions within the work I am responsible for."),
+  item("Power struggles within your department", "I value leaders who focus people on shared goals rather than competition for influence or control.", "I work best with supervisors who address unhealthy power dynamics and encourage cooperation."),
+  item("Fosters unhealthy competition among employees", "I value supervisors who encourage people to succeed together rather than creating unnecessary rivalry.", "I work best with leaders who recognize individual contribution while protecting a healthy sense of team."),
+  item("Lack of team focus", "I value a supervisor who helps people understand how their work connects and encourages shared responsibility.", "I work best with leaders who build cooperation and remind the team that success is something we create together."),
+  item("Lack of boundaries with employees time/schedule", "I value supervisors who respect appropriate boundaries around people's time and availability.", "I work best with leaders who communicate expectations clearly without treating employees as if they should always be available."),
+];
+export const supervisorPainPointById = new Map(supervisorPainPoints.map((painPoint) => [painPoint.id, painPoint]));

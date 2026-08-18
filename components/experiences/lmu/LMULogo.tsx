@@ -8,10 +8,10 @@ interface LMULogoProps {
 
 const logoConfig = {
   "wordmark-invert": {
-    src: "/brand/lmu/lmu-wordmark-invert.png",
+    src: "/brand/lmu/lmu-white.svg",
     alt: "Life Mapping U",
-    width: 228,
-    height: 46,
+    width: 1500,
+    height: 301,
   },
   mark: {
     src: "/brand/lmu/lmu-u-mark.png",

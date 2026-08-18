@@ -16,4 +16,16 @@ export const successStoriesDefinition: LMUModuleDefinition = {
     "lmu-student",
     "lmu-seniors",
   ],
+  instructionalMedia: {
+    intro: {
+      provider: "youtube",
+      videoId: "tVzB7vTTxUw",
+      title: "Success Stories instructional video",
+    },
+    topThree: {
+      provider: "youtube",
+      videoId: "3-v0fl2ARkQ",
+      title: "Identify Your Top 3 instructional video",
+    },
+  },
 };

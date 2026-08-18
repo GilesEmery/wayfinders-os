@@ -5,12 +5,19 @@ export type ModuleProgressStatus =
   | "completed";
 
 export type ModuleDefinitionStatus = "draft" | "active" | "archived";
+export type LMUModuleKind = "module" | "result";
+
+export interface LMUModuleStage {
+  id: string;
+  title: string;
+}
 
 export interface LMUInstructionalMedia {
-  url: string;
-  provider: string;
+  provider: "youtube";
+  videoId: string;
   title: string;
-  durationMinutes: number;
+  description?: string;
+  durationMinutes?: number;
 }
 
 export interface LMUModuleDefinition {
@@ -24,7 +31,20 @@ export interface LMUModuleDefinition {
   status: ModuleDefinitionStatus;
   requiredModules: string[];
   allowedExperiences: string[];
-  media?: LMUInstructionalMedia;
+  kind?: LMUModuleKind;
+  stages?: LMUModuleStage[];
+  resultSections?: string[];
+  instructionalMedia?: Record<string, LMUInstructionalMedia>;
+}
+
+export interface LMUPostExperienceResourceDefinition {
+  id: string;
+  title: string;
+  description: string;
+  status: "planned" | "available";
+  format: "pdf";
+  includedExercises: string[];
+  downloadUrl?: string;
 }
 
 export interface LMUExperienceModule {
@@ -48,6 +68,16 @@ export interface ParticipantModuleProgress {
   completedAt?: string;
   responses: Record<string, unknown>;
   derivedResults: Record<string, unknown>;
+  result?: LMUModuleResult;
+}
+
+export interface LMUModuleResult {
+  moduleId: string;
+  completedAt?: string;
+  summary?: string;
+  highlights: string[];
+  rankedItems: Array<{ id: string; label: string; rank: number }>;
+  structuredData: Record<string, unknown>;
 }
 
 export interface ParticipantExperienceProgress {
