@@ -2,9 +2,11 @@
 
 import { originalDiscoveryModules, LMU_ORIGINAL_EXPERIENCE_ID } from "@/lib/experiences/lmu/original-journey";
 import { removeModuleProgress, saveModuleProgress } from "@/lib/experiences/lmu/storage";
+import { useLocalhostTesting } from "./useLocalhostTesting";
 import { useOriginalProgress } from "./useOriginalProgress";
 
 export function DevelopmentCompletionControl({ moduleId }: { moduleId: string }) {
+  const localhostTesting = useLocalhostTesting();
   const progress = useOriginalProgress();
   const checked = progress.some((item) => item.moduleId === moduleId && item.status === "completed");
 
@@ -19,11 +21,11 @@ export function DevelopmentCompletionControl({ moduleId }: { moduleId: string })
     originalDiscoveryModules.slice(moduleIndex).forEach((module) => removeModuleProgress(LMU_ORIGINAL_EXPERIENCE_ID, module.id));
   }
 
-  return (
+  return localhostTesting ? (
     <label className="development-completion-control">
       {/* Temporary development scaffolding. Actual module completion logic will replace this control. */}
       <input type="checkbox" checked={checked} onChange={(event) => setCompleted(event.target.checked)} />
       <span><strong>Mark this section complete</strong><small>Temporary development control</small></span>
     </label>
-  );
+  ) : null;
 }

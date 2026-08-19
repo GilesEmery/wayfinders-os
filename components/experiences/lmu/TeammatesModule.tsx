@@ -125,7 +125,14 @@ function PreferencePeopleModule({ media, variant }: { media?: Record<string, LMU
   function finalize() { if (response.finalizedAttributeIds.length === 5) go("final", { finalizedAt: new Date().toISOString() }); }
   function finish() { if (isSupervisor) completeSupervisor(readSupervisorResponse()); else completeTeammates(readTeammatesResponse()); router.push("/experiences/life-mapping-u/original"); }
 
-  const startOver = <ModuleStartOverControl experienceId={LMU_ORIGINAL_EXPERIENCE_ID} moduleId={moduleId} moduleHref={`/experiences/life-mapping-u/module/${moduleId}`} onResetComplete={() => { setCustomDrafts([null, null]); setPendingCustom(null); }} />;
+  const teammateSteps: TeammatesScreen[] = ["introduction", "selection", "confirmation", "writing", "review", "final"];
+  function sectionBack() {
+    if (screen === "writing" && response.writingIndex > 0) { save({ ...response, writingIndex: response.writingIndex - 1 }); setExamplesOpen(false); return; }
+    if (screen === "review") { go("writing", { writingIndex: 0 }); return; }
+    if (screen !== "introduction") go(teammateSteps[teammateSteps.indexOf(screen) - 1]);
+  }
+
+  const startOver = <ModuleStartOverControl experienceId={LMU_ORIGINAL_EXPERIENCE_ID} moduleId={moduleId} moduleHref={`/experiences/life-mapping-u/module/${moduleId}`} screen={screen} onBack={screen === "introduction" ? undefined : sectionBack} backLabel={screen === "writing" && response.writingIndex > 0 ? "Back" : undefined} onResetComplete={() => { setCustomDrafts([null, null]); setPendingCustom(null); }} />;
   const currentPainPoint = response.selectedPainPoints[response.writingIndex];
   const currentAttribute = response.attributes.find((item) => item.sourcePainPointId === currentPainPoint?.id);
   const promptData = currentPainPoint?.type === "curriculum" ? painPointById.get(currentPainPoint.id) : undefined;

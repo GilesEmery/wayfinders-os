@@ -40,8 +40,8 @@ export const experiences: LMUExperienceDefinition[] = [
   {
     id: "lmu-seniors",
     slug: "seniors",
-    title: "LMU Seniors",
-    shortTitle: "Seniors",
+    title: "LMU Empty Nesters",
+    shortTitle: "Empty Nesters",
     description:
       "A Life Mapping U experience designed for reflection, contribution, purpose, and the next chapter.",
     modules: [

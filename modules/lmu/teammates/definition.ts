@@ -1,4 +1,5 @@
 import type { LMUModuleDefinition } from "@/lib/experiences/lmu/types";
+import { lmuInstructionalMedia } from "@/modules/lmu/media";
 
 export const teammatesDefinition: LMUModuleDefinition = {
   id: "teammates", slug: "teammates", title: "Teammates", shortTitle: "Teammates",
@@ -12,6 +13,6 @@ export const teammatesDefinition: LMUModuleDefinition = {
     { id: "review", title: "Review Attributes" },
     { id: "final", title: "Final Top 5" },
   ],
-  instructionalMedia: { intro: { provider: "youtube", videoId: "3paNnT-fziA", title: "Teammates instructional video", description: "Identify the teammate qualities and work culture that help you do your best work." } },
+  instructionalMedia: { intro: lmuInstructionalMedia.teammates },
   allowedExperiences: ["life-mapping-u-original"],
 };

@@ -7,7 +7,13 @@ const STORAGE_KEY = "lmu-platform-v1";
 const PROGRESS_EVENT = "lmu-progress-change";
 
 interface StoredProgress {
+  participantProfile?: ParticipantProfile;
   experiences: Record<string, ParticipantExperienceProgress>;
+}
+
+export interface ParticipantProfile {
+  firstName: string;
+  email: string;
 }
 
 const emptyStore = (): StoredProgress => ({ experiences: {} });
@@ -38,6 +44,19 @@ export function saveExperienceProgress(
 ) {
   const store = readStore();
   store.experiences[progress.experienceId] = progress;
+  writeStore(store);
+}
+
+export function getParticipantProfile() {
+  return readStore().participantProfile;
+}
+
+export function saveParticipantProfile(profile: ParticipantProfile) {
+  const store = readStore();
+  store.participantProfile = {
+    firstName: profile.firstName.trim(),
+    email: profile.email.trim(),
+  };
   writeStore(store);
 }
 

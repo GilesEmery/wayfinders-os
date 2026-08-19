@@ -24,7 +24,8 @@ export function XFactorModule({ media }: { media?: Record<string, LMUInstruction
   const response: XFactorResponse = { ...emptyXFactorResponse(), ...stored }; const items = allXFactorItems(response); const byId = new Map(items.map((item) => [item.id, item]));
   const headingRef = useRef<HTMLHeadingElement>(null); const router = useRouter(); const [expandedId, setExpandedId] = useState<string | null>(null); const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null); const [replacementId, setReplacementId] = useState<string | null>(null); const [entryError, setEntryError] = useState("");
   usePageStart(response.resumeScreen, headingRef);
-  const startOver = <ModuleStartOverControl experienceId={LMU_ORIGINAL_EXPERIENCE_ID} moduleId="x-factor" moduleHref="/experiences/life-mapping-u/module/x-factor" />;
+  const withinRepeatedSubsection = (response.resumeScreen === "questions" && response.questionIndex > 0) || (response.resumeScreen === "local-ranking" && response.localRankingQuestionIndex > 0);
+  const startOver = <ModuleStartOverControl experienceId={LMU_ORIGINAL_EXPERIENCE_ID} moduleId="x-factor" moduleHref="/experiences/life-mapping-u/module/x-factor" screen={response.resumeScreen} onBack={response.resumeScreen === "introduction" ? undefined : sectionBack} backLabel={withinRepeatedSubsection ? "Back" : undefined} />;
   const nonEmpty = xFactorQuestions.filter((question) => (response.responsesByQuestion[question.id] ?? []).length > 0);
   const localQuestions = nonEmpty.filter((question) => (response.responsesByQuestion[question.id] ?? []).length > 1);
   const localQuestion = localQuestions[response.localRankingQuestionIndex];
@@ -32,6 +33,35 @@ export function XFactorModule({ media }: { media?: Record<string, LMUInstruction
 
   function save(next: XFactorResponse) { saveXFactorResponse(next); }
   function go(screen: XFactorScreen, patch: Partial<XFactorResponse> = {}) { save({ ...response, ...patch, resumeScreen: screen }); }
+  function restartGlobalRanking() {
+    const groups = initialGlobalGroups(response.localRankings);
+    setReplacementId(null);
+    save({
+      ...response,
+      globalGroups: groups,
+      globalRankings: [],
+      globalDrafts: {},
+      derivedRelationships: [],
+      activeStackHeads: groups.flatMap((group) => group.itemIds),
+      eliminatedFromTopFour: [],
+      eliminatedFromTopEight: [],
+      algorithmicTopFour: [],
+      algorithmicTopEight: [],
+      finalTopFour: [],
+      finalTopEight: [],
+      participantInteractions: 0,
+      finalizedAt: undefined,
+      resumeScreen: "global-ranking",
+    });
+  }
+  function sectionBack() {
+    if (response.resumeScreen === "questions") { if (response.questionIndex > 0) save({ ...response, questionIndex: response.questionIndex - 1 }); else go("introduction"); return; }
+    if (response.resumeScreen === "local-ranking") { if (response.localRankingQuestionIndex > 0) save({ ...response, localRankingQuestionIndex: response.localRankingQuestionIndex - 1 }); else go("questions", { questionIndex: 0 }); return; }
+    if (response.resumeScreen === "collection") { go("local-ranking", { localRankingQuestionIndex: 0 }); return; }
+    if (response.resumeScreen === "close-review" || response.resumeScreen === "top-eight") { restartGlobalRanking(); return; }
+    const steps: XFactorScreen[] = ["introduction", "questions", "local-ranking", "collection", "global-ranking", "close-review", "top-eight", "final"];
+    go(steps[steps.indexOf(response.resumeScreen) - 1]);
+  }
   function updateQuestion(questionId: string, slot: number, value: string) {
     const current = [...(response.responsesByQuestion[questionId] ?? [])]; const id = `${questionId}-${slot + 1}`; const trimmed = value.slice(0, 120);
     const existing = current.findIndex((item) => item.id === id); if (existing >= 0) current[existing] = { ...current[existing], label: trimmed }; else current.push({ id, questionId, label: trimmed });

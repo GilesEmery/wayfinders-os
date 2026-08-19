@@ -4,6 +4,7 @@ interface LMULogoProps {
   variant?: "wordmark-invert" | "mark" | "mark-white";
   priority?: boolean;
   className?: string;
+  decorative?: boolean;
 }
 
 const logoConfig = {
@@ -31,13 +32,14 @@ export function LMULogo({
   variant = "mark",
   priority = false,
   className = "",
+  decorative = false,
 }: LMULogoProps) {
   const logo = logoConfig[variant];
 
   return (
     <span className={`lmu-logo lmu-logo-${variant} ${className}`.trim()}>
       <Image
-        alt={logo.alt}
+        alt={decorative ? "" : logo.alt}
         height={logo.height}
         priority={priority}
         src={logo.src}

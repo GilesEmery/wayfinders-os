@@ -1,4 +1,5 @@
 import type { LMUModuleDefinition } from "@/lib/experiences/lmu/types";
+import { lmuInstructionalMedia } from "@/modules/lmu/media";
 
 export const supervisorDefinition: LMUModuleDefinition = {
   id: "supervisor", slug: "supervisor", title: "Supervisor", shortTitle: "Supervisor",
@@ -9,6 +10,6 @@ export const supervisorDefinition: LMUModuleDefinition = {
     { id: "confirmation", title: "Confirm Five" }, { id: "writing", title: "Desired Leadership" },
     { id: "review", title: "Review Attributes" }, { id: "final", title: "Final Top 5" },
   ],
-  instructionalMedia: { intro: { provider: "youtube", videoId: "in1P40RteEE", title: "Supervisor instructional video", description: "Clarify the leadership qualities and behaviors that help you do your best work." } },
+  instructionalMedia: { intro: lmuInstructionalMedia.supervisor },
   allowedExperiences: ["life-mapping-u-original"],
 };

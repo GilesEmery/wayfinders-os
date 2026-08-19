@@ -1,4 +1,5 @@
 import type { LMUModuleDefinition } from "@/lib/experiences/lmu/types";
+import { lmuInstructionalMedia } from "@/modules/lmu/media";
 
 export const transferableSkillsDefinition: LMUModuleDefinition = {
   id: "transferable-skills",
@@ -27,10 +28,7 @@ export const transferableSkillsDefinition: LMUModuleDefinition = {
   ],
   instructionalMedia: {
     intro: {
-      provider: "youtube",
-      videoId: "sqKzN0zT49c",
-      title: "Transferable Skills instructional video",
-      description: "Use your Success Stories to notice the skills you repeatedly bring with you.",
+      ...lmuInstructionalMedia.transferableSkills,
     },
   },
   allowedExperiences: [

@@ -72,7 +72,8 @@ export function SalaryModule({ media }: { media?: Record<string, LMUInstructiona
   function confirm() { if (hasAmounts && response.currency && response.significantChange && response.advisorRelationship) save({ ...response, finalizedAt: new Date().toISOString(), resumeScreen: "final" }); }
   function finish() { completeSalary(response); router.push("/experiences/life-mapping-u/original"); }
   const actions = (back: SalaryScreen, next: SalaryScreen, label: string, disabled = false) => <div className="teammates-actions"><button className="story-cancel" type="button" onClick={() => go(back)}>← Back</button><button className="button button-primary" type="button" disabled={disabled} onClick={() => go(next)}><span>{label}</span><span aria-hidden="true">→</span></button></div>;
-  const startOver = <ModuleStartOverControl experienceId={LMU_ORIGINAL_EXPERIENCE_ID} moduleId="salary" moduleHref="/experiences/life-mapping-u/module/salary" />;
+  const salarySteps: SalaryScreen[] = ["introduction", "context", "floor", "goal", "range", "realities", "change", "support", "review", "final"];
+  const startOver = <ModuleStartOverControl experienceId={LMU_ORIGINAL_EXPERIENCE_ID} moduleId="salary" moduleHref="/experiences/life-mapping-u/module/salary" screen={response.resumeScreen} onBack={response.resumeScreen === "introduction" ? undefined : () => go(salarySteps[salarySteps.indexOf(response.resumeScreen) - 1])} />;
   const difference = (response.fiveYearGoal ?? 0) - (response.financialFloor ?? 0);
   const timelineFactors = response.futureFactors.filter((item) => item.timeHorizon);
 

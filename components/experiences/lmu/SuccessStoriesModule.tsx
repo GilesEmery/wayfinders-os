@@ -250,7 +250,16 @@ export function SuccessStoriesModule({ media }: { media?: Record<string, LMUInst
     setScreen("top-three-intro");
   }
 
-  const startOverControl = <ModuleStartOverControl experienceId={LMU_ORIGINAL_EXPERIENCE_ID} moduleHref="/experiences/life-mapping-u/module/success-stories" moduleId="success-stories" onResetComplete={resetSuccessStoriesScreen} />;
+  const storySteps: Screen[] = ["introduction", "collection", "editor", "top-three-intro", "comparison", "top-three-review"];
+  function sectionBack() {
+    if (screen === "introduction") return;
+    if (screen === "editor") { cancelEditing(); return; }
+    if (screen === "collection") { setScreen("introduction"); return; }
+    if (screen === "top-three-review") { restartTopThree(); return; }
+    setScreen(storySteps[storySteps.indexOf(screen) - 1]);
+  }
+
+  const startOverControl = <ModuleStartOverControl experienceId={LMU_ORIGINAL_EXPERIENCE_ID} moduleHref="/experiences/life-mapping-u/module/success-stories" moduleId="success-stories" screen={screen} onBack={screen === "introduction" ? undefined : sectionBack} onResetComplete={resetSuccessStoriesScreen} />;
 
   return (
     <LMUShell context="Success Stories" theme="dark" journeyHref="/experiences/life-mapping-u/original" onJourneyReturn={() => { if (draft) saveSuccessStoryDraft(draft); saveSuccessStoriesLocation(screen); }}>

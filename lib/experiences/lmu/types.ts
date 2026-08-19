@@ -12,13 +12,21 @@ export interface LMUModuleStage {
   title: string;
 }
 
-export interface LMUInstructionalMedia {
-  provider: "youtube";
-  videoId: string;
+interface LMUInstructionalMediaBase {
   title: string;
+  posterTitle?: string;
+  posterBadge?: import("@/components/experiences/lmu/icons/types").LMUIconName;
+  poster?: string;
+  captions?: boolean;
   description?: string;
   durationMinutes?: number;
 }
+
+export type LMUInstructionalMedia = LMUInstructionalMediaBase & (
+  | { provider: "youtube"; videoId: string }
+  | { provider: "screenpal"; videoId: string; embedUrl?: string }
+  | { provider: "bunny"; libraryId: string; videoId: string; hlsUrl: string }
+);
 
 export interface LMUModuleDefinition {
   id: string;
