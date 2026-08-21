@@ -357,8 +357,9 @@ main:has(.lmu-section-navigation) .story-cancel { display: none; }
 .skills-compact-story { align-items: center; background: var(--lmu-soft-gray); display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) auto; min-width: 0; padding: 11px 12px; }
 .skills-compact-story + .skills-compact-story { border-left: 1px solid var(--lmu-cream); }
 .skills-compact-story strong { line-height: 1.35; min-width: 0; overflow-wrap: anywhere; }
-.skills-compact-story button { align-items: center; background: transparent; border: 1px solid var(--lmu-charcoal); border-radius: 50%; color: var(--lmu-charcoal); cursor: pointer; display: flex; flex: 0 0 auto; font: inherit; font-size: 15px; height: 25px; justify-content: center; padding: 0; width: 25px; }
-.skills-compact-story button:hover, .skills-compact-story button:focus-visible { background: var(--lmu-charcoal); color: var(--lmu-white); outline-offset: 2px; }
+.skills-compact-story button { align-items: center; background: transparent; border: 0; border-radius: 0; color: var(--lmu-charcoal); cursor: pointer; display: flex; flex: 0 0 auto; font: inherit; font-size: 18px; height: 25px; justify-content: center; padding: 0 3px; }
+.skills-compact-story button:hover { color: var(--lmu-orange); }
+.skills-compact-story button:focus-visible { color: var(--lmu-orange); outline: 2px solid var(--lmu-orange); outline-offset: 2px; }
 .skills-story-detail-backdrop { align-items: center; background: rgb(39 43 41 / .58); display: flex; inset: 0; justify-content: center; padding: 24px; position: fixed; z-index: 40; }
 .skills-story-detail-dialog { background: var(--lmu-soft-gray); border-bottom: 4px solid var(--lmu-orange); box-shadow: 0 24px 70px rgb(0 0 0 / .25); max-height: min(680px, calc(100svh - 48px)); max-width: 620px; overflow: auto; padding: clamp(28px, 5vw, 48px); position: relative; width: 100%; }
 .skills-story-detail-dialog h2 { font-size: clamp(24px, 4vw, 38px); margin: 10px 48px 28px 0; overflow-wrap: anywhere; text-transform: uppercase; }
