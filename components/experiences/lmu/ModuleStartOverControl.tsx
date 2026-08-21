@@ -1,9 +1,6 @@
 "use client";
 
-import { resetModuleProgress } from "@/lib/experiences/lmu/storage";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { useLocalhostTesting } from "./useLocalhostTesting";
+import { useEffect, useRef, useState } from "react";
 import { LMUSectionNavigation } from "./LMUSectionNavigation";
 
 interface ModuleStartOverControlProps {
@@ -15,7 +12,9 @@ interface ModuleStartOverControlProps {
   totalSteps?: number;
   screen?: string;
   onBack?: () => void;
+  onBackToSections?: () => void;
   backLabel?: string;
+  redo?: { label: string; title: string; description: string; onConfirm: () => void };
 }
 
 const sectionSteps: Record<string, string[]> = {
@@ -31,38 +30,42 @@ const sectionSteps: Record<string, string[]> = {
   "current-motivator-rankings": ["introduction", "review", "ranking", "final-review", "final"],
 };
 
-export function ModuleStartOverControl({ experienceId, moduleId, moduleHref, onResetComplete, currentStep, totalSteps, screen, onBack, backLabel = "Back a Section" }: ModuleStartOverControlProps) {
+export function ModuleStartOverControl({ currentStep, totalSteps, screen, onBack, onBackToSections, backLabel = "Back", redo, moduleId }: ModuleStartOverControlProps) {
   const [confirming, setConfirming] = useState(false);
-  const router = useRouter();
-  const localhostTesting = useLocalhostTesting();
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const steps = sectionSteps[moduleId] ?? [screen ?? "introduction"];
   const resolvedStep = currentStep ?? Math.max(1, steps.indexOf(screen ?? steps[0]) + 1);
   const resolvedTotal = totalSteps ?? steps.length;
 
-  function startOver() {
-    resetModuleProgress(experienceId, moduleId);
+  function closeConfirmation() {
     setConfirming(false);
-    onResetComplete?.();
-    router.replace(moduleHref);
-    router.refresh();
+    window.requestAnimationFrame(() => triggerRef.current?.focus());
   }
+
+  function confirmRedo() { redo?.onConfirm(); setConfirming(false); }
+
+  useEffect(() => {
+    if (!confirming) return;
+    cancelRef.current?.focus();
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") { event.preventDefault(); closeConfirmation(); return; }
+      if (event.key !== "Tab") return;
+      const buttons = dialogRef.current?.querySelectorAll<HTMLElement>("button:not([disabled])");
+      if (!buttons?.length) return;
+      const first = buttons[0], last = buttons[buttons.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [confirming]);
 
   return (
     <>
-      <LMUSectionNavigation currentStep={resolvedStep} totalSteps={resolvedTotal} onBack={onBack} backLabel={backLabel} />
-      {localhostTesting ? <aside className="module-start-over" aria-label="Temporary section testing controls">
-      {/* Temporary development/testing scaffolding; participant-facing reset policy will be decided later. */}
-      <p>Development control</p>
-      {!confirming ? (
-        <button type="button" onClick={() => setConfirming(true)}>Start Over</button>
-      ) : (
-        <div className="module-start-over-confirm" role="group" aria-labelledby={`reset-${moduleId}-title`}>
-          <strong id={`reset-${moduleId}-title`}>Start this section over?</strong>
-          <span>This will clear the work saved in this section and return you to the beginning.</span>
-          <div><button type="button" onClick={() => setConfirming(false)}>Cancel</button><button type="button" onClick={startOver}>Start Over</button></div>
-        </div>
-      )}
-      </aside> : null}
+      <LMUSectionNavigation currentStep={resolvedStep} totalSteps={resolvedTotal} onBack={onBack} onBackToSections={onBackToSections} backLabel={backLabel} onRedo={redo ? () => setConfirming(true) : undefined} redoLabel={redo?.label} redoButtonRef={triggerRef} />
+      {confirming && redo && <div className="lmu-redo-dialog-backdrop"><div ref={dialogRef} className="lmu-redo-dialog" role="dialog" aria-modal="true" aria-labelledby={`redo-${moduleId}-title`} aria-describedby={`redo-${moduleId}-description`}><h2 id={`redo-${moduleId}-title`}>{redo.title}</h2><p id={`redo-${moduleId}-description`}>{redo.description}</p><div><button ref={cancelRef} type="button" onClick={closeConfirmation}>Cancel</button><button className="is-destructive" type="button" onClick={confirmRedo}>{redo.label}</button></div></div></div>}
     </>
   );
 }

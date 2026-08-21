@@ -12,9 +12,10 @@ interface ModuleJourneyItemProps {
   completed?: number;
   total?: number;
   started?: boolean;
+  onRedo?: () => void;
 }
 
-export function ModuleJourneyItem({ module, index, status, allowLockedNavigation = false, futureDistance, completed = 0, total = 10, started = false }: ModuleJourneyItemProps) {
+export function ModuleJourneyItem({ module, index, status, allowLockedNavigation = false, futureDistance, completed = 0, total = 10, started = false, onRedo }: ModuleJourneyItemProps) {
   const isAvailable = status === "available" || status === "in-progress";
   const isNavigable = isAvailable || status === "completed" || allowLockedNavigation;
   const isResult = module.kind === "result";
@@ -51,7 +52,7 @@ export function ModuleJourneyItem({ module, index, status, allowLockedNavigation
       </div>
       <div className="journey-meta">
         <span>{module.estimatedMinutes} min</span>
-        {isNavigable ? <Link href={`/experiences/life-mapping-u/module/${module.slug}`}>{status === "completed" ? "Reopen" : started ? "Resume" : "Begin"} <span aria-hidden="true">→</span></Link> : <span aria-hidden="true">→</span>}
+        <div className="journey-card-actions">{isNavigable ? <Link href={`/experiences/life-mapping-u/module/${module.slug}`}>{status === "completed" ? "Reopen" : started ? "Resume" : "Begin"} <span aria-hidden="true">→</span></Link> : <span aria-hidden="true">→</span>}{started && onRedo && <button className="journey-redo-section" type="button" onClick={onRedo}>Redo Module</button>}</div>
       </div>
     </li>
   );

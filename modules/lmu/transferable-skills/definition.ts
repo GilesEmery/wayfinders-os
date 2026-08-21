@@ -24,7 +24,7 @@ export const transferableSkillsDefinition: LMUModuleDefinition = {
     { id: "ranking", title: "Adaptive Skill Ranking" },
     { id: "review", title: "Full Ranked Skills Review" },
     { id: "final", title: "Final Top 5" },
-    { id: "finish", title: "Finish Section" },
+    { id: "finish", title: "Finish Module" },
   ],
   instructionalMedia: {
     intro: {

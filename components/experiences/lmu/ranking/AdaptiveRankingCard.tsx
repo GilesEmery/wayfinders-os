@@ -17,6 +17,7 @@ interface AdaptiveRankingCardProps {
   itemLabel?: string;
   expandLabel?: string;
   selectedStateLabel?: string;
+  wholeCardSelection?: boolean;
 }
 
 export function AdaptiveRankingCard({
@@ -34,10 +35,12 @@ export function AdaptiveRankingCard({
   itemLabel = "Story",
   expandLabel = "Story",
   selectedStateLabel = "Top story",
+  wholeCardSelection = false,
 }: AdaptiveRankingCardProps) {
   return (
     <article className={`adaptive-ranking-card is-${state}${compact ? " is-compact" : ""}${onSelect ? " is-selectable" : ""}`} onPointerEnter={onActivate} onFocusCapture={onActivate}>
       <MapAccent className="adaptive-ranking-map" opacity={0.045} position="right" variant={2} />
+      {onSelect && wholeCardSelection && <button className="adaptive-ranking-card-choice" type="button" disabled={selectionDisabled} onClick={onSelect} aria-label={`${selectionLabel}: ${item.title}`} />}
       <div className="adaptive-ranking-card-main">
         {typeof rank === "number" && <span className="adaptive-ranking-rank">{String(rank).padStart(2, "0")}</span>}
         {state === "selected" && <span className="adaptive-ranking-state">{selectedStateLabel}</span>}
@@ -48,7 +51,7 @@ export function AdaptiveRankingCard({
         <div className="adaptive-ranking-heading">
           <h3>{item.title}</h3>
         </div>
-        {onSelect && <button className="adaptive-ranking-select" type="button" disabled={selectionDisabled} onClick={onSelect}><span>{selectionLabel}</span><span aria-hidden="true">→</span></button>}
+        {onSelect && !wholeCardSelection && <button className="adaptive-ranking-select" type="button" disabled={selectionDisabled} onClick={onSelect}><span>{selectionLabel}</span><span aria-hidden="true">→</span></button>}
         <button className="adaptive-ranking-expand" type="button" aria-expanded={expanded} onClick={onToggle}>{expanded ? `− Hide ${expandLabel}` : `+ View ${expandLabel}`}</button>
         <div className="adaptive-ranking-detail" data-expanded={expanded} aria-hidden={!expanded}>
           <div inert={expanded ? undefined : true}><p>{item.detailLabel}</p><div>{item.detailContent}</div></div>

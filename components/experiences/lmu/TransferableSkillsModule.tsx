@@ -13,7 +13,9 @@ import { emptyTransferableSkillsResponse, generateCandidatePool, readTransferabl
 import type { TransferableSkillCategory, TransferableSkillEvidence, TransferableSkillsResponse, TransferableSkillsScreen } from "@/modules/lmu/transferable-skills/types";
 import { LMUBadgeIcon } from "./icons/badge/LMUBadgeIcon";
 import { LMUInstructionalVideo } from "./LMUInstructionalVideo";
+import { LMUInternalProgress } from "./LMUInternalProgress";
 import { LMUScreenHeading } from "./LMUScreenHeading";
+import { LMUPilotSectionHeader } from "./LMUPilotSectionHeader";
 import { LMUShell } from "./LMUShell";
 import { MapAccent } from "./MapAccent";
 import { ModuleStartOverControl } from "./ModuleStartOverControl";
@@ -22,8 +24,12 @@ import { usePageStart } from "./usePageStart";
 import { LMUFinalMoveControls, LMUFinalSelectionGroup, LMUFinalSelectionRow, LMUInlineReplacementChooser } from "./LMUFinalSelectionReview";
 
 function evidenceCopy(evidence: TransferableSkillEvidence, stories: SuccessStory[]) {
-  const positions = evidence.storyIds.map((id) => stories.findIndex((story) => story.id === id) + 1).filter(Boolean);
-  return evidence.storyCount === 3 ? "Appeared in all 3 stories" : `Appeared in ${positions.map((position) => `Story ${position}`).join(" and ")}`;
+  const titles = evidence.storyIds.flatMap((id) => {
+    const story = stories.find((item) => item.id === id);
+    return story ? [story.title] : [];
+  });
+  if (titles.length < 2) return titles.length ? `Appeared in ${titles[0]}` : "";
+  return `Appeared in ${titles.slice(0, -1).join(", ")} and ${titles[titles.length - 1]}`;
 }
 
 const allTransferableSkills = transferableSkillCategories.flatMap((category) => category.skills);
@@ -174,48 +180,25 @@ export function TransferableSkillsModule({ media }: { media?: Record<string, LMU
     router.push("/experiences/life-mapping-u/original");
   }
 
-  function returnToGroupRankingDemo() {
-    const ranking = {
-      ...response.ranking,
-      groupAssignments: createInitialGroupAssignments(response.candidateSkillIds),
-      groupRankings: [],
-      draftGroupRankings: {},
-      currentPhase: "initial" as const,
-      groupPhaseComplete: false,
-      topCandidates: [],
-      middleCandidates: [],
-      bottomCandidates: [],
-      participantInteractions: 0,
-      explicitHeadToHeadComparisons: [],
-      explicitComparisons: [],
-      derivedRelationships: [],
-      topFiveContenders: [],
-      topTenContenders: [],
-      eliminatedFromTopFive: [],
-      eliminatedFromTopTen: [],
-      provisionalTopTen: [],
-      algorithmicTopFive: [],
-      algorithmicTopTen: [],
-      clarificationComparisons: [],
-      finalTopFive: [],
-      finalTopTen: [],
-    };
-    saveTransferableSkillsResponse({ ...response, ranking, finalTopFiveSkillIds: [], finalizedAt: undefined, resumeScreen: "ranking" });
+  function redoSkillsNarrowing() {
+    saveTransferableSkillsResponse({ ...response, ranking: emptyTransferableSkillsResponse().ranking, finalTopFiveSkillIds: [], finalizedAt: undefined, resumeScreen: "patterns" });
     setReviewIds([]);
     setReplacementSkillId(null);
     setExpandedIds([]);
-    setScreen("ranking");
+    setScreen("patterns");
   }
 
   const skillSteps: TransferableSkillsScreen[] = ["introduction", ...transferableSkillCategories.map((category) => category.id), "patterns", "ranking", "review", "final"];
   const handleBack = activeScreen === "introduction"
     ? undefined
     : activeScreen === "review"
-      ? returnToGroupRankingDemo
+      ? () => setScreen("patterns")
       : () => go(skillSteps[skillSteps.indexOf(activeScreen) - 1]);
-  const startOver = <ModuleStartOverControl experienceId={LMU_ORIGINAL_EXPERIENCE_ID} moduleId="transferable-skills" moduleHref="/experiences/life-mapping-u/module/transferable-skills" screen={activeScreen} onBack={handleBack} onResetComplete={() => { setScreen("introduction"); setReviewIds([]); setExpandedIds([]); setReplacementSkillId(null); }} />;
+  const hasSkillsNarrowingWork = response.ranking.groupAssignments.length > 0 || response.ranking.groupRankings.length > 0 || Object.values(response.ranking.draftGroupRankings).some((ids) => ids.length > 0) || response.finalTopFiveSkillIds.length > 0;
+  const skillsRedo = hasSkillsNarrowingWork && ["ranking", "review", "final"].includes(activeScreen) ? { label: "Redo Skills Narrowing", title: "Redo Skills Narrowing?", description: "This will erase the choices you made while narrowing and ranking your skills. The skills you identified from your Success Stories will remain, and you will begin the narrowing process again.", onConfirm: redoSkillsNarrowing } : undefined;
+  const startOver = <ModuleStartOverControl experienceId={LMU_ORIGINAL_EXPERIENCE_ID} moduleId="transferable-skills" moduleHref="/experiences/life-mapping-u/module/transferable-skills" screen={activeScreen} onBack={handleBack} redo={skillsRedo} />;
 
-  return <LMUShell context="Transferable Skills" theme="dark" journeyHref="/experiences/life-mapping-u/original">
+  return <LMUShell context="Transferable Skills" theme="dark" journeyHref="/experiences/life-mapping-u/original" onInternalBack={activeScreen === "introduction" ? undefined : handleBack}>
     {activeScreen === "introduction" && <main className="success-intro transferable-skills-intro">
       <section className="success-intro-copy transferable-skills-intro-copy">
         <p className="eyebrow eyebrow-rule">Transferable Skills</p>
@@ -226,7 +209,7 @@ export function TransferableSkillsModule({ media }: { media?: Record<string, LMU
         {media?.intro && <LMUInstructionalVideo {...media.intro} />}
         <div className="skills-reminders"><p className="eyebrow">Important reminders</p><ul><li>Use your Success Stories to identify the skills you relied on most.</li><li>Transferable skills are those that can be applied across different roles and environments.</li><li>This is a thoughtful process. Take your time and trust what emerges.</li></ul></div>
         <div className="skills-intro-instructions"><p>You will work through six categories: <strong>Realistic, Social, Conventional, Artistic, Enterprising, and Investigative.</strong></p><p>For each skill, identify which of your three Success Stories included that skill.</p><p>After working through all six categories, you will narrow the skills you identified to your Top 5 Transferable Skills.</p></div>
-        {!hasPrerequisite && <div className="skills-dependency" role="status"><strong>Your three Success Stories are needed before this section can be completed.</strong><p>Return to Success Stories and finalize your Top 3. Development access remains available, but no substitute stories will be created.</p></div>}
+        {!hasPrerequisite && <div className="skills-dependency" role="status"><strong>Your three Success Stories are needed before this module can be completed.</strong><p>Return to Success Stories and finalize your Top 3. Development access remains available, but no substitute stories will be created.</p></div>}
         <StoryContext stories={stories} expandedIds={expandedIds} onToggle={(id) => setExpandedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])} />
         <button className="button button-primary" type="button" disabled={!hasPrerequisite} onClick={begin}><span>Begin With Realistic</span><span aria-hidden="true">→</span></button>
         {startOver}
@@ -236,15 +219,15 @@ export function TransferableSkillsModule({ media }: { media?: Record<string, LMU
 
     {transferableSkillCategories.map((category, categoryIndex) => activeScreen === category.id && <main className="skills-category" key={category.id}>
       <header className="skills-category-hero">
-        <CategoryProgress currentIndex={categoryIndex} />
-        <div className="skills-category-title"><LMUBadgeIcon name={category.iconKey} state="active" size={82} label={category.title} /><div><p className="eyebrow">{categoryIndex + 1} of 6 · {category.title}</p><h1 ref={headingRef} tabIndex={-1}>{category.subtitle}</h1><p>{category.description}</p></div></div>
+        <LMUPilotSectionHeader className="skills-category-title" icon={category.iconKey} iconLabel={category.title} eyebrow={`${categoryIndex + 1} of 6 · ${category.title}`} title={category.subtitle} description={category.description} headingRef={headingRef} />
+        <LMUInternalProgress label={`Transferable Skills category ${categoryIndex + 1} of 6`} items={transferableSkillCategories.map((item, index) => ({ id: item.id, label: item.title, icon: item.iconKey, status: index < categoryIndex ? "completed" as const : index === categoryIndex ? "current" as const : "future" as const }))} />
       </header>
       <section className="skills-workarea">
-        <StoryContext stories={stories} compact sticky expandedIds={expandedIds} onToggle={(id) => setExpandedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])} />
-        <div className="skills-matrix-heading" aria-hidden="true"><span>Skill</span>{stories.map((story, index) => <span key={story.id}>Story {index + 1}</span>)}</div>
-        <div className="skills-matrix">{category.skills.map((skill) => <div className={`skill-row${skill.briefDescription ? " has-explanation" : ""}`} role="group" aria-labelledby={`${skill.id}-label`} key={skill.id}><div className="skill-row-label"><span id={`${skill.id}-label`}>{skill.label}</span>{skill.briefDescription && skill.longDescription && <TransferableSkillHelp skillId={skill.id} briefDescription={skill.briefDescription} longDescription={skill.longDescription} expanded={expandedSkillHelpIds.includes(skill.id)} onToggle={() => setExpandedSkillHelpIds((current) => current.includes(skill.id) ? current.filter((id) => id !== skill.id) : [...current, skill.id])} />}</div><span className="skill-appeared">Appeared in:</span>{stories.map((story, index) => {
+        <StoryContext stories={stories} expandedIds={expandedIds} onToggle={(id) => setExpandedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])} />
+        <CompactStoryHeader stories={stories} />
+        <div className="skills-matrix">{category.skills.map((skill) => <div className={`skill-row${skill.briefDescription ? " has-explanation" : ""}`} role="group" aria-labelledby={`${skill.id}-label`} key={skill.id}><div className="skill-row-label"><span id={`${skill.id}-label`}>{skill.label}</span>{skill.briefDescription && skill.longDescription && <TransferableSkillHelp skillId={skill.id} briefDescription={skill.briefDescription} longDescription={skill.longDescription} expanded={expandedSkillHelpIds.includes(skill.id)} onToggle={() => setExpandedSkillHelpIds((current) => current.includes(skill.id) ? current.filter((id) => id !== skill.id) : [...current, skill.id])} />}</div><span className="skill-appeared">Appeared in:</span>{stories.map((story) => {
           const checked = (response.categorySelections[category.id]?.[skill.id] ?? []).includes(story.id);
-          return <label className={`skill-story-choice${checked ? " is-selected" : ""}`} key={story.id}><input type="checkbox" checked={checked} onChange={() => updateCategory(category, skill.id, story.id)} /><span aria-hidden="true">{checked ? "✓" : ""}</span><b>Story {index + 1}</b><small>{story.title}</small></label>;
+          return <label className={`skill-story-choice${checked ? " is-selected" : ""}`} key={story.id}><input type="checkbox" checked={checked} onChange={() => updateCategory(category, skill.id, story.id)} /><span aria-hidden="true">{checked ? "✓" : ""}</span><b>{story.title}</b></label>;
         })}</div>)}</div>
         <nav className="skills-category-actions" aria-label="Category navigation"><button className="story-cancel" type="button" onClick={() => go(categoryIndex === 0 ? "introduction" : transferableSkillCategories[categoryIndex - 1].id)}>← Back</button><button className="button button-primary" type="button" onClick={() => continueCategory(category)}><span>{categoryIndex === 5 ? "Review My Patterns" : `Continue to ${transferableSkillCategories[categoryIndex + 1].title}`}</span><span aria-hidden="true">→</span></button></nav>
         {startOver}
@@ -252,7 +235,7 @@ export function TransferableSkillsModule({ media }: { media?: Record<string, LMU
     </main>)}
 
     {activeScreen === "patterns" && <main className="skills-results-shell">
-      <LMUScreenHeading eyebrow="Transferable Skills" title="Look at what keeps showing up." description="Your stories are beginning to reveal patterns. Their evidence gives you a place to begin; you will decide what matters most next." headingRef={headingRef} />
+      <LMUScreenHeading eyebrow="Transferable Skills" title="Look at what keeps showing up." description="Your stories are beginning to reveal patterns. The examples from your Success Stories give you a place to begin; you will decide what matters most next." headingRef={headingRef} />
       <div className="skill-pattern-groups">{[3, 2, 1].map((count) => {
         const items = response.evidence.filter((item) => response.candidateSkillIds.includes(item.canonicalKey) && item.storyCount === count);
         if (!items.length) return null;
@@ -264,7 +247,7 @@ export function TransferableSkillsModule({ media }: { media?: Record<string, LMU
 
     {activeScreen === "ranking" && currentGroup && <main className="top-three-shell comparison-shell skills-ranking-shell">
       <LMUScreenHeading eyebrow={`Transferable Skills · ${phaseLabel(currentGroup.phase)}`} title="Rank This Group" description={`Rank every skill from 1 to ${currentGroup.skillIds.length}, with 1 being the skill that feels most characteristic of what you bring at your best.`} headingRef={headingRef} />
-      <div className="skill-group-instructions"><strong>How to rank this group</strong><p>Click the skill card you want to rank #1. Then click your choice for #2, and continue until every card has a number. To change your choices, click a numbered card to remove that rank and the ranks after it.</p></div>
+      <div className="skill-group-instructions"><strong>How to rank this group</strong><p>Click the skill card you want to rank #1. Then click your choice for #2, and continue until every card has a number. To change your choices, click a numbered card to remove that rank and the ranks after it. When you are finished, select Continue.</p></div>
       <p className="skill-group-progress">Group {response.ranking.groupAssignments.filter((item) => item.phase === currentGroup.phase).findIndex((item) => item.groupId === currentGroup.groupId) + 1} of {response.ranking.groupAssignments.filter((item) => item.phase === currentGroup.phase).length} · {currentGroupOrder.length} of {currentGroup.skillIds.length} ranked</p>
       <section className="skill-group-grid" aria-label="Rank this group of transferable skills">{currentGroup.skillIds.map((id) => { const evidence = evidenceById.get(id); if (!evidence) return null; return <SkillGroupRankingCard key={id} evidence={evidence} stories={stories} rank={currentGroupOrder.indexOf(id) + 1} groupSize={currentGroup.skillIds.length} expanded={expandedIds.includes(id)} onRank={() => rankGroupSkill(id)} onToggleEvidence={() => setExpandedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])} />; })}</section>
       <div className="skill-group-actions"><button className="story-cancel" type="button" disabled={!currentGroupOrder.length} onClick={resetCurrentGroup}>Reset this group</button><button className="button button-primary" type="button" disabled={currentGroupOrder.length !== currentGroup.skillIds.length} onClick={confirmCurrentGroup}><span>Continue</span><span aria-hidden="true">→</span></button></div>
@@ -272,27 +255,75 @@ export function TransferableSkillsModule({ media }: { media?: Record<string, LMU
     </main>}
 
     {activeScreen === "review" && <main className="skills-results-shell skills-review">
-      <LMUScreenHeading eyebrow="Your Transferable Skills" title="Does this look like you?" description="Seeing these skills together may help you notice something that was harder to see one comparison at a time. Review the list and make any final adjustments before choosing your Top 5." headingRef={headingRef} />
-      <LMUFinalSelectionGroup label="Your Top 5">{reviewIds.slice(0, 5).map((id, index) => { const evidence = evidenceById.get(id); if (!evidence) return null; const category = transferableSkillCategories.find((item) => item.id === evidence.categoryIds[0]); const definition = allTransferableSkills.find((skill) => evidence.sourceSkillIds.includes(skill.id)); return <LMUFinalSelectionRow key={id} rank={index + 1} total={5} title={evidence.label} badge={<LMUBadgeIcon name={category?.iconKey ?? "story"} state="active" size={54} label={category?.title} />} context={<p>{evidenceCopy(evidence, stories)}</p>} disclosureLabel="Evidence" expanded={expandedIds.includes(id)} onToggleDisclosure={() => setExpandedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])} detail={<SkillEvidenceDetail longDescription={definition?.longDescription} evidence={evidence} stories={stories} />} actions={<LMUFinalMoveControls title={evidence.label} index={index} lastIndex={4} onMove={(direction) => moveSkill(index, direction)} />} />; })}</LMUFinalSelectionGroup>
-      <LMUFinalSelectionGroup label="Other Strong Skills" secondary>{reviewIds.slice(5, 10).map((id, offset) => { const index = offset + 5; const evidence = evidenceById.get(id); if (!evidence) return null; const category = transferableSkillCategories.find((item) => item.id === evidence.categoryIds[0]); const definition = allTransferableSkills.find((skill) => evidence.sourceSkillIds.includes(skill.id)); const open = replacementSkillId === id; return <LMUFinalSelectionRow key={id} rank={index + 1} total={Math.min(reviewIds.length, 10)} title={evidence.label} badge={<LMUBadgeIcon name={category?.iconKey ?? "story"} state="light" size={54} label={category?.title} />} context={<p>{evidenceCopy(evidence, stories)}</p>} disclosureLabel="Evidence" expanded={expandedIds.includes(id)} onToggleDisclosure={() => setExpandedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])} detail={<SkillEvidenceDetail longDescription={definition?.longDescription} evidence={evidence} stories={stories} />} actions={<LMUFinalMoveControls title={evidence.label} index={offset} lastIndex={Math.min(reviewIds.length, 10) - 6} onMove={(direction) => moveSkill(index, direction)}><button type="button" aria-expanded={open} onClick={() => beginTopFiveReplacement(id)}>Move Into Top 5</button></LMUFinalMoveControls>} after={open ? <LMUInlineReplacementChooser heading={`Which Top 5 skill should ${evidence.label} replace?`} choices={reviewIds.slice(0, 5).map((topId, choiceIndex) => ({ id: topId, rank: choiceIndex + 1, title: evidenceById.get(topId)?.label ?? "Skill" }))} onChoose={replaceTopFiveSkill} onCancel={() => setReplacementSkillId(null)} /> : undefined} />; })}</LMUFinalSelectionGroup>
-      <button className="button button-primary" type="button" disabled={reviewIds.length < 5} onClick={confirmRanking}><span>Confirm My Top 5</span><span aria-hidden="true">✓</span></button><button className="story-cancel skills-demo-back" type="button" onClick={returnToGroupRankingDemo}>← Back to Group Ranking Demo</button>{startOver}
+      <LMUScreenHeading eyebrow="Your Transferable Skills" title="Does this look like you?" description="Seeing these skills together may help you notice something that was harder to see one comparison at a time. Review the list and make any final adjustments before choosing your Top 5. When you are finished, select Confirm My Top 5." headingRef={headingRef} />
+      <LMUFinalSelectionGroup label="Your Top 5">{reviewIds.slice(0, 5).map((id, index) => { const evidence = evidenceById.get(id); if (!evidence) return null; const category = transferableSkillCategories.find((item) => item.id === evidence.categoryIds[0]); const definition = allTransferableSkills.find((skill) => evidence.sourceSkillIds.includes(skill.id)); return <LMUFinalSelectionRow key={id} rank={index + 1} total={5} title={evidence.label} badge={<LMUBadgeIcon name={category?.iconKey ?? "story"} state="active" size={54} label={category?.title} />} context={<p>{evidenceCopy(evidence, stories)}</p>} disclosureLabel="Examples" disclosureShowLabel="See Your Examples" disclosureHideLabel="Hide Your Examples" expanded={expandedIds.includes(id)} onToggleDisclosure={() => setExpandedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])} detail={<SkillEvidenceDetail longDescription={definition?.longDescription} evidence={evidence} stories={stories} />} actions={<LMUFinalMoveControls title={evidence.label} index={index} lastIndex={4} onMove={(direction) => moveSkill(index, direction)} />} />; })}</LMUFinalSelectionGroup>
+      <LMUFinalSelectionGroup label="Other Strong Skills" secondary>{reviewIds.slice(5, 10).map((id, offset) => { const index = offset + 5; const evidence = evidenceById.get(id); if (!evidence) return null; const category = transferableSkillCategories.find((item) => item.id === evidence.categoryIds[0]); const definition = allTransferableSkills.find((skill) => evidence.sourceSkillIds.includes(skill.id)); const open = replacementSkillId === id; return <LMUFinalSelectionRow key={id} rank={index + 1} total={Math.min(reviewIds.length, 10)} title={evidence.label} badge={<LMUBadgeIcon name={category?.iconKey ?? "story"} state="light" size={54} label={category?.title} />} context={<p>{evidenceCopy(evidence, stories)}</p>} disclosureLabel="Examples" disclosureShowLabel="See Your Examples" disclosureHideLabel="Hide Your Examples" expanded={expandedIds.includes(id)} onToggleDisclosure={() => setExpandedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])} detail={<SkillEvidenceDetail longDescription={definition?.longDescription} evidence={evidence} stories={stories} />} actions={<LMUFinalMoveControls title={evidence.label} index={offset} lastIndex={Math.min(reviewIds.length, 10) - 6} onMove={(direction) => moveSkill(index, direction)}><button type="button" aria-expanded={open} onClick={() => beginTopFiveReplacement(id)}>Move Into Top 5</button></LMUFinalMoveControls>} after={open ? <LMUInlineReplacementChooser heading={`Which Top 5 skill should ${evidence.label} replace?`} choices={reviewIds.slice(0, 5).map((topId, choiceIndex) => ({ id: topId, rank: choiceIndex + 1, title: evidenceById.get(topId)?.label ?? "Skill" }))} onChoose={replaceTopFiveSkill} onCancel={() => setReplacementSkillId(null)} /> : undefined} />; })}</LMUFinalSelectionGroup>
+      <button className="button button-primary" type="button" disabled={reviewIds.length < 5} onClick={confirmRanking}><span>Confirm My Top 5</span><span aria-hidden="true">✓</span></button>{startOver}
     </main>}
 
     {activeScreen === "final" && <main className="skills-final">
       <LMUScreenHeading eyebrow="Transferable Skills" title="Your Top 5 Transferable Skills" description="These are the abilities your stories show you bringing across experiences—and the order you chose as most true for you." headingRef={headingRef} />
       <ol>{response.finalTopFiveSkillIds.map((id, index) => { const evidence = evidenceById.get(id); if (!evidence) return null; const category = transferableSkillCategories.find((item) => item.id === evidence.categoryIds[0])!; const definition = allTransferableSkills.find((skill) => evidence.sourceSkillIds.includes(skill.id)); return <li key={id}><span>{String(index + 1).padStart(2, "0")}</span><LMUBadgeIcon name={category.iconKey} state="active" size={58} label={category.title} /><div><h2>{evidence.label}</h2>{definition?.briefDescription && <p>{definition.briefDescription}</p>}<p>Seen in: {evidence.storyIds.map((storyId) => stories.find((story) => story.id === storyId)?.title).filter(Boolean).join(" · ")}</p></div></li>; })}</ol>
-      <button className="button button-primary" type="button" disabled={response.finalTopFiveSkillIds.length !== 5} onClick={finishSection}><span>Finish Section</span><span aria-hidden="true">→</span></button><button className="story-cancel skills-demo-back" type="button" onClick={returnToGroupRankingDemo}>← Back to Group Ranking Demo</button>{startOver}
+      <button className="button button-primary" type="button" disabled={response.finalTopFiveSkillIds.length !== 5} onClick={finishSection}><span>Finish Module</span><span aria-hidden="true">→</span></button>{startOver}
     </main>}
   </LMUShell>;
 }
 
-function StoryContext({ stories, expandedIds, onToggle, compact = false, sticky = false }: { stories: SuccessStory[]; expandedIds: string[]; onToggle: (id: string) => void; compact?: boolean; sticky?: boolean }) {
+function StoryContext({ stories, expandedIds, onToggle }: { stories: SuccessStory[]; expandedIds: string[]; onToggle: (id: string) => void }) {
   if (stories.length !== 3) return null;
-  return <section className={`skills-story-context${compact ? " is-compact" : ""}${sticky ? " is-sticky" : ""}`} aria-label="Your finalized Success Stories">{stories.map((story, index) => <article key={story.id}><p className="eyebrow">Story {index + 1}</p><h2>{story.title}</h2><button type="button" aria-expanded={expandedIds.includes(story.id)} onClick={() => onToggle(story.id)}>{expandedIds.includes(story.id) ? "− Hide Story" : "+ View Story"}</button>{expandedIds.includes(story.id) && <div><strong>What happened?</strong><p>{story.story}</p></div>}</article>)}</section>;
+  return <section className="skills-story-context" aria-label="Your finalized Success Stories">{stories.map((story) => <article key={story.id}><p className="eyebrow">Your Success Story</p><h2>{story.title}</h2><button type="button" aria-expanded={expandedIds.includes(story.id)} onClick={() => onToggle(story.id)}>{expandedIds.includes(story.id) ? "− Hide Story" : "+ View Story"}</button>{expandedIds.includes(story.id) && <div><strong>What happened?</strong><p>{story.story}</p></div>}</article>)}</section>;
 }
 
-function CategoryProgress({ currentIndex }: { currentIndex: number }) {
-  return <ol className="skills-category-progress" aria-label={`Category ${currentIndex + 1} of 6`}>{transferableSkillCategories.map((category, index) => <li className={index < currentIndex ? "is-complete" : index === currentIndex ? "is-current" : "is-future"} key={category.id}><LMUBadgeIcon name={category.iconKey} state={index < currentIndex ? "active" : index === currentIndex ? "current" : "light"} size={38} /><span>{category.title}</span></li>)}</ol>;
+function CompactStoryHeader({ stories }: { stories: SuccessStory[] }) {
+  const [openStoryId, setOpenStoryId] = useState<string | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const triggerRefs = useRef(new Map<string, HTMLButtonElement>());
+  const openStory = stories.find((story) => story.id === openStoryId);
+
+  useEffect(() => {
+    if (!openStoryId) return;
+    const activeStoryId = openStoryId;
+    closeButtonRef.current?.focus();
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Tab") {
+        event.preventDefault();
+        closeButtonRef.current?.focus();
+        return;
+      }
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setOpenStoryId(null);
+      window.requestAnimationFrame(() => triggerRefs.current.get(activeStoryId)?.focus());
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [openStoryId]);
+
+  function closeDetails() {
+    const storyId = openStoryId;
+    setOpenStoryId(null);
+    if (storyId) window.requestAnimationFrame(() => triggerRefs.current.get(storyId)?.focus());
+  }
+
+  if (stories.length !== 3) return null;
+  const openStoryIndex = openStory ? stories.findIndex((story) => story.id === openStory.id) : -1;
+  return <>
+    <div className="skills-matrix-heading" aria-label="Success Story columns">
+      <span className="skills-matrix-heading-label">Skill</span>
+      {stories.map((story, index) => <div className="skills-compact-story" key={story.id}>
+        <strong>{story.title}</strong>
+        <button ref={(node) => { if (node) triggerRefs.current.set(story.id, node); else triggerRefs.current.delete(story.id); }} type="button" aria-label={`View details for ${story.title}`} aria-controls={`compact-story-dialog-${index}`} aria-expanded={openStoryId === story.id} onClick={() => setOpenStoryId(story.id)}>+</button>
+      </div>)}
+    </div>
+    {openStory && <div className="skills-story-detail-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) closeDetails(); }}>
+      <section className="skills-story-detail-dialog" id={`compact-story-dialog-${openStoryIndex}`} role="dialog" aria-modal="true" aria-labelledby={`compact-story-title-${openStoryIndex}`}>
+        <button className="skills-story-detail-close" ref={closeButtonRef} type="button" aria-label={`Close details for ${openStory.title}`} onClick={closeDetails}>×</button>
+        <p className="eyebrow">Your Success Story</p>
+        <h2 id={`compact-story-title-${openStoryIndex}`}>{openStory.title}</h2>
+        <div><strong>What happened?</strong><p>{openStory.story}</p></div>
+      </section>
+    </div>}
+  </>;
 }
 
 function phaseLabel(phase: SkillGroupAssignment["phase"]) { return ({ initial: "First Pass", bottom: "Bottom Stratification", top: "Top Consolidation", middle: "Middle Challenge", boundary: "Top 10 Boundary", cutoff: "Final Cutoff" })[phase]; }
@@ -320,7 +351,7 @@ function advanceGroupFunnel(response: TransferableSkillsResponse, groupRankings:
 function SkillGroupRankingCard({ evidence, stories, rank, groupSize, expanded, onRank, onToggleEvidence }: { evidence: TransferableSkillEvidence; stories: SuccessStory[]; rank: number; groupSize: number; expanded: boolean; onRank: () => void; onToggleEvidence: () => void }) {
   const category = transferableSkillCategories.find((item) => item.id === evidence.categoryIds[0]);
   const definition = allTransferableSkills.find((skill) => evidence.sourceSkillIds.includes(skill.id));
-  return <article className={`skill-group-card${rank ? " is-ranked" : ""}`}><MapAccent variant={2} position="center" opacity={0.09} /><button className="skill-group-rank-button" type="button" onClick={onRank} aria-label={`${evidence.label}, ${rank ? `ranked ${rank} of ${groupSize}; remove this rank and later ranks` : "unranked; rank next"}`}><span className="skill-group-rank-marker" aria-hidden="true">{rank || "—"}</span><LMUBadgeIcon name={category?.iconKey ?? "story"} state={rank ? "active" : "outlined"} size={44} /><span><strong>{evidence.label}</strong>{definition?.briefDescription && <small>{definition.briefDescription}</small>}</span></button><button className="skill-group-evidence-toggle" type="button" aria-expanded={expanded} onClick={onToggleEvidence}>{expanded ? "− Hide Evidence" : "+ View Evidence"}</button>{expanded && <SkillEvidenceDetail longDescription={definition?.longDescription} evidence={evidence} stories={stories} />}</article>;
+  return <article className={`skill-group-card${rank ? " is-ranked" : ""}`} data-ranking-state={rank ? "ranked" : "available"}><MapAccent variant={2} position="center" opacity={0.09} /><button className="skill-group-rank-button" type="button" onClick={onRank} aria-label={`${evidence.label}, ${rank ? `ranked ${rank} of ${groupSize}; remove this rank and later ranks` : "unranked; rank next"}`}><span className="skill-group-rank-marker" aria-hidden="true">{rank || "—"}</span><LMUBadgeIcon name={category?.iconKey ?? "story"} state={rank ? "active" : "outlined"} size={44} /><span><strong>{evidence.label}</strong>{definition?.briefDescription && <small>{definition.briefDescription}</small>}</span></button><button className="skill-group-evidence-toggle" type="button" aria-expanded={expanded} onClick={onToggleEvidence}>{expanded ? "− Hide Your Examples" : "+ See Your Examples"}</button>{expanded && <SkillEvidenceDetail longDescription={definition?.longDescription} evidence={evidence} stories={stories} />}</article>;
 }
 
 function SkillEvidenceDetail({ longDescription, evidence, stories }: { longDescription?: string; evidence: TransferableSkillEvidence; stories: SuccessStory[] }) {

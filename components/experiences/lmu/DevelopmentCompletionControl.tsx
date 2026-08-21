@@ -25,7 +25,7 @@ export function DevelopmentCompletionControl({ moduleId }: { moduleId: string })
     <label className="development-completion-control">
       {/* Temporary development scaffolding. Actual module completion logic will replace this control. */}
       <input type="checkbox" checked={checked} onChange={(event) => setCompleted(event.target.checked)} />
-      <span><strong>Mark this section complete</strong><small>Temporary development control</small></span>
+      <span><strong>Mark this module complete</strong><small>Temporary development control</small></span>
     </label>
   ) : null;
 }

@@ -7,7 +7,7 @@ export const successStoriesDefinition: LMUModuleDefinition = {
   title: "Success Stories",
   shortTitle: "Stories",
   description:
-    "Reflect on meaningful experiences to notice the conditions, choices, and contributions that helped you thrive.",
+    "Reflect on experiences from across your life to notice what you liked doing and what you were good at.",
   estimatedMinutes: 30,
   version: "1.0.0",
   status: "draft",

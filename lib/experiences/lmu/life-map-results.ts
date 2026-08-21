@@ -34,16 +34,16 @@ export function getLifeMapResults(progress: ParticipantModuleProgress[], moduleI
 
 const canonicalLifeMapOrder = ["transferable-skills", "teammates", "supervisor", "values", "growth", "location", "x-factor", "salary"];
 
-export interface OrderedLifeMapSection extends LifeMapSectionResult {
+export interface OrderedLifeMapPriority extends LifeMapSectionResult {
   rowNumber: number;
   priorityRank?: number;
 }
 
-/** Success Stories is fixed as the foundation; finalized motivators semantically reorder the remaining eight areas. */
-export function getOrderedLifeMapSections(progress: ParticipantModuleProgress[]): OrderedLifeMapSection[] {
+/** Returns only the eight motivators. Success Stories is a separate, unranked foundation. */
+export function getOrderedLifeMapPriorities(progress: ParticipantModuleProgress[]): OrderedLifeMapPriority[] {
   const motivatorProgress = progress.find((item) => item.moduleId === "current-motivator-rankings");
   const response = motivatorProgress?.responses as unknown as MotivatorRankingResponse | undefined;
   const rankingComplete = motivatorProgress?.status === "completed" && response?.orderedMotivatorIds.length === 8;
   const orderedModuleIds = rankingComplete ? response.orderedMotivatorIds.map((id) => motivatorById.get(id)?.sourceModuleId).filter((id): id is string => Boolean(id)) : canonicalLifeMapOrder;
-  return ["success-stories", ...orderedModuleIds].map((moduleId, index) => ({ ...getLifeMapSectionResult(moduleId, progress), rowNumber: index + 1, priorityRank: index === 0 || !rankingComplete ? undefined : index }));
+  return orderedModuleIds.map((moduleId, index) => ({ ...getLifeMapSectionResult(moduleId, progress), rowNumber: index + 1, priorityRank: rankingComplete ? index + 1 : undefined }));
 }

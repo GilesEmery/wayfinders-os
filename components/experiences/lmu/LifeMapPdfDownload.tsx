@@ -5,7 +5,7 @@ import { Document, G, Image, Page, Path, PDFDownloadLink, StyleSheet, Svg, Text,
 
 export type LifeMapPdfSection = {
   id: string;
-  number: number;
+  number?: number;
   title: string;
   rankLabel: string;
   preview: string;
@@ -32,6 +32,8 @@ const styles = StyleSheet.create({
   rule: { backgroundColor: orange, height: 2, marginBottom: 10 },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginBottom: 13 },
   card: { backgroundColor: cream, borderColor: border, borderRadius: 3, borderWidth: .7, flexDirection: "row", minHeight: 55, padding: 7, width: "32.3%" },
+  foundationCard: { backgroundColor: cream, borderColor: orange, borderLeftWidth: 3, borderRadius: 3, borderWidth: .7, flexDirection: "row", marginBottom: 9, minHeight: 55, padding: 8, width: "100%" },
+  prioritiesLabel: { color: orange, fontSize: 7, fontWeight: 700, letterSpacing: 1.4, marginBottom: 6, textTransform: "uppercase" },
   number: { color: orange, fontFamily: "Times-Roman", fontSize: 8, marginRight: 5, marginTop: 3, width: 13 },
   cardBody: { flex: 1, paddingLeft: 5 },
   cardTitle: { fontSize: 7.6, fontWeight: 700, letterSpacing: .7, marginBottom: 3, textTransform: "uppercase" },
@@ -86,7 +88,7 @@ function RunningChrome({ assetBase = "", pageKey }: { assetBase?: string; pageKe
 
 function Section({ section }: { section: LifeMapPdfSection }) {
   return <View minPresenceAhead={85} style={styles.section} wrap={false}>
-    <View style={styles.sectionHeader} wrap={false}><Text style={styles.sectionNumber}>{String(section.number).padStart(2, "0")}</Text><Badge id={section.id} size={27}/><View style={styles.sectionMeta}><Text style={styles.rank}>{section.rankLabel}</Text><Text style={styles.sectionTitle}>{section.title}</Text></View></View>
+    <View style={styles.sectionHeader} wrap={false}>{section.number ? <Text style={styles.sectionNumber}>{String(section.number).padStart(2, "0")}</Text> : <View style={styles.sectionNumber}/>}<Badge id={section.id} size={27}/><View style={styles.sectionMeta}><Text style={styles.rank}>{section.rankLabel}</Text><Text style={styles.sectionTitle}>{section.title}</Text></View></View>
     <View style={styles.sectionRule}/><View style={styles.box}><Text style={styles.boxHeading}>{section.heading}</Text>{section.items.map((item, index) => <View key={`${item.primary}-${index}`} style={[styles.item, index === section.items.length - 1 ? styles.itemLast : {}]} wrap={false}><Text style={styles.primary}>{item.primary}</Text>{item.secondary ? <Text style={styles.secondary}>{item.secondary}</Text> : null}{item.body ? <Text style={styles.body}>{item.body}</Text> : null}</View>)}</View>
   </View>;
 }
@@ -97,9 +99,11 @@ function SectionRows({ sections }: { sections: LifeMapPdfSection[] }) {
 }
 
 export function LifeMapDocument({ sections, assetBase = "" }: { sections: LifeMapPdfSection[]; assetBase?: string }) {
-  const detailSections = sections;
+  const foundation = sections.find((section) => section.id === "success-stories");
+  const priorities = sections.filter((section) => section.id !== "success-stories");
+  const detailSections = foundation ? [foundation, ...priorities] : priorities;
   return <Document title="Life Mapping U - Your Life Map" author="Wayfinders">
-    <Page size="LETTER" style={styles.page} wrap><RunningChrome assetBase={assetBase} pageKey="one"/><Text style={styles.eyebrow}>Your Motivator Rankings</Text><Text style={styles.title}>Your discoveries, ordered by what matters most now.</Text><View style={styles.rule}/><View style={styles.grid}>{sections.map((section) => <View key={section.id} style={styles.card} wrap={false}><Text style={styles.number}>{String(section.number).padStart(2, "0")}</Text><Badge id={section.id} size={26}/><View style={styles.cardBody}><Text style={styles.cardTitle}>{section.title}</Text><Text style={styles.cardRank}>{section.rankLabel}</Text><Text style={styles.preview}>{section.preview}</Text></View></View>)}</View><SectionRows sections={detailSections.slice(0,4)}/></Page>
+    <Page size="LETTER" style={styles.page} wrap><RunningChrome assetBase={assetBase} pageKey="one"/><Text style={styles.eyebrow}>Your Life Map</Text><Text style={styles.title}>Your foundation and current priorities.</Text><View style={styles.rule}/>{foundation ? <View style={styles.foundationCard} wrap={false}><Badge id={foundation.id} size={26}/><View style={styles.cardBody}><Text style={styles.cardRank}>Foundation</Text><Text style={styles.cardTitle}>{foundation.title}</Text><Text style={styles.preview}>{foundation.preview}</Text></View></View> : null}<Text style={styles.prioritiesLabel}>Your Priorities</Text><View style={styles.grid}>{priorities.map((section) => <View key={section.id} style={styles.card} wrap={false}><Text style={styles.number}>{String(section.number).padStart(2, "0")}</Text><Badge id={section.id} size={26}/><View style={styles.cardBody}><Text style={styles.cardTitle}>{section.title}</Text><Text style={styles.cardRank}>{section.rankLabel}</Text><Text style={styles.preview}>{section.preview}</Text></View></View>)}</View><SectionRows sections={detailSections.slice(0,4)}/></Page>
     <Page size="LETTER" style={styles.page} wrap>
       <View style={styles.header}>
         {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf Image has no HTML alt prop */}

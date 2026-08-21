@@ -8,13 +8,19 @@ interface LMUShellProps {
   theme?: "dark" | "light";
   journeyHref?: string;
   onJourneyReturn?: () => void;
+  onInternalBack?: () => void;
 }
 
-export function LMUShell({ children, context, theme = "light", journeyHref, onJourneyReturn }: LMUShellProps) {
+export function LMUShell({ children, context, theme = "light", onJourneyReturn, onInternalBack }: LMUShellProps) {
   return (
     <div className={`lmu-shell shell-${theme}`}>
       <LMURouteScrollReset />
-      <LMUHeader context={context} theme={theme} journeyHref={journeyHref} onJourneyReturn={onJourneyReturn} />
+      <LMUHeader context={context} theme={theme} onJourneyReturn={onJourneyReturn} />
+      {onInternalBack && (
+        <nav className="lmu-top-back" aria-label="Previous step">
+          <button className="lmu-compact-action" type="button" onClick={onInternalBack}>← Back</button>
+        </nav>
+      )}
       <main className="shell-main">{children}</main>
       <LMUFooter />
     </div>

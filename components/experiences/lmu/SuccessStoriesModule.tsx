@@ -31,12 +31,14 @@ import { LMU_ORIGINAL_EXPERIENCE_ID } from "@/lib/experiences/lmu/original-journ
 import { usePageStart } from "./usePageStart";
 import { focusAndReveal } from "./usePageStart";
 import { LMUScreenHeading } from "./LMUScreenHeading";
+import { LMUPilotSectionHeader } from "./LMUPilotSectionHeader";
 import { getAdaptiveTopKStep } from "@/lib/experiences/lmu/ranking/pairwise";
 import { successStoryToRankingVisual } from "@/lib/experiences/lmu/visuals/success-story-ranking-visual";
 import { AdaptiveRankingComparison } from "./ranking/AdaptiveRankingComparison";
 import { LMU_DEV_UNLOCK_ALL } from "@/lib/experiences/lmu/development";
 import { LMUBadgeIcon } from "./icons/badge/LMUBadgeIcon";
 import { LMUFinalMoveControls, LMUFinalSelectionGroup, LMUFinalSelectionRow, LMUInlineReplacementChooser } from "./LMUFinalSelectionReview";
+import { removeModuleProgress } from "@/lib/experiences/lmu/storage";
 
 type Screen = SuccessStoriesScreen;
 
@@ -51,6 +53,7 @@ function excerpt(value: string) {
 export function SuccessStoriesModule({ media }: { media?: Record<string, LMUInstructionalMedia> }) {
   const progress = useOriginalProgress();
   const moduleProgress = progress.find((item) => item.moduleId === "success-stories");
+  const hasTransferableSkillsWork = progress.some((item) => item.moduleId === "transferable-skills" && Boolean(item.startedAt));
   const response = (moduleProgress?.responses ?? { stories: [] }) as unknown as SuccessStoriesResponse;
   const stories = useMemo(() => response.stories ?? [], [response.stories]);
   const validStoryCount = stories.filter((story) => story.title.trim() && story.story.trim()).length;
@@ -171,15 +174,6 @@ export function SuccessStoriesModule({ media }: { media?: Record<string, LMUInst
     router.push("/experiences/life-mapping-u/original");
   }
 
-  function resetSuccessStoriesScreen() {
-    setDraft(null);
-    setErrors({});
-    setDeleteId(null);
-    setExpandedStoryIds([]);
-    setReviewIds([]);
-    setScreen("introduction");
-  }
-
   function openTopThree() {
     if (validStoryCount < SUCCESS_STORIES_MINIMUM) return;
     if (response.topThreeSelection?.finalizedAt) {
@@ -245,6 +239,10 @@ export function SuccessStoriesModule({ media }: { media?: Record<string, LMUInst
 
   function restartTopThree() {
     restartTopThreeSelection();
+    if (hasTransferableSkillsWork) {
+      removeModuleProgress(LMU_ORIGINAL_EXPERIENCE_ID, "transferable-skills");
+      removeModuleProgress(LMU_ORIGINAL_EXPERIENCE_ID, "current-motivator-rankings");
+    }
     setReviewIds([]);
     setExpandedStoryIds([]);
     setScreen("top-three-intro");
@@ -253,40 +251,51 @@ export function SuccessStoriesModule({ media }: { media?: Record<string, LMUInst
   const storySteps: Screen[] = ["introduction", "collection", "editor", "top-three-intro", "comparison", "top-three-review"];
   function sectionBack() {
     if (screen === "introduction") return;
-    if (screen === "editor") { cancelEditing(); return; }
+    if (screen === "editor") { if (draft) saveSuccessStoryDraft(draft); setScreen(stories.length ? "collection" : "introduction"); return; }
     if (screen === "collection") { setScreen("introduction"); return; }
-    if (screen === "top-three-review") { restartTopThree(); return; }
+    if (screen === "top-three-review") { setScreen("top-three-intro"); return; }
     setScreen(storySteps[storySteps.indexOf(screen) - 1]);
   }
 
-  const startOverControl = <ModuleStartOverControl experienceId={LMU_ORIGINAL_EXPERIENCE_ID} moduleHref="/experiences/life-mapping-u/module/success-stories" moduleId="success-stories" screen={screen} onBack={screen === "introduction" ? undefined : sectionBack} onResetComplete={resetSuccessStoriesScreen} />;
+  const hasTopThreeWork = comparisons.length > 0 || Boolean(response.topThreeSelection?.proposedStoryIds.length) || Boolean(response.topThreeSelection?.finalStoryIds.length);
+  const topThreeRedo = hasTopThreeWork && ["top-three-intro", "comparison", "top-three-review"].includes(screen) ? { label: "Redo Top 3", title: "Redo Top 3?", description: hasTransferableSkillsWork ? "This will erase the choices you made while narrowing your Success Stories to your Top 3. Because your Transferable Skills were built from those Top 3 stories, your Transferable Skills and Motivator Ranking will also be cleared and will need to be completed again. Your original Success Stories will remain, and you will begin the Top 3 process again." : "This will erase the choices you made while narrowing your Success Stories to your Top 3. Your Success Stories will remain, and you will begin the Top 3 process again.", onConfirm: restartTopThree } : undefined;
+  const preserveSuccessStoriesLocation = () => {
+    if (draft) saveSuccessStoryDraft(draft);
+    saveSuccessStoriesLocation(screen);
+  };
+  const startOverControl = <ModuleStartOverControl experienceId={LMU_ORIGINAL_EXPERIENCE_ID} moduleHref="/experiences/life-mapping-u/module/success-stories" moduleId="success-stories" screen={screen} onBack={screen === "introduction" ? undefined : sectionBack} onBackToSections={preserveSuccessStoriesLocation} redo={topThreeRedo} />;
 
   return (
-    <LMUShell context="Success Stories" theme="dark" journeyHref="/experiences/life-mapping-u/original" onJourneyReturn={() => { if (draft) saveSuccessStoryDraft(draft); saveSuccessStoriesLocation(screen); }}>
+    <LMUShell context="Success Stories" theme="dark" journeyHref="/experiences/life-mapping-u/original" onJourneyReturn={preserveSuccessStoriesLocation} onInternalBack={screen === "introduction" ? undefined : sectionBack}>
       {screen === "introduction" && (
         <main className="success-intro">
           <section className="success-intro-copy">
             <p className="eyebrow eyebrow-rule">Guided module 01</p>
             <h1 ref={screenHeadingRef} tabIndex={-1}>Success Stories</h1>
             <p className="success-intro-accent">Your story is already giving you clues.</p>
-            <p>Think back through your life in approximately five-year segments. Look for experiences where you were both <strong>passionate</strong> about what you were doing and <strong>excelled</strong> at it in some meaningful way.</p>
+            <p>Think back through your life in approximately five-year segments. Look for experiences where you <strong>liked what you were doing</strong> and <strong>were good at it</strong>.</p>
             {media?.intro && <LMUInstructionalVideo {...media.intro} />}
-            <p><strong>Capture at least 5 Success Stories from across your life.</strong> You can add up to 15, so keep going beyond five if more meaningful stories come to mind.</p>
-            <div className="success-equation"><span>Things you liked</span><b>+</b><span>Things you were good at</span></div>
-            <p>You did not have to be the best. Notice experiences that mattered to you, where something in you came alive and you were able to contribute meaningfully—at school, work, home, church, in sports, hobbies, friendships, projects, travel, or your community.</p>
+            <p><strong>Capture at least 5 Success Stories from across your life.</strong> You can add up to 15, so keep going beyond five if more stories come to mind.</p>
+            <div className="success-equation"><span>What did I like?</span><b>+</b><span>What was I good at?</span></div>
+            <p>You did not have to be the best. Notice experiences you liked doing and where you were able to use your abilities—at school, work, home, church, in sports, hobbies, friendships, projects, travel, or your community.</p>
             <button className="button button-primary" type="button" onClick={startNewStory}><span>Start My Success Stories</span><span aria-hidden="true">→</span></button>
             {startOverControl}
           </section>
           <aside className="success-memory-panel">
             <MapAccent density="tight" position="center" opacity={0.18} />
-            <div><p className="eyebrow">Look back in five-year segments</p><ol>{["5–10", "10–15", "15–20", "20–25", "25–30", "30–35", "…"].map((range) => <li key={range}>{range}</li>)}</ol><p>These are prompts for memory, not rigid categories.</p></div>
+            <div>
+              <p className="eyebrow">Think back through different seasons of life</p>
+              <p className="success-memory-label">Some age ranges to get you thinking</p>
+              <ol>{["Ages 5–10", "Ages 10–15", "Ages 20–25", "Ages 30–35", "Ages 40–45", "Ages 55–60", "Ages 65–70", "Ages 75+"].map((range) => <li key={range}>{range}</li>)}</ol>
+              <p className="success-memory-helper">You do not need a story from every age range. These are simply prompts to help memories come to mind.</p>
+            </div>
           </aside>
         </main>
       )}
 
       {screen === "editor" && draft && (
         <main className="story-editor-shell">
-          <LMUScreenHeading className="story-editor-header" eyebrow="Success Story" title={stories.some((story) => story.id === draft.id) ? "Edit Your Story" : "Add Your Story"} description="Write naturally. You can return and refine this story later." headingRef={screenHeadingRef} />
+          <LMUPilotSectionHeader className="story-editor-header" icon="story" iconLabel="Success Story" eyebrow="Success Story" title={stories.some((story) => story.id === draft.id) ? "Edit Your Story" : "Add Your Story"} description="Write naturally. You can return and refine this story later." headingRef={screenHeadingRef} />
           <form className="story-form" onSubmit={(event) => { event.preventDefault(); saveDraft(); }}>
             <aside className="story-examples">
               <h2>Examples of Success Stories</h2>
@@ -300,10 +309,10 @@ export function SuccessStoriesModule({ media }: { media?: Record<string, LMUInst
                 <li>Built, created, repaired, or designed something I was proud of</li>
               </ul>
             </aside>
-            <StoryField label="Age / Life Stage" prompt="Optional"><select value={draft.ageRange} onChange={(event) => updateDraft("ageRange", event.target.value)}><option value="">Choose an age range</option>{successStoryAgeRanges.map((range) => <option key={range}>{range}</option>)}</select></StoryField>
+            <StoryField label="Age / Life Stage" prompt="Optional"><select value={draft.ageRange} onChange={(event) => updateDraft("ageRange", event.target.value)}><option value="">Choose an age range</option>{successStoryAgeRanges.map((range) => <option key={range} value={range}>{range === "Not sure / Prefer not to specify" ? range : `Ages ${range}`}</option>)}</select></StoryField>
             <StoryField label="Title" prompt="Give this story a short name that reminds you what it's about." error={errors.title}><input value={draft.title} onChange={(event) => updateDraft("title", event.target.value)} placeholder="Organized our neighborhood fundraiser" /></StoryField>
             <StoryField label="What happened?" prompt="Tell the story. For example, what role did you play? What did you accomplish or contribute? Think about your actions, decisions, things you created, problems you solved, people you helped, or responsibilities you carried." error={errors.story}><textarea rows={8} value={draft.story} onChange={(event) => updateDraft("story", event.target.value)} /></StoryField>
-            <StoryField label="What did you like, and what did you do well?" optional prompt="What made this experience meaningful, interesting, energizing, or enjoyable for you? Where did you notice positive ability, skills, effectiveness, or strengths in yourself?"><textarea rows={7} value={draft.reflection} onChange={(event) => updateDraft("reflection", event.target.value)} /></StoryField>
+            <StoryField label="What did you like? What were you good at?" optional prompt="What did you like about this experience? What did you do well? Where did you notice abilities, skills, or strengths in yourself?"><textarea rows={7} value={draft.reflection} onChange={(event) => updateDraft("reflection", event.target.value)} /></StoryField>
             <div className="story-form-actions"><button className="story-cancel" type="button" onClick={cancelEditing}>Cancel</button><button className="button button-primary" type="submit"><span>Save Story</span><span aria-hidden="true">→</span></button></div>
             {startOverControl}
           </form>
@@ -332,9 +341,9 @@ export function SuccessStoriesModule({ media }: { media?: Record<string, LMUInst
 
       {screen === "top-three-intro" && (
         <main className="top-three-shell top-three-intro">
-          <LMUScreenHeading eyebrow="Success Stories" title="Identify Your Top 3" description="You have captured experiences from across your life. Now look across those stories and identify the three that most strongly reflect where you were both energized by what you were doing and effective at it." headingRef={screenHeadingRef} />
+          <LMUScreenHeading eyebrow="Success Stories" title="Identify Your Top 3" description="We are identifying the stories that matter to you the most, for whatever reason. Look across what you captured and notice which stories best represent something you liked doing and were good at." headingRef={screenHeadingRef} />
           <div className="top-three-intro-copy">
-            <p>The goal is not simply to identify your biggest accomplishments. We are looking for the stories that give the clearest clues about how you naturally contribute when you are doing something you enjoy and do well.</p>
+            <p>The goal is not simply to identify your biggest accomplishments. We are looking for the stories that give the clearest clues about what you liked doing and what you were good at.</p>
             {media?.topThree && <LMUInstructionalVideo {...media.topThree} />}
             <button className="button button-primary" type="button" onClick={beginComparing}><span>Begin Comparing Stories</span><span aria-hidden="true">→</span></button>
             <button className="story-cancel" type="button" onClick={() => setScreen("collection")}>Back to my stories</button>
@@ -348,8 +357,8 @@ export function SuccessStoriesModule({ media }: { media?: Record<string, LMUInst
           <LMUScreenHeading eyebrow="Success Stories" title="Identify Your Top 3" description={rankingStep.clarification ? "One more look will help clarify which stories belong in your Top 3." : "Narrowing your stories"} headingRef={screenHeadingRef} />
           <section className="comparison-workspace" id="ranking-comparison" ref={comparisonWorkspaceRef}>
             <AdaptiveRankingComparison
-              eyebrow="Enjoyment + effectiveness"
-              prompt="Which of these better represents a time when you were both energized by what you were doing and effective at it?"
+              eyebrow="What you liked + what you were good at"
+              prompt="Which of these stories better represents something you both liked doing and were good at?"
               items={rankingStep.pair.map((storyId) => successStoryToRankingVisual(stories.find((item) => item.id === storyId)!)) as [ReturnType<typeof successStoryToRankingVisual>, ReturnType<typeof successStoryToRankingVisual>]}
               expandedIds={expandedStoryIds}
               onToggle={(storyId) => setExpandedStoryIds((current) => current.includes(storyId) ? current.filter((id) => id !== storyId) : [...current, storyId])}
@@ -358,7 +367,7 @@ export function SuccessStoriesModule({ media }: { media?: Record<string, LMUInst
             />
           </section>
           <div className="comparison-footer">
-            <button className="story-cancel" type="button" disabled={!comparisons.length} onClick={removeLastSuccessStoryComparison}>← Back one comparison</button>
+            <button className="story-cancel" type="button" disabled={!comparisons.length} onClick={removeLastSuccessStoryComparison}>Undo last comparison</button>
             <p>{comparisons.length ? `${comparisons.length} choices considered` : "Take your time with each pair"}</p>
           </div>
           {LMU_DEV_UNLOCK_ALL ? <button className="development-top-three-reset" type="button" onClick={restartTopThree}>Development only — Restart Top 3 Selection</button> : null}
@@ -378,7 +387,7 @@ export function SuccessStoriesModule({ media }: { media?: Record<string, LMUInst
           </LMUFinalSelectionGroup>
           <LMUFinalSelectionGroup label="Other stories you captured" secondary>{stories.filter((story) => !reviewIds.includes(story.id)).map((story, index) => <LMUFinalSelectionRow key={story.id} rank={index + 4} total={stories.length} title={story.title} badge={<LMUBadgeIcon name="story" state="light" size={54} label="Success Story" />} context={<p>{story.ageRange ? `Ages ${story.ageRange}` : "Life stage not specified"}</p>} disclosureLabel="Story" expanded={expandedStoryIds.includes(story.id)} onToggleDisclosure={() => setExpandedStoryIds((current) => current.includes(story.id) ? current.filter((id) => id !== story.id) : [...current, story.id])} detail={<><p className="eyebrow">What happened?</p><p>{story.story}</p></>} actions={<button type="button" aria-expanded={replacementStoryId === story.id} onClick={() => moveStoryToTopThree(story.id)}>Move to Top 3</button>} after={replacementStoryId === story.id ? <LMUInlineReplacementChooser heading="Which story should it replace?" choices={reviewIds.map((id, choiceIndex) => ({ id, rank: choiceIndex + 1, title: stories.find((item) => item.id === id)?.title ?? "Story" }))} onChoose={replaceTopThreeStory} onCancel={() => setReplacementStoryId(null)} /> : undefined} />)}</LMUFinalSelectionGroup>
           <div className="top-three-review-actions">
-            {response.topThreeSelection?.finalizedAt && response.topThreeSelection.finalStoryIds.join("|") === reviewIds.join("|") ? <><p>Your Top 3 is finalized.</p><button className="button button-primary" type="button" onClick={finishSection}><span>Finish Section</span><span aria-hidden="true">→</span></button></> : <><p>{reviewIds.length === 3 ? "Confirm these three stories in this order." : `Choose exactly 3 stories to continue (${reviewIds.length} selected).`}</p><button className="button button-primary" type="button" disabled={reviewIds.length !== 3} onClick={() => finalizeTopThree(reviewIds)}><span>Finalize My Top 3</span><span aria-hidden="true">✓</span></button></>}
+            {response.topThreeSelection?.finalizedAt && response.topThreeSelection.finalStoryIds.join("|") === reviewIds.join("|") ? <><p>Your Top 3 is finalized.</p><button className="button button-primary" type="button" onClick={finishSection}><span>Finish Module</span><span aria-hidden="true">→</span></button></> : <><p>{reviewIds.length === 3 ? "Confirm these three stories in this order." : `Choose exactly 3 stories to continue (${reviewIds.length} selected).`}</p><button className="button button-primary" type="button" disabled={reviewIds.length !== 3} onClick={() => finalizeTopThree(reviewIds)}><span>Finalize My Top 3</span><span aria-hidden="true">✓</span></button></>}
           </div>
           {LMU_DEV_UNLOCK_ALL ? <button className="development-top-three-reset" type="button" onClick={restartTopThree}>Development only — Restart Top 3 Selection</button> : null}
           {startOverControl}
