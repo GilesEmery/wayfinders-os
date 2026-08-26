@@ -7,5 +7,6 @@ export function LMUResponseIndicator({ selected, value, mode = "check" }: { sele
 
 /** Backward-compatible name retained while the response-family migration lands. */
 export function LMUChoiceIndicator({ selected, order }: { selected: boolean; order?: number }) {
-  return <LMUResponseIndicator selected={selected} value={order} mode={order === undefined ? "check" : "rank"} />;
+  const selectedOrder = selected && order !== undefined && order > 0 ? order : undefined;
+  return <LMUResponseIndicator selected={selected} value={selectedOrder} mode={selectedOrder === undefined ? "check" : "rank"} />;
 }

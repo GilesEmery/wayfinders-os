@@ -4,6 +4,11 @@ import { remainingSkillHelp } from "./skill-help";
 const canonicalOverrides: Record<string, string> = {
   "problem solving": "problem-solving",
   "solving problems": "problem-solving",
+  "showing good judgment": "showing-good-judment",
+};
+
+const legacyIdOverrides: Record<string, string> = {
+  "showing good judgment": "showing-good-judment",
 };
 
 function slugify(value: string) {
@@ -30,7 +35,7 @@ const realisticSkillHelp: Record<string, { briefDescription: string; longDescrip
 
 function skills(categoryId: TransferableSkillCategoryId, labels: string[]) {
   return labels.map((label) => {
-    const normalized = slugify(label);
+    const normalized = legacyIdOverrides[label.toLowerCase()] ?? slugify(label);
     return { id: `${categoryId}-${normalized}`, label, categoryId, canonicalKey: canonicalOverrides[label.toLowerCase()] ?? normalized, ...(categoryId === "realistic" ? realisticSkillHelp[label] : remainingSkillHelp[categoryId]?.[label]) };
   });
 }
@@ -54,7 +59,7 @@ export const transferableSkillCategories: TransferableSkillCategory[] = [
   {
     id: "artistic", slug: "artistic", title: "Artistic", subtitle: "People + Ideas", iconKey: "artistic",
     description: "Creativity, intuition, innovation",
-    skills: skills("artistic", ["Generating new ideas", "Adapting", "Experimenting", "Showing a sense of humor", "Shaping things", "Designing things", "Developing things", "Showing good judment", "Being practical", "Creating things", "Starting things", "Graphic design", "Improving", "Decorating", "Creating poetry, music, art", "Drawing, building models"]),
+    skills: skills("artistic", ["Generating new ideas", "Adapting", "Experimenting", "Showing a sense of humor", "Shaping things", "Designing things", "Developing things", "Showing good judgment", "Being practical", "Creating things", "Starting things", "Graphic design", "Improving", "Decorating", "Creating poetry, music, art", "Drawing, building models"]),
   },
   {
     id: "enterprising", slug: "enterprising", title: "Enterprising", subtitle: "People + Data", iconKey: "enterprising",

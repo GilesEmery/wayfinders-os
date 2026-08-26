@@ -5,6 +5,10 @@ import type { TransferableSkillCategoryId, TransferableSkillsResponse, Transfera
 
 const MODULE_ID = "transferable-skills";
 
+function normalizeSkillLabel(label: string) {
+  return label === "Showing good judment" ? "Showing good judgment" : label;
+}
+
 export function emptyTransferableSkillsResponse(storyIds: string[] = []): TransferableSkillsResponse {
   return { storyIds, categorySelections: {}, visitedCategoryIds: [], evidence: [], candidateSkillIds: [], ranking: { rankingVersion: 2, groupAssignments: [], groupRankings: [], draftGroupRankings: {}, currentPhase: "initial", groupPhaseComplete: false, topCandidates: [], middleCandidates: [], bottomCandidates: [], participantInteractions: 0, explicitHeadToHeadComparisons: [], explicitComparisons: [], derivedRelationships: [], topFiveContenders: [], topTenContenders: [], eliminatedFromTopFive: [], eliminatedFromTopTen: [], provisionalTopTen: [], algorithmicTopFive: [], algorithmicTopTen: [], clarificationComparisons: [], finalTopFive: [], finalTopTen: [] }, finalTopFiveSkillIds: [], resumeScreen: "introduction" };
 }
@@ -12,16 +16,17 @@ export function emptyTransferableSkillsResponse(storyIds: string[] = []): Transf
 export function readTransferableSkillsResponse(storyIds: string[] = []) {
   const stored = getModuleProgress(LMU_ORIGINAL_EXPERIENCE_ID, MODULE_ID)?.responses as unknown as TransferableSkillsResponse | undefined;
   if (!stored || stored.storyIds.join("|") !== storyIds.join("|")) return emptyTransferableSkillsResponse(storyIds);
-  if (stored.ranking?.rankingVersion !== 2) return { ...stored, ranking: emptyTransferableSkillsResponse().ranking, finalTopFiveSkillIds: [], finalizedAt: undefined, resumeScreen: "patterns" as const };
-  const legacyRanking = stored.ranking as unknown as { comparisons?: TransferableSkillsResponse["ranking"]["explicitComparisons"]; algorithmicRanking?: string[]; finalRanking?: string[] };
-  return { ...emptyTransferableSkillsResponse(storyIds), ...stored, ranking: {
+  const normalizedStored = { ...stored, evidence: stored.evidence.map((item) => ({ ...item, label: normalizeSkillLabel(item.label) })) };
+  if (normalizedStored.ranking?.rankingVersion !== 2) return { ...normalizedStored, ranking: emptyTransferableSkillsResponse().ranking, finalTopFiveSkillIds: [], finalizedAt: undefined, resumeScreen: "patterns" as const };
+  const legacyRanking = normalizedStored.ranking as unknown as { comparisons?: TransferableSkillsResponse["ranking"]["explicitComparisons"]; algorithmicRanking?: string[]; finalRanking?: string[] };
+  return { ...emptyTransferableSkillsResponse(storyIds), ...normalizedStored, ranking: {
     ...emptyTransferableSkillsResponse().ranking,
-    ...stored.ranking,
-    explicitComparisons: stored.ranking?.explicitComparisons ?? legacyRanking.comparisons ?? [],
-    algorithmicTopTen: stored.ranking?.algorithmicTopTen ?? legacyRanking.algorithmicRanking?.slice(0, 10) ?? [],
-    algorithmicTopFive: stored.ranking?.algorithmicTopFive ?? legacyRanking.algorithmicRanking?.slice(0, 5) ?? [],
-    finalTopTen: stored.ranking?.finalTopTen ?? legacyRanking.finalRanking?.slice(0, 10) ?? [],
-    finalTopFive: stored.ranking?.finalTopFive ?? legacyRanking.finalRanking?.slice(0, 5) ?? [],
+    ...normalizedStored.ranking,
+    explicitComparisons: normalizedStored.ranking?.explicitComparisons ?? legacyRanking.comparisons ?? [],
+    algorithmicTopTen: normalizedStored.ranking?.algorithmicTopTen ?? legacyRanking.algorithmicRanking?.slice(0, 10) ?? [],
+    algorithmicTopFive: normalizedStored.ranking?.algorithmicTopFive ?? legacyRanking.algorithmicRanking?.slice(0, 5) ?? [],
+    finalTopTen: normalizedStored.ranking?.finalTopTen ?? legacyRanking.finalRanking?.slice(0, 10) ?? [],
+    finalTopFive: normalizedStored.ranking?.finalTopFive ?? legacyRanking.finalRanking?.slice(0, 5) ?? [],
   } };
 }
 

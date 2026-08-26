@@ -48,7 +48,17 @@ export function LifeMapPlaceholder({ module, printMode=false }: { module: LMUMod
   const teammateResults=teammates?.finalizedAttributeIds.flatMap((id)=>{const item=teammates.attributes.find((entry)=>entry.id===id);return item?[item]:[];})??[]; const supervisorResults=supervisor?.finalizedAttributeIds.flatMap((id)=>{const item=supervisor.attributes.find((entry)=>entry.id===id);return item?[item]:[];})??[]; const valueResults=values?selectedLMUValues(values):[]; const growthCandidates=growth?resolveGrowthCandidates(growth):[]; const growthResults=growth?.finalTopFiveIds.flatMap((id)=>{const item=growthCandidates.find((entry)=>entry.id===id);return item?[item]:[];})??[];
   const locations=[...(location?.locations??[])].sort((a,b)=>a.order-b.order); const primaryLocation=locations.find((item)=>item.id===location?.primaryLocationId)??locations[0]; const xitems=xfactor?allXFactorItems(xfactor):[]; const xresults=xfactor?.finalTopFour.flatMap((id)=>{const item=xitems.find((entry)=>entry.id===id);return item?[item]:[];})??[]; const money=(amount?:number)=>{if(amount===undefined||!salary)return "Not completed";try{return new Intl.NumberFormat(undefined,{style:"currency",currency:salary.currency,maximumFractionDigits:salary.compensationPeriod==="annual"?0:2}).format(amount);}catch{return `${salary.currency} ${amount}`;}};
   const preview=(id:string)=>id==="success-stories"?topStories.map((item)=>item.title).join(" · "):id==="transferable-skills"?topSkills.map((item)=>item.label).join(" · "):id==="teammates"?teammateResults.slice(0,2).map((item)=>item.positiveAttribute).join(" · "):id==="supervisor"?supervisorResults.slice(0,2).map((item)=>item.positiveAttribute).join(" · "):id==="values"?valueResults.map((item)=>item.displayLabel).join(" · "):id==="growth"?growthResults.slice(0,3).map((item)=>item.detail||item.displayLabel).join(" · "):id==="location"&&primaryLocation?`${location?.relocationOpenness==="stay"?"Home":"First choice"}: ${primaryLocation.label}`:id==="x-factor"?xresults.map((item)=>item.label).join(" · "):id==="salary"?`${money(salary?.financialFloor)} → ${money(salary?.fiveYearGoal)}`:"";
-  const toggle=(id:string)=>setExpanded((current)=>current.includes(id)?current.filter((item)=>item!==id):[...current,id]); const openFromMap=(id:string)=>{if(!completed.has(id))return;if(id==="current-motivator-rankings"){document.getElementById("life-map-priority-context")?.focus();return;}setExpanded((current)=>current.includes(id)?current:[...current,id]);document.getElementById(`life-map-row-${id}`)?.focus();};
+  const toggle=(id:string)=>setExpanded((current)=>current.includes(id)?current.filter((item)=>item!==id):[...current,id]);
+  const toggleFromMap=(id:string)=>{
+    if(!completed.has(id))return;
+    if(id==="current-motivator-rankings"){
+      document.getElementById("life-map-priority-context")?.focus();
+      return;
+    }
+    const isOpen=expanded.includes(id);
+    toggle(id);
+    if(!isOpen)requestAnimationFrame(()=>document.getElementById(`life-map-row-${id}`)?.focus());
+  };
   const detail=(id:string)=>{
     if(id==="success-stories")return <section><p className="eyebrow">Top 3 Success Stories</p><ol>{topStories.map((story)=>{const open=printMode||expandedStories.includes(story.id);return <li key={story.id}><strong>{story.title}</strong>{!printMode&&<button type="button" aria-expanded={open} onClick={()=>setExpandedStories((current)=>current.includes(story.id)?current.filter((item)=>item!==story.id):[...current,story.id])}>{open?"− Hide Story":"+ View Story"}</button>}{open&&<div><span>What happened?</span><p>{story.story}</p></div>}</li>;})}</ol></section>;
     if(id==="transferable-skills")return <section><p className="eyebrow">Top 5 Transferable Skills</p><ol>{topSkills.map((item)=>{const category=transferableSkillCategories.find((entry)=>entry.id===item.categoryIds[0]);const definition=allTransferableSkills.find((entry)=>item.sourceSkillIds.includes(entry.id));return <li key={item.canonicalKey}>{category&&<LMUBadgeIcon name={category.iconKey} state="active" size={34} label={category.title}/>}<div><strong>{item.label}</strong>{definition?.briefDescription&&<p>{definition.briefDescription}</p>}<small>Seen in {item.storyCount} of 3 stories</small></div></li>;})}</ol></section>;
@@ -72,7 +82,59 @@ export function LifeMapPlaceholder({ module, printMode=false }: { module: LMUMod
   });
   if(printMode)return <LMUShell context={module.shortTitle} theme="dark" journeyHref="/experiences/life-mapping-u/original"><LifeMapAssessmentReport foundation={foundation} ordered={ordered} isReady={isReady} preview={preview} detail={detail}/></LMUShell>;
   return <LMUShell context={module.shortTitle} theme="dark" journeyHref="/experiences/life-mapping-u/original"><article className="life-map-report">
-    <section className="life-map-synced-grid" ref={mapGridRef}><div className="life-map-synced-map-bg"><MapAccent density="tight" position="center" opacity={.17}/></div><svg aria-hidden="true" className="life-map-synced-trail" viewBox={`0 0 ${trail.width} ${trail.height}`}>{trail.segments.map((segment,index)=><path d={segment} key={index}/>)}</svg><header className="life-map-synced-map-title"><p className="eyebrow">Your Life Map</p><h1>The path you mapped.</h1><span>{completedCount} of {total} modules complete</span></header><header className="life-map-ranked-header" id="life-map-priority-context" tabIndex={-1}><p className="eyebrow eyebrow-rule">The Map You Discovered</p><LMULogo variant="mark"/><h2>{rankingComplete?"Ordered by what matters most now.":"Your discoveries are taking shape."}</h2><p>{rankingComplete?"Success Stories is your foundation. The eight areas that follow reflect your confirmed current priorities.":"Completed areas appear in discovery order until you confirm your Current Motivator Ranking."}</p><SecondaryButton href="/experiences/life-mapping-u/original">Return to your journey</SecondaryButton></header>{mapSections.map((item,index)=>{const isFoundation=item.moduleId==="success-stories";const priority=isFoundation?undefined:(item as OrderedLifeMapPriority).priorityRank;const rowNumber=isFoundation?undefined:(item as OrderedLifeMapPriority).rowNumber;const open=expanded.includes(item.moduleId);return <Fragment key={item.moduleId}><div className={`life-map-synced-waypoint ${isFoundation?"is-foundation":""} lane-${["left","center","right","center","left","center","right","center","left"][index]}`}><button ref={(node)=>{mapBadgeRefs.current[index]=node;}} disabled={!item.complete} type="button" onClick={()=>openFromMap(item.moduleId)}><span>{isFoundation?"Foundation":String(rowNumber).padStart(2,"0")}</span><LMUBadgeIcon name={badges[item.moduleId]} state={item.complete?"current":"light"} context="dark" size={44} label={item.title}/><strong>{item.title}</strong></button></div><article className={`life-map-synced-result ${isFoundation?"is-foundation ":""}${item.complete?"is-complete":"is-incomplete"}${open?" is-open":""}`} id={`life-map-row-${item.moduleId}`} tabIndex={-1}><div className="life-map-ranked-row"><span>{isFoundation?"Foundation":String(rowNumber).padStart(2,"0")}</span><LMUBadgeIcon name={badges[item.moduleId]} state={item.complete?"active":"light"} size={46} label={item.title}/><div><h3>{item.title}</h3><small>{isFoundation?"Foundation — Success Stories":priority?`Priority ${priority}`:"Discovery Order"}</small><p>{item.complete?(preview(item.moduleId)||"Results complete"):"Not completed yet"}</p></div><button type="button" disabled={!item.complete} aria-expanded={open} onClick={()=>toggle(item.moduleId)}>{open?"− Hide My Results":isFoundation?"+ View My Stories":"+ View My Results"}</button></div>{open&&item.complete&&<div className="life-map-ranked-detail">{detail(item.moduleId)}</div>}</article></Fragment>;})}</section>
+    <section className="life-map-synced-grid" ref={mapGridRef}>
+      <div className="life-map-synced-map-bg"><MapAccent density="tight" position="center" opacity={.17}/></div>
+      <svg aria-hidden="true" className="life-map-synced-trail" viewBox={`0 0 ${trail.width} ${trail.height}`}>
+        {trail.segments.map((segment,index)=><path d={segment} key={index}/>)}
+      </svg>
+      <header className="life-map-synced-map-title">
+        <p className="eyebrow">Your Life Map</p><h1>The path you mapped.</h1><span>{completedCount} of {total} modules complete</span>
+      </header>
+      <header className="life-map-ranked-header" id="life-map-priority-context" tabIndex={-1}>
+        <p className="eyebrow eyebrow-rule">The Map You Discovered</p><LMULogo variant="mark"/>
+        <h2>{rankingComplete?"Ordered by what matters most now.":"Your discoveries are taking shape."}</h2>
+        <p>{rankingComplete?"Success Stories is your foundation. The eight areas that follow reflect your confirmed current priorities.":"Completed areas appear in discovery order until you confirm your Current Motivator Ranking."}</p>
+        <SecondaryButton href="/experiences/life-mapping-u/original">Return to your journey</SecondaryButton>
+      </header>
+      {mapSections.map((item,index)=>{
+        const isFoundation=item.moduleId==="success-stories";
+        const priority=isFoundation?undefined:(item as OrderedLifeMapPriority).priorityRank;
+        const rowNumber=isFoundation?undefined:(item as OrderedLifeMapPriority).rowNumber;
+        const open=expanded.includes(item.moduleId);
+        const detailId=`life-map-detail-${item.moduleId}`;
+        const toggleLabel=`${open?"Hide":"View"} ${item.title} ${isFoundation?"stories":"results"}`;
+        return <Fragment key={item.moduleId}>
+          <div className={`life-map-synced-waypoint ${isFoundation?"is-foundation":""} lane-${["left","center","right","center","left","center","right","center","left"][index]}`}>
+            <button
+              className="life-map-synced-waypoint-main"
+              ref={(node)=>{mapBadgeRefs.current[index]=node;}}
+              disabled={!item.complete}
+              type="button"
+              aria-expanded={open}
+              aria-controls={detailId}
+              aria-label={toggleLabel}
+              onClick={()=>toggleFromMap(item.moduleId)}
+            >
+              <span>{isFoundation?"Foundation":String(rowNumber).padStart(2,"0")}</span>
+              <LMUBadgeIcon name={badges[item.moduleId]} state={item.complete?"current":"light"} context="dark" size={44} label={item.title}/>
+              <strong>{item.title}</strong>
+            </button>
+            <button className="life-map-synced-toggle" type="button" disabled={!item.complete} aria-expanded={open} aria-controls={detailId} aria-label={toggleLabel} onClick={()=>toggleFromMap(item.moduleId)}>{open?"−":"+"}</button>
+          </div>
+          <article className={`life-map-synced-result ${isFoundation?"is-foundation ":""}${item.complete?"is-complete":"is-incomplete"}${open?" is-open":""}`} id={`life-map-row-${item.moduleId}`} tabIndex={-1}>
+            <div className="life-map-ranked-row">
+              <span>{isFoundation?"Foundation":String(rowNumber).padStart(2,"0")}</span>
+              <button className="life-map-ranked-icon-toggle" type="button" disabled={!item.complete} aria-expanded={open} aria-controls={detailId} aria-label={toggleLabel} onClick={()=>toggle(item.moduleId)}>
+                <LMUBadgeIcon name={badges[item.moduleId]} state={item.complete?"active":"light"} size={46} label={item.title}/>
+              </button>
+              <div><h3>{item.title}</h3><small>{isFoundation?"Foundation — Success Stories":priority?`Priority ${priority}`:"Discovery Order"}</small><p>{item.complete?(preview(item.moduleId)||"Results complete"):"Not completed yet"}</p></div>
+              <button type="button" disabled={!item.complete} aria-expanded={open} aria-controls={detailId} onClick={()=>toggle(item.moduleId)}>{open?"− Hide My Results":isFoundation?"+ View My Stories":"+ View My Results"}</button>
+            </div>
+            {open&&item.complete&&<div className="life-map-ranked-detail" id={detailId}>{detail(item.moduleId)}</div>}
+          </article>
+        </Fragment>;
+      })}
+    </section>
     <section className={`life-map-download ${isReady?"is-ready":"is-incomplete"}`}><p className="eyebrow">Your Personal Artifact</p><h2>{isReady?"Download My Life Map":"Life Map in Progress"}</h2><p>{isReady?"Download your polished assessment report in your final priority order.":`Complete all 10 modules to enable your final downloadable Life Map. You have completed ${completedCount} of ${total}.`}</p><LifeMapPdfDownload enabled={isReady} sections={pdfSections}/></section>
     <section className="life-map-resources"><p className="eyebrow">What Comes Next</p><h2>Your map is a foundation.</h2><p>Future resources will help you verify, express, and act on these discoveries.</p>{postExperienceResources.map((item)=><div key={item.id}><h3>{item.title}</h3><span>Planned {item.format} resource</span></div>)}</section><div className="life-map-reset"><ModuleStartOverControl experienceId={LMU_ORIGINAL_EXPERIENCE_ID} moduleHref="/experiences/life-mapping-u/module/your-life-map" moduleId="your-life-map"/></div></article></LMUShell>;
 }

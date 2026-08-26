@@ -1148,7 +1148,230 @@ main:has(.lmu-section-navigation) .story-cancel { display: none; }
 .shell-main :where(.skill-group-card.is-ranked,.xfactor-rank-grid>button.is-ranked,.growth-priority-list>button.is-selected,.salary-choice-list button.is-selected,.salary-factor-list article.is-selected,.pain-point-grid button.is-selected,.location-reason-list button.is-selected,.location-primary-list>button.is-selected,.location-chip-grid button.is-selected,.location-relocation-scale button.is-selected,.growth-edge-scale button.is-selected,.salary-context-grid fieldset button.is-selected,.salary-tradeoff-followup fieldset button.is-selected):has(:focus-visible) { border-color:var(--lmu-charcoal); }
 .adaptive-ranking-card.is-selectable:has(:focus-visible) { background:var(--lmu-response-surface); border-color:#bdb8ae; outline:3px solid var(--lmu-orange); outline-offset:4px; }
 .adaptive-ranking-card.is-choosing:has(:focus-visible) { border-color:var(--lmu-charcoal); }
-@media(max-width:700px){.location-relocation-scale{grid-template-columns:1fr}.location-relocation-scale button{min-height:88px}.growth-edge-scale{gap:8px!important}.salary-tradeoff-options>button{min-height:0}.pain-point-grid{grid-template-columns:1fr}.pain-point-grid button{border-left:1px solid var(--lmu-border)!important}}
+@media(max-width:700px){.location-relocation-scale{grid-template-columns:1fr}.location-relocation-scale button{min-height:88px}.growth-edge-scale{gap:8px!important}.salary-tradeoff-options>button{min-height:0}.pain-point-grid{grid-template-columns:1fr}.pain-point-grid button{border-left-color:var(--lmu-border)}}
+
+/* Standard selected-state grammar for LMU response controls. */
+:root { --lmu-response-selected: var(--lmu-charcoal); }
+.shell-main :where(.skill-group-card,.xfactor-rank-grid>button,.growth-choice-list>article,.growth-priority-list>button,.salary-choice-list>button,.salary-factor-list>article,.pain-point-grid>button,.location-reason-list>button,.location-primary-list>button,.location-chip-grid>button,.location-relocation-scale>button,.growth-edge-scale>button,.salary-context-grid fieldset>button,.salary-tradeoff-followup fieldset>button,.salary-tradeoff-options>button,.adaptive-ranking-card.is-selectable) {
+  background: var(--lmu-response-surface);
+  color: var(--lmu-charcoal);
+}
+@media (hover:hover) {
+  .shell-main :where(.skill-group-card,.xfactor-rank-grid>button,.growth-choice-list>article,.growth-priority-list>button,.salary-choice-list>button,.salary-factor-list>article,.pain-point-grid>button,.location-reason-list>button,.location-primary-list>button,.location-chip-grid>button,.location-relocation-scale>button,.growth-edge-scale>button,.salary-context-grid fieldset>button,.salary-tradeoff-followup fieldset>button,.salary-tradeoff-options>button,.adaptive-ranking-card.is-selectable):hover {
+    background: var(--lmu-response-surface);
+    border-color: var(--lmu-orange);
+    box-shadow: none;
+    color: var(--lmu-charcoal);
+    transform: none;
+  }
+}
+.shell-main :is(
+  .pain-point-grid > .lmu-response-row:not(.is-selected),
+  .growth-choice-list > article:not(.is-selected),
+  .growth-priority-list > button:not(.is-selected),
+  .xfactor-rank-grid > button:not(.is-ranked),
+  .location-reason-list > button:not(.is-selected),
+  .location-primary-list > button:not(.is-selected),
+  .location-chip-grid > button:not(.is-selected),
+  .salary-choice-list.lmu-choice-list > button:not(.is-selected),
+  .salary-factor-list > article:not(.is-selected)
+) {
+  background: var(--lmu-cream);
+  border: 1px solid transparent;
+  border-block-color: var(--lmu-border);
+  box-shadow: none;
+  color: var(--lmu-charcoal);
+}
+@media (hover:hover) {
+  .shell-main :is(
+    .pain-point-grid > .lmu-response-row:not(.is-selected):not(:disabled),
+    .growth-choice-list > article:not(.is-selected),
+    .growth-priority-list > button:not(.is-selected):not(:disabled),
+    .xfactor-rank-grid > button:not(.is-ranked):not(:disabled),
+    .location-reason-list > button:not(.is-selected):not(:disabled),
+    .location-primary-list > button:not(.is-selected):not(:disabled),
+    .location-chip-grid > button:not(.is-selected):not(:disabled),
+    .salary-choice-list.lmu-choice-list > button:not(.is-selected):not(:disabled),
+    .salary-factor-list > article:not(.is-selected)
+  ):hover {
+    background: var(--lmu-cream);
+    border-color: var(--lmu-orange);
+    box-shadow: none;
+    color: var(--lmu-charcoal);
+  }
+}
+.pain-point-grid > .lmu-response-row.is-selected {
+  background: var(--lmu-charcoal);
+  border-color: var(--lmu-charcoal);
+  box-shadow: inset 4px 0 var(--lmu-orange);
+  color: var(--lmu-white);
+}
+.pain-point-grid > .lmu-response-row.is-selected > .lmu-choice-indicator {
+  background: var(--lmu-orange);
+  border-color: var(--lmu-orange);
+  color: var(--lmu-white);
+}
+.shell-main :where(.skill-group-card.is-ranked,.xfactor-rank-grid>button.is-ranked,.growth-choice-list>article.is-selected,.growth-priority-list>button.is-selected,.salary-choice-list>button.is-selected,.salary-factor-list>article.is-selected,.pain-point-grid>button.is-selected,.location-reason-list>button.is-selected,.location-primary-list>button.is-selected,.location-chip-grid>button.is-selected,.location-relocation-scale>button.is-selected,.growth-edge-scale>button.is-selected,.salary-context-grid fieldset>button.is-selected,.salary-tradeoff-followup fieldset>button.is-selected) {
+  background: var(--lmu-response-selected);
+  border-color: var(--lmu-charcoal);
+  box-shadow: inset 4px 0 var(--lmu-orange);
+  color: var(--lmu-white);
+}
+.shell-main :where(.skill-group-card.is-ranked,.xfactor-rank-grid>button.is-ranked,.growth-choice-list>article.is-selected,.growth-priority-list>button.is-selected,.salary-choice-list>button.is-selected,.salary-factor-list>article.is-selected,.pain-point-grid>button.is-selected,.location-reason-list>button.is-selected,.location-primary-list>button.is-selected,.location-chip-grid>button.is-selected,.location-relocation-scale>button.is-selected,.growth-edge-scale>button.is-selected,.salary-context-grid fieldset>button.is-selected,.salary-tradeoff-followup fieldset>button.is-selected) :where(button,strong,label,h2,h3) { color: var(--lmu-white); }
+.shell-main :where(.skill-group-card.is-ranked,.xfactor-rank-grid>button.is-ranked,.growth-choice-list>article.is-selected,.growth-priority-list>button.is-selected,.salary-choice-list>button.is-selected,.salary-factor-list>article.is-selected,.pain-point-grid>button.is-selected,.location-reason-list>button.is-selected,.location-primary-list>button.is-selected,.location-chip-grid>button.is-selected,.location-relocation-scale>button.is-selected,.growth-edge-scale>button.is-selected,.salary-context-grid fieldset>button.is-selected,.salary-tradeoff-followup fieldset>button.is-selected) :where(p,small,.growth-priority-why) { color: color-mix(in srgb,var(--lmu-white) 76%,var(--lmu-charcoal)); }
+.shell-main :where(.growth-choice-list>article,.salary-factor-list>article)>button:hover { background: transparent; }
+.shell-main :where(.growth-choice-list>article.is-selected,.salary-factor-list>article.is-selected)>button,
+.shell-main :where(.growth-choice-list>article.is-selected,.salary-factor-list>article.is-selected)>button:hover { background: transparent; box-shadow: none; color: var(--lmu-white); }
+.skills-ranking-shell .skill-group-card[data-ranking-state="ranked"] { background: var(--lmu-response-selected); border-color: var(--lmu-charcoal); box-shadow: inset 4px 0 var(--lmu-orange); color: var(--lmu-white); }
+.skills-ranking-shell .skill-group-card[data-ranking-state="ranked"] :where(.skill-group-rank-button,.skill-group-evidence-toggle,.skill-evidence-detail,strong) { color: var(--lmu-white); }
+.skills-ranking-shell .skill-group-card[data-ranking-state="ranked"] :where(small,.skill-evidence-detail) { color: color-mix(in srgb,var(--lmu-white) 76%,var(--lmu-charcoal)); }
+.skills-ranking-shell .skill-group-card[data-ranking-state="ranked"] :where(.skill-group-evidence-toggle,.skill-evidence-detail) { border-color: rgb(255 255 255 / .28); }
+.growth-edge-scale > button.is-selected,
+.growth-edge-scale > button.is-selected:hover {
+  background: var(--lmu-charcoal);
+  border-color: var(--lmu-charcoal);
+  box-shadow: inset 4px 0 var(--lmu-orange);
+  color: var(--lmu-white);
+}
+.growth-edge-scale > button.is-selected > strong { color: var(--lmu-white); }
+.growth-edge-scale > button.is-selected > .lmu-choice-indicator {
+  background: var(--lmu-orange);
+  border-color: var(--lmu-orange);
+  color: var(--lmu-white);
+}
+.growth-choice-list > article.is-selected,
+.growth-choice-list > article.is-selected:hover {
+  background: var(--lmu-charcoal);
+  border-color: var(--lmu-charcoal);
+  box-shadow: inset 4px 0 var(--lmu-orange);
+  color: var(--lmu-white);
+}
+.growth-choice-list > article.is-selected > button,
+.growth-choice-list > article.is-selected > button:hover,
+.growth-choice-list > article.is-selected .growth-detail > button,
+.growth-choice-list > article.is-selected .growth-detail label { color: var(--lmu-white); }
+.growth-choice-list > article.is-selected .lmu-choice-indicator {
+  background: var(--lmu-orange);
+  border-color: var(--lmu-orange);
+  color: var(--lmu-white);
+}
+.xfactor-rank-grid > button.is-ranked,
+.xfactor-rank-grid > button.is-ranked:hover {
+  background: var(--lmu-charcoal);
+  border-color: var(--lmu-charcoal);
+  box-shadow: inset 4px 0 var(--lmu-orange);
+  color: var(--lmu-white);
+}
+.xfactor-rank-grid > button.is-ranked > strong { color: var(--lmu-white); }
+.xfactor-rank-grid > button.is-ranked > small { color: color-mix(in srgb,var(--lmu-white) 76%,var(--lmu-charcoal)); }
+.xfactor-rank-grid > button.is-ranked > span {
+  background: var(--lmu-orange);
+  border-color: var(--lmu-orange);
+  color: var(--lmu-white);
+}
+
+/* High-specificity shared selected state: legacy module rules must not restore pale fills. */
+.shell-main :is(
+  .pain-point-grid > .lmu-response-row.is-selected,
+  .growth-choice-list > article.is-selected,
+  .growth-priority-list > button.is-selected,
+  .growth-edge-scale > button.is-selected,
+  .xfactor-rank-grid > button.is-ranked,
+  .location-reason-list > button.is-selected,
+  .location-primary-list > button.is-selected,
+  .location-chip-grid > button.is-selected,
+  .location-relocation-scale > button.is-selected,
+  .salary-choice-list.lmu-choice-list > button.is-selected,
+  .salary-factor-list > article.is-selected,
+  .salary-context-grid fieldset > button.is-selected,
+  .salary-tradeoff-followup fieldset > button.is-selected
+),
+.shell-main :is(
+  .pain-point-grid > .lmu-response-row.is-selected,
+  .growth-choice-list > article.is-selected,
+  .growth-priority-list > button.is-selected,
+  .growth-edge-scale > button.is-selected,
+  .xfactor-rank-grid > button.is-ranked,
+  .location-reason-list > button.is-selected,
+  .location-primary-list > button.is-selected,
+  .location-chip-grid > button.is-selected,
+  .location-relocation-scale > button.is-selected,
+  .salary-choice-list.lmu-choice-list > button.is-selected,
+  .salary-factor-list > article.is-selected,
+  .salary-context-grid fieldset > button.is-selected,
+  .salary-tradeoff-followup fieldset > button.is-selected
+):hover {
+  background: var(--lmu-charcoal);
+  border-color: var(--lmu-charcoal);
+  box-shadow: inset 4px 0 var(--lmu-orange);
+  color: var(--lmu-white);
+}
+.shell-main :is(
+  .pain-point-grid > .lmu-response-row.is-selected,
+  .growth-choice-list > article.is-selected,
+  .growth-priority-list > button.is-selected,
+  .growth-edge-scale > button.is-selected,
+  .xfactor-rank-grid > button.is-ranked,
+  .location-reason-list > button.is-selected,
+  .location-primary-list > button.is-selected,
+  .location-chip-grid > button.is-selected,
+  .location-relocation-scale > button.is-selected,
+  .salary-choice-list.lmu-choice-list > button.is-selected,
+  .salary-factor-list > article.is-selected,
+  .salary-context-grid fieldset > button.is-selected,
+  .salary-tradeoff-followup fieldset > button.is-selected
+) :where(strong,label) { color: var(--lmu-white); }
+.shell-main :is(
+  .growth-priority-list > button.is-selected,
+  .xfactor-rank-grid > button.is-ranked,
+  .salary-choice-list.lmu-choice-list > button.is-selected
+) :where(small,p,span:not(.lmu-choice-indicator)) { color: color-mix(in srgb,var(--lmu-white) 76%,var(--lmu-charcoal)); }
+.shell-main :is(
+  .pain-point-grid > .lmu-response-row.is-selected,
+  .growth-choice-list > article.is-selected,
+  .growth-priority-list > button.is-selected,
+  .growth-edge-scale > button.is-selected,
+  .xfactor-rank-grid > button.is-ranked,
+  .location-reason-list > button.is-selected,
+  .location-primary-list > button.is-selected,
+  .location-chip-grid > button.is-selected,
+  .salary-choice-list.lmu-choice-list > button.is-selected,
+  .salary-factor-list > article.is-selected,
+  .salary-context-grid fieldset > button.is-selected,
+  .salary-tradeoff-followup fieldset > button.is-selected
+) .lmu-choice-indicator {
+  background: var(--lmu-orange);
+  border-color: var(--lmu-orange);
+  color: var(--lmu-white);
+}
+
+/* True A-vs-B comparisons use the same surface treatment with a bottom rail. */
+.shell-main .salary-tradeoff-options > button.is-selected,
+.shell-main .salary-tradeoff-options > button.is-selected:hover,
+.shell-main .adaptive-ranking-card.is-choosing,
+.shell-main .adaptive-ranking-card.is-choosing:hover {
+  background: var(--lmu-response-selected);
+  border-color: var(--lmu-charcoal);
+  box-shadow: inset 0 -4px var(--lmu-orange);
+  color: var(--lmu-white);
+}
+.shell-main .salary-tradeoff-options > button.is-selected :where(strong,span),
+.shell-main .adaptive-ranking-card.is-choosing :where(h3,.adaptive-ranking-select) { color: var(--lmu-white); }
+.shell-main .salary-tradeoff-options > button.is-selected > p,
+.shell-main .adaptive-ranking-card.is-choosing :where(.adaptive-ranking-identity span,.adaptive-ranking-expand) { color: color-mix(in srgb,var(--lmu-white) 76%,var(--lmu-charcoal)); }
+.shell-main .salary-tradeoff-options > button:not(.is-selected):hover,
+.shell-main .salary-tradeoff-options > button:not(.is-selected):hover :where(strong,span,p,small),
+.shell-main .adaptive-ranking-card.is-selectable:not(.is-choosing):hover,
+.shell-main .adaptive-ranking-card.is-selectable:not(.is-choosing):hover :where(h3,.adaptive-ranking-identity span,.adaptive-ranking-expand) { color: var(--lmu-charcoal); }
+.adaptive-ranking-card.is-choosing .adaptive-ranking-identity>div:last-child { background: var(--lmu-response-selected); }
+.adaptive-ranking-card.is-choosing .adaptive-ranking-identity::after { background: rgb(255 255 255 / .28); }
+.adaptive-ranking-card.is-choosing .adaptive-ranking-select { border-color: rgb(255 255 255 / .38); }
+
+/* Keep focus distinct from both hover and selected borders. */
+.shell-main :where(.skill-group-card,.xfactor-rank-grid>button,.growth-choice-list>article,.growth-priority-list>button,.salary-choice-list>button,.salary-factor-list>article,.pain-point-grid>button,.location-reason-list>button,.location-primary-list>button,.location-chip-grid>button,.location-relocation-scale>button,.growth-edge-scale>button,.salary-context-grid fieldset>button,.salary-tradeoff-followup fieldset>button,.salary-tradeoff-options>button,.adaptive-ranking-card):has(:focus-visible) {
+  outline: 3px solid var(--lmu-orange);
+  outline-offset: 3px;
+}
 /* X-Factor keeps its existing swap functions while joining the shared row grammar. */
 .xfactor-final-list { gap: 0; margin-bottom: 38px; }
 .xfactor-final-list > div { border-bottom: 1px solid var(--lmu-border); gap: 18px; grid-template-columns: minmax(0,1fr) auto; padding: 20px 0; }
@@ -1268,7 +1491,7 @@ main:has(.lmu-section-navigation) .story-cancel { display: none; }
 .life-map-assessment-details > article > header small { color: var(--lmu-orange); font-size: 8px; letter-spacing: .12em; text-transform: uppercase; }
 .life-map-assessment-details > article > header h2 { font-size: 25px; margin: 2px 0 0; text-transform: uppercase; }
 .life-map-assessment-details .life-map-ranked-detail { background: transparent; border-left: 0; margin: 18px 0 0 96px; padding: 0; }
-.life-map-synced-grid { background: linear-gradient(90deg,var(--lmu-charcoal) 0 38%,var(--lmu-cream) 38% 100%); display: grid; grid-template-columns: minmax(340px,38%) minmax(0,62%); margin: 0 auto; max-width: 1440px; overflow: hidden; position: relative; }
+.life-map-synced-grid { background: linear-gradient(90deg,var(--lmu-charcoal) 0 38%,var(--lmu-cream) 38% 100%); display: grid; grid-template-columns: minmax(340px,38%) minmax(0,62%); margin: 0; max-width: none; overflow: hidden; position: relative; width: 100%; }
 .life-map-synced-map-bg { bottom: 0; left: 0; overflow: hidden; pointer-events: none; position: absolute; top: 0; width: 38%; z-index: 0; }
 .life-map-synced-trail { height: 100%; inset: 0; overflow: visible; pointer-events: none; position: absolute; width: 100%; z-index: 1; }
 .life-map-synced-trail path { fill: none; stroke: var(--lmu-orange); stroke-linecap: round; stroke-width: 2; vector-effect: non-scaling-stroke; }
@@ -1282,15 +1505,18 @@ main:has(.lmu-section-navigation) .story-cancel { display: none; }
 .life-map-ranked-header > p:not(.eyebrow) { color: var(--lmu-muted); font-family: var(--font-editorial),serif; line-height: 1.5; max-width: 650px; }
 .life-map-synced-waypoint,.life-map-synced-result { border-top: 1px solid rgba(255,255,255,.12); min-height: 105px; position: relative; z-index: 2; }
 .life-map-synced-waypoint { align-items: center; display: flex; padding: 18px 24px; }
-.life-map-synced-waypoint button { align-items: center; background: transparent; border: 0; color: var(--lmu-white); cursor: pointer; display: grid; gap: 11px; grid-template-columns: 28px 48px minmax(0,1fr); padding: 0; text-align: left; width: 78%; }
-.life-map-synced-waypoint button:disabled { cursor: default; opacity: .4; }
-.life-map-synced-waypoint button > span { color: var(--lmu-orange); font-family: var(--font-editorial),serif; font-size: 17px; }
-.life-map-synced-waypoint.is-foundation button { grid-template-columns: 72px 48px minmax(0,1fr); width: 90%; }
-.life-map-synced-waypoint.is-foundation button > span { font-family: inherit; font-size: 8px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
-.life-map-synced-waypoint button strong { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
-.life-map-synced-waypoint.lane-left button { transform: translateX(0); }
-.life-map-synced-waypoint.lane-center button { transform: translateX(12%); }
-.life-map-synced-waypoint.lane-right button { transform: translateX(24%); }
+.life-map-synced-waypoint-main { align-items: center; background: transparent; border: 0; color: var(--lmu-white); cursor: pointer; display: grid; gap: 11px; grid-template-columns: 28px 48px minmax(0,1fr); padding: 0; text-align: left; width: 78%; }
+.life-map-synced-waypoint-main:disabled { cursor: default; opacity: .4; }
+.life-map-synced-waypoint-main > span { color: var(--lmu-orange); font-family: var(--font-editorial),serif; font-size: 17px; }
+.life-map-synced-waypoint.is-foundation .life-map-synced-waypoint-main { grid-template-columns: 72px 48px minmax(0,1fr); width: 90%; }
+.life-map-synced-waypoint.is-foundation .life-map-synced-waypoint-main > span { font-family: inherit; font-size: 8px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.life-map-synced-waypoint > .life-map-synced-toggle { align-items: center; background: transparent; border: 1px solid rgba(255,255,255,.45); color: var(--lmu-white); cursor: pointer; display: inline-flex; font-family: inherit; font-size: 18px; font-weight: 500; height: 24px; justify-content: center; letter-spacing: 0; line-height: 1; padding: 0; position: absolute; right: 24px; text-transform: none; width: 24px; }
+.life-map-synced-waypoint > .life-map-synced-toggle:hover,.life-map-synced-waypoint > .life-map-synced-toggle:focus-visible { border-color: var(--lmu-orange); color: var(--lmu-orange); }
+.life-map-synced-waypoint > .life-map-synced-toggle:disabled { cursor: default; opacity: .4; }
+.life-map-synced-waypoint-main strong { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
+.life-map-synced-waypoint.lane-left .life-map-synced-waypoint-main { transform: translateX(0); }
+.life-map-synced-waypoint.lane-center .life-map-synced-waypoint-main { transform: translateX(12%); }
+.life-map-synced-waypoint.lane-right .life-map-synced-waypoint-main { transform: translateX(24%); }
 .life-map-synced-result { background: var(--lmu-cream); border-top-color: var(--lmu-border); outline: none; padding: 0 clamp(26px,4vw,58px); transition: background .18s ease; }
 .life-map-synced-result.is-foundation { background: #f2ede2; border-top: 3px solid var(--lmu-orange); }
 .life-map-synced-result.is-foundation .life-map-ranked-row { grid-template-columns: 72px 48px minmax(0,1fr) auto; }
@@ -1343,7 +1569,7 @@ main:has(.lmu-section-navigation) .story-cancel { display: none; }
 @media (max-width:800px){.life-map-split-overview{grid-template-columns:1fr}.life-map-map-panel{padding:42px 24px}.life-map-ranked-panel{padding:40px 24px}.life-map-personal-summary{padding:44px 24px}.life-map-summary-grid{grid-template-columns:1fr}.life-map-summary-block:nth-child(odd){border-right:0;margin-right:0}.life-map-map-hero{grid-template-columns:1fr}.life-map-route{min-height:0}.life-map-route>svg{bottom:20px;height:auto;left:29px;top:20px}.life-map-route a{margin:14px 0}.life-map-completion{grid-column:1}.life-map-priority-compass ol{grid-template-columns:1fr}.life-map-result-section{gap:12px;grid-template-columns:30px 48px minmax(0,1fr)}}
 @media (max-width:560px){.life-map-ranked-row{align-items:start;grid-template-columns:28px 44px minmax(0,1fr)}.life-map-ranked-row>button{grid-column:3;justify-self:start}.life-map-ranked-detail{margin-left:0}.life-map-ranked-panel>header .lmu-logo{display:none}.life-map-ranked-panel>header h2{margin-right:0}}
 @media (max-width:800px){.life-map-route.is-organic button{max-width:88%}.life-map-route.is-organic button:nth-of-type(odd){transform:translateX(0)}.life-map-route.is-organic button:nth-of-type(even){transform:translateX(10%)}}
-@media (max-width:800px){.life-map-synced-grid{background:var(--lmu-cream);grid-template-columns:1fr}.life-map-synced-map-bg{display:none}.life-map-synced-trail{display:none}.life-map-synced-map-title{background:var(--lmu-charcoal);min-height:0}.life-map-ranked-header{grid-row:2}.life-map-synced-waypoint{background:var(--lmu-charcoal);min-height:76px}.life-map-synced-waypoint button{transform:none!important;width:100%}.life-map-synced-result{min-height:0}.life-map-synced-result .life-map-ranked-detail{margin-left:0}.life-map-ranked-header .lmu-logo{display:none}.life-map-ranked-header h2{margin-right:0}}
+@media (max-width:800px){.life-map-synced-grid{background:var(--lmu-cream);grid-template-columns:1fr}.life-map-synced-map-bg{display:none}.life-map-synced-trail{display:none}.life-map-synced-map-title{background:var(--lmu-charcoal);min-height:0}.life-map-ranked-header{grid-row:2}.life-map-synced-waypoint{background:var(--lmu-charcoal);min-height:76px}.life-map-synced-waypoint-main{transform:none!important;width:calc(100% - 48px)}.life-map-synced-result{min-height:0}.life-map-synced-result .life-map-ranked-detail{margin-left:0}.life-map-ranked-header .lmu-logo{display:none}.life-map-ranked-header h2{margin-right:0}}
 /* Shared compact navigation and disclosure actions. Reserved padding prevents hover shift. */
 .lmu-shell :is(
   .lmu-compact-action,
@@ -1412,6 +1638,9 @@ main:has(.lmu-section-navigation) .story-cancel { display: none; }
   .lmu-shell .life-map-ranked-detail li > button,
   .lmu-shell .skills-story-context article > button { min-height: 44px; }
 }
+.lmu-shell .life-map-ranked-row > .life-map-ranked-icon-toggle { background: transparent; border: 0; border-radius: 0; min-height: 46px; padding: 0; width: 48px; }
+.lmu-shell .life-map-ranked-row > .life-map-ranked-icon-toggle:is(:hover,:focus-visible) { background: transparent; border-bottom-color: transparent !important; box-shadow: 0 0 0 2px var(--lmu-orange); color: inherit !important; outline: 0; }
+.lmu-shell .life-map-ranked-row > .life-map-ranked-icon-toggle:disabled { box-shadow: none; cursor: default; }
 
 @media print {
   @page { margin: 14mm 13mm 16mm; size: letter; }
