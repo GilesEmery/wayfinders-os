@@ -20,10 +20,6 @@ export const metadata: Metadata = {
   },
   description:
     "Guided experiences, tools, and resources for moving toward meaningful action.",
-  icons: {
-    icon: "/brand/lmu/lmu-favicon.png",
-    shortcut: "/brand/lmu/lmu-favicon.png",
-  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
