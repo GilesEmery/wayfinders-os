@@ -14,6 +14,18 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: { id: string; admin_user_id: string | null; admin_email: string; action: string; entity_type: string | null; entity_id: string | null; metadata: Json; created_at: string }
+        Insert: { id?: string; admin_user_id?: string | null; admin_email: string; action: string; entity_type?: string | null; entity_id?: string | null; metadata?: Json; created_at?: string }
+        Update: { id?: string; admin_user_id?: string | null; admin_email?: string; action?: string; entity_type?: string | null; entity_id?: string | null; metadata?: Json; created_at?: string }
+        Relationships: []
+      }
+      admin_members: {
+        Row: { id: string; email: string; email_normalized: string; auth_user_id: string | null; role: string; status: string; invited_by: string | null; created_at: string; updated_at: string; last_login_at: string | null }
+        Insert: { id?: string; email: string; email_normalized: string; auth_user_id?: string | null; role?: string; status?: string; invited_by?: string | null; created_at?: string; updated_at?: string; last_login_at?: string | null }
+        Update: { id?: string; email?: string; email_normalized?: string; auth_user_id?: string | null; role?: string; status?: string; invited_by?: string | null; created_at?: string; updated_at?: string; last_login_at?: string | null }
+        Relationships: [{ foreignKeyName: "admin_members_invited_by_fkey"; columns: ["invited_by"]; isOneToOne: false; referencedRelation: "admin_members"; referencedColumns: ["id"] }]
+      }
       lmu_assessments: {
         Row: {
           assessment_version: string
