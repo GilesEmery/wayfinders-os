@@ -2,6 +2,8 @@ import type {
   ParticipantExperienceProgress,
   ParticipantModuleProgress,
 } from "./types";
+import { deleteServerSection, scheduleSectionSave, SECTION_TO_MODULE, type ServerAssessment } from "./persistence";
+import { LMU_ORIGINAL_EXPERIENCE_ID } from "./original-journey";
 
 const STORAGE_KEY = "lmu-platform-v1";
 const PROGRESS_EVENT = "lmu-progress-change";
@@ -70,17 +72,19 @@ export function saveModuleProgress(
   experienceId: string,
   progress: ParticipantModuleProgress,
 ) {
+  const updatedProgress = { ...progress, updatedAt: new Date().toISOString() };
   const experience = getExperienceProgress(experienceId) ?? {
     experienceId,
     moduleProgress: [],
   };
   const otherModules = experience.moduleProgress.filter(
-    (item) => item.moduleId !== progress.moduleId,
+    (item) => item.moduleId !== updatedProgress.moduleId,
   );
   saveExperienceProgress({
     ...experience,
-    moduleProgress: [...otherModules, progress],
+    moduleProgress: [...otherModules, updatedProgress],
   });
+  scheduleSectionSave(updatedProgress);
 }
 
 export function clearExperienceProgress(experienceId: string) {
@@ -96,6 +100,39 @@ export function removeModuleProgress(experienceId: string, moduleId: string) {
     ...experience,
     moduleProgress: experience.moduleProgress.filter((item) => item.moduleId !== moduleId),
   });
+  if (experienceId === LMU_ORIGINAL_EXPERIENCE_ID) deleteServerSection(moduleId);
+}
+
+export function hydrateFromServer(server: ServerAssessment) {
+  const store = readStore();
+  store.participantProfile = { firstName: server.participant.first_name, email: server.participant.email };
+  const localExperience = store.experiences[LMU_ORIGINAL_EXPERIENCE_ID] ?? { experienceId: LMU_ORIGINAL_EXPERIENCE_ID, moduleProgress: [] };
+  const responseBySection = new Map(server.sectionResponses.map((item) => [item.section_key, item]));
+  const resultBySection = new Map(server.finalizedResults.map((item) => [item.section_key, item]));
+  const serverModules = server.sectionProgress.flatMap((progress) => {
+    const moduleId = SECTION_TO_MODULE[progress.section_key];
+    const response = responseBySection.get(progress.section_key);
+    if (!moduleId || !response) return [];
+    const resultRecord = resultBySection.get(progress.section_key)?.result_data;
+    return [{
+      moduleId,
+      status: progress.status === "completed" ? "completed" as const : "in-progress" as const,
+      startedAt: progress.started_at ?? undefined,
+      completedAt: progress.completed_at ?? undefined,
+      updatedAt: [progress.updated_at, response.updated_at, resultBySection.get(progress.section_key)?.updated_at].filter(Boolean).sort().at(-1),
+      responses: response.response_data,
+      derivedResults: resultRecord?.derivedResults ?? {},
+      result: resultRecord?.result,
+    }];
+  });
+  const merged = [...localExperience.moduleProgress];
+  for (const remote of serverModules) {
+    const index = merged.findIndex((item) => item.moduleId === remote.moduleId);
+    if (index === -1) merged.push(remote);
+    else if (merged[index].updatedAt && remote.updatedAt && remote.updatedAt > merged[index].updatedAt!) merged[index] = remote;
+  }
+  store.experiences[LMU_ORIGINAL_EXPERIENCE_ID] = { ...localExperience, moduleProgress: merged };
+  writeStore(store);
 }
 
 export function resetModuleProgress(experienceId: string, moduleId: string) {

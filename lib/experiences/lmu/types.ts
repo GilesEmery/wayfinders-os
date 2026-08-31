@@ -74,6 +74,7 @@ export interface ParticipantModuleProgress {
   status: ModuleProgressStatus;
   startedAt?: string;
   completedAt?: string;
+  updatedAt?: string;
   responses: Record<string, unknown>;
   derivedResults: Record<string, unknown>;
   result?: LMUModuleResult;

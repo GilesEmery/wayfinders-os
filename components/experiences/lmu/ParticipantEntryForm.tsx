@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { getParticipantProfile, saveParticipantProfile } from "@/lib/experiences/lmu/storage";
+import { createParticipantSession } from "@/lib/experiences/lmu/persistence";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -11,6 +12,8 @@ export function ParticipantEntryForm() {
   const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [serverError, setServerError] = useState("");
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -28,12 +31,20 @@ export function ParticipantEntryForm() {
   const emailValid = cleanEmail.length <= 254 && EMAIL_PATTERN.test(cleanEmail);
   const valid = nameValid && emailValid;
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitted(true);
     if (!valid) return;
-    saveParticipantProfile({ firstName: cleanName, email: cleanEmail });
-    router.push("/experiences/life-mapping-u/choose");
+    setSubmitting(true);
+    setServerError("");
+    try {
+      await createParticipantSession({ firstName: cleanName, email: cleanEmail });
+      saveParticipantProfile({ firstName: cleanName, email: cleanEmail });
+      router.push("/experiences/life-mapping-u/choose");
+    } catch {
+      setServerError("We could not securely start your session. Please try again.");
+      setSubmitting(false);
+    }
   }
 
   return <form className="lmu-entry-form" noValidate onSubmit={submit}>
@@ -47,6 +58,7 @@ export function ParticipantEntryForm() {
       <input id="lmu-email" name="email" type="email" autoComplete="email" maxLength={254} required value={email} onChange={(event) => setEmail(event.target.value)} aria-describedby={submitted && !emailValid ? "lmu-email-error" : undefined} aria-invalid={submitted && !emailValid} />
       {submitted && !emailValid ? <p className="lmu-field-error" id="lmu-email-error" role="alert">Enter a valid email address.</p> : null}
     </div>
-    <button className="button button-primary" type="submit"><span>Next</span><span aria-hidden="true">→</span></button>
+    {serverError ? <p className="lmu-field-error" role="alert">{serverError}</p> : null}
+    <button className="button button-primary" type="submit" disabled={submitting}><span>{submitting ? "Starting…" : "Next"}</span><span aria-hidden="true">→</span></button>
   </form>;
 }

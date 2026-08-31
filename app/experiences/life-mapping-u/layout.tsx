@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { LMUPersistenceHydrator } from "@/components/experiences/lmu/LMUPersistenceHydrator";
 
 export const metadata: Metadata = {
   title: { default: "Life Mapping U", template: "%s | Life Mapping U" },
@@ -6,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function LifeMappingULayout({ children }: LayoutProps<"/experiences/life-mapping-u">) {
-  return children;
+  return <><LMUPersistenceHydrator />{children}</>;
 }
