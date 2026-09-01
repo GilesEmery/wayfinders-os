@@ -16,13 +16,57 @@
   --lmu-muted: #6f726f;
   --lmu-border: #d6d1c7;
   --lmu-soft-gray: #ebe7df;
-  --admin-blue: #0054a1;
-  --admin-charcoal: #252a29;
-  --admin-border: #d9dfe3;
-  --admin-soft: #f4f6f7;
+  --admin-blue: var(--lmu-charcoal);
+  --admin-charcoal: var(--lmu-charcoal);
+  --admin-border: #d8d3c9;
+  --admin-soft: #f7f3eb;
 }
 
 .admin-auth-support { border-top: 1px solid var(--admin-border); color: #687175; font-size: 12px; line-height: 1.5; margin: 24px 0 0; padding-top: 18px; }
+.admin-account-panel { border: 1px solid var(--admin-border); margin-top: 38px; max-width: 620px; padding: 34px; }
+.admin-account-panel .admin-form { margin-top: 0; }
+.admin-form-message.is-success { color: #2f6c4d; }
+
+/* Neutral OS shell. Experience cards own their accent through this contract. */
+.admin-experience-card { --experience-accent: var(--admin-charcoal); }
+.admin-experience-card.admin-lmu-card { --experience-accent: var(--lmu-orange); border-left-color: var(--experience-accent); }
+.admin-experience-card.admin-lmu-card .admin-lmu-badge { background: transparent; height: 44px; width: 44px; }
+.admin-experience-card.admin-lmu-card > div > p { color: var(--experience-accent); }
+.admin-experience-card.admin-lmu-card > a { border-color: var(--experience-accent); }
+.admin-shell :focus-visible, .admin-auth-page :focus-visible { outline-color: var(--admin-charcoal); }
+.admin-progress-detail { color: #6f726f; display: block; font-size: 10px; font-weight: 500; margin-top: 4px; white-space: nowrap; }
+.admin-status { display: inline-block; font-size: 9px; font-weight: 800; letter-spacing: .1em; padding: 6px 8px; text-transform: uppercase; }
+.admin-status.is-completed { background: var(--admin-charcoal); border: 0; color: #fff; }
+.admin-status.is-in_progress { background: #ebe7df; border: 0; color: var(--admin-charcoal); }
+.admin-assessment-heading { align-items: end; display: flex; gap: 32px; justify-content: space-between; }
+.admin-assessment-heading h1 { font-size: clamp(38px,5vw,68px); letter-spacing: -.055em; line-height: .95; margin: 8px 0 18px; text-transform: uppercase; }
+.admin-completion-panel { border: 1px solid var(--admin-border); display: grid; flex: 0 0 220px; gap: 6px; padding: 20px; }
+.admin-completion-panel.is-completed { background: var(--admin-charcoal); color: #fff; }
+.admin-completion-panel > span { font-size: 9px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+.admin-completion-panel > strong { font-size: 34px; }
+.admin-completion-panel > small { color: #777d7b; }
+.admin-completion-panel.is-completed > small { color: #c5c9c7; }
+.admin-progress-notice,.admin-followup-note { background: var(--admin-soft); border-left: 4px solid var(--admin-charcoal); margin: 0 0 36px; padding: 20px; }
+.admin-progress-notice p,.admin-followup-note p { color: #626866; line-height: 1.5; margin: 7px 0 0; }
+.admin-section-status { background: #ebe7df; color: var(--admin-charcoal); padding: 5px 8px; }
+.admin-section-status.is-completed { background: var(--admin-charcoal); color: #fff; }
+.admin-finalized-date { color: #6f726f; font-size: 10px; letter-spacing: .08em; margin: 0 0 14px; text-transform: uppercase; }
+.admin-final-result { padding: 0 0 22px; }
+.admin-result-summary { font-family: var(--font-editorial),serif; font-size: 18px; }
+.admin-ranked-result { display: grid; list-style: none; margin: 0; padding: 0; }
+.admin-ranked-result li { align-items: center; border-top: 1px solid var(--admin-border); display: grid; gap: 12px; grid-template-columns: 32px 1fr; padding: 11px 0; }
+.admin-ranked-result li > span { color: #6f726f; font-family: var(--font-editorial),serif; font-size: 18px; }
+.admin-final-result h3 { font-size: 10px; letter-spacing: .14em; margin-top: 22px; text-transform: uppercase; }
+.admin-highlight-result { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; }
+.admin-highlight-result li { background: var(--admin-soft); border: 1px solid var(--admin-border); padding: 8px 10px; }
+.admin-result-details { border-top: 1px solid var(--admin-border); margin-top: 18px; padding-top: 14px; }
+.admin-result-details > summary { justify-content: flex-start; }
+.admin-structured-data { display: grid; gap: 10px; margin: 12px 0 0; }
+.admin-structured-data > div { border-left: 2px solid var(--admin-border); display: grid; gap: 5px; grid-template-columns: minmax(130px,220px) 1fr; padding-left: 12px; }
+.admin-structured-data dt { font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.admin-structured-data dd { line-height: 1.45; margin: 0; min-width: 0; }
+.admin-structured-data ul { margin: 4px 0; padding-left: 18px; }
+@media(max-width:700px){.admin-assessment-heading{align-items:stretch;flex-direction:column}.admin-completion-panel{flex-basis:auto}.admin-structured-data>div{grid-template-columns:1fr}}
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -170,6 +214,16 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--lmu-orange); ou
 .lmu-entry-form input[aria-invalid="true"] { border-color: #a33b25; }
 .lmu-field-error { color: #8e321f; font-size: 12px; margin: 0; }
 .lmu-entry-form .button { border: 0; cursor: pointer; margin-top: 6px; }
+.lmu-account-panel { max-width: 580px; width: 100%; }
+.lmu-account-tabs { border-bottom: 1px solid var(--lmu-border); display: flex; gap: 4px; margin-top: 34px; width: 100%; }
+.lmu-account-tabs button { background: transparent; border: 0; border-bottom: 3px solid transparent; color: var(--lmu-muted); cursor: pointer; font-size: 10px; font-weight: 800; letter-spacing: .12em; padding: 14px 18px; text-transform: uppercase; }
+.lmu-account-tabs button[aria-pressed="true"] { border-bottom-color: var(--lmu-charcoal); color: var(--lmu-charcoal); }
+.lmu-account-panel .lmu-entry-form { margin-top: 24px; }
+.lmu-account-help { color: var(--lmu-muted); font-size: 12px; line-height: 1.5; margin: 0; }
+.lmu-account-status { border-left: 4px solid var(--lmu-orange); margin: 38px 0 28px; max-width: 580px; padding: 20px 24px; width: 100%; }
+.lmu-account-status h2 { font-size: clamp(24px, 3vw, 34px); margin: 7px 0 18px; }
+.lmu-account-status form { margin-top: 16px; }
+.lmu-account-status .story-cancel { cursor: pointer; }
 
 .lmu-choose-main { margin: 0 auto; max-width: 1240px; padding: clamp(78px, 9vw, 125px) clamp(24px, 6vw, 76px); }
 .lmu-choose-heading { margin-bottom: clamp(48px, 7vw, 82px); }
@@ -577,8 +631,8 @@ main:has(.lmu-section-navigation) .story-cancel { display: none; }
 .instructional-video-description { color: var(--lmu-muted); font-family: var(--font-editorial), serif; line-height: 1.5; }
 .instructional-video-frame { aspect-ratio: 16 / 9; background: var(--lmu-charcoal); border: 1px solid var(--lmu-charcoal); overflow: hidden; position: relative; width: 100%; }
 .instructional-video-frame iframe { border: 0; height: 100%; inset: 0; position: absolute; width: 100%; }
-.instructional-video-frame > iframe { opacity: 0; transition: opacity .25s ease; }
-.instructional-video-frame > iframe.is-ready { opacity: 1; }
+.instructional-video-frame > iframe.lmu-video-screenpal { opacity: 0; transition: opacity .25s ease; }
+.instructional-video-frame > iframe.lmu-video-screenpal.is-ready { opacity: 1; }
 .lmu-video-shell { background: var(--lmu-charcoal); border: 1px solid var(--lmu-charcoal); width: 100%; }
 .lmu-video-youtube, .lmu-video-youtube iframe { border: 0; height: 100%; inset: 0; position: absolute; width: 100%; }
 .lmu-video-poster { align-items: center; background: var(--lmu-charcoal) url("/brand/lmu/maps/map-gray-3.svg") center / cover no-repeat; color: var(--lmu-white); display: flex; flex-direction: column; inset: 0; justify-content: center; padding: clamp(22px, 5vw, 56px); position: absolute; text-align: center; }

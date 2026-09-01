@@ -5,4 +5,4 @@ export async function proxy(request: NextRequest) {
   return updateSupabaseSession(request);
 }
 
-export const config = { matcher: ["/admin/:path*", "/api/admin/:path*"] };
+export const config = { matcher: ["/admin/:path*", "/api/admin/:path*", "/api/account/:path*", "/api/lmu/:path*", "/experiences/life-mapping-u/:path*"] };

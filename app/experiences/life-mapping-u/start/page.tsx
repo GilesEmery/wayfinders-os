@@ -11,7 +11,7 @@ export default function LifeMappingUStartPage() {
       <section className="lmu-front-door-copy">
         <p className="eyebrow eyebrow-rule">Life Mapping U</p>
         <h1>Welcome to Life Mapping U</h1>
-        <p className="lmu-front-door-lede">Before we begin, tell us a little about yourself.</p>
+        <p className="lmu-front-door-lede">Create or sign in to your Wayfinders OS account to continue into Life Mapping U.</p>
         <ParticipantEntryForm />
         <SecondaryButton href="/experiences/life-mapping-u">Back</SecondaryButton>
       </section>

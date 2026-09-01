@@ -9,6 +9,7 @@ const STORAGE_KEY = "lmu-platform-v1";
 const PROGRESS_EVENT = "lmu-progress-change";
 
 interface StoredProgress {
+  assessmentId?: string;
   participantProfile?: ParticipantProfile;
   experiences: Record<string, ParticipantExperienceProgress>;
 }
@@ -38,7 +39,16 @@ function writeStore(store: StoredProgress) {
 }
 
 export function getExperienceProgress(experienceId: string) {
-  return readStore().experiences[experienceId];
+  const store = readStore();
+  if (!store.assessmentId) return undefined;
+  return store.experiences[experienceId];
+}
+
+export function bindAssessment(assessmentId: string) {
+  const store = readStore();
+  if (store.assessmentId !== assessmentId) store.experiences = {};
+  store.assessmentId = assessmentId;
+  writeStore(store);
 }
 
 export function saveExperienceProgress(
@@ -68,10 +78,13 @@ export function getModuleProgress(experienceId: string, moduleId: string) {
   );
 }
 
-export function saveModuleProgress(
+export async function saveModuleProgress(
   experienceId: string,
   progress: ParticipantModuleProgress,
 ) {
+  const store = readStore();
+  if (!store.assessmentId) return false;
+  const previous = getExperienceProgress(experienceId);
   const updatedProgress = { ...progress, updatedAt: new Date().toISOString() };
   const experience = getExperienceProgress(experienceId) ?? {
     experienceId,
@@ -84,7 +97,14 @@ export function saveModuleProgress(
     ...experience,
     moduleProgress: [...otherModules, updatedProgress],
   });
-  scheduleSectionSave(updatedProgress);
+  const persisted = await scheduleSectionSave(updatedProgress);
+  if (!persisted) {
+    const rollbackStore = readStore();
+    if (previous) rollbackStore.experiences[experienceId] = previous;
+    else delete rollbackStore.experiences[experienceId];
+    writeStore(rollbackStore);
+  }
+  return persisted;
 }
 
 export function clearExperienceProgress(experienceId: string) {
@@ -105,6 +125,8 @@ export function removeModuleProgress(experienceId: string, moduleId: string) {
 
 export function hydrateFromServer(server: ServerAssessment) {
   const store = readStore();
+  if (store.assessmentId !== server.assessment.id) store.experiences = {};
+  store.assessmentId = server.assessment.id;
   store.participantProfile = { firstName: server.participant.first_name, email: server.participant.email };
   const localExperience = store.experiences[LMU_ORIGINAL_EXPERIENCE_ID] ?? { experienceId: LMU_ORIGINAL_EXPERIENCE_ID, moduleProgress: [] };
   const responseBySection = new Map(server.sectionResponses.map((item) => [item.section_key, item]));

@@ -26,10 +26,6 @@ async function request(path: string, init?: RequestInit) {
   return response.json() as Promise<unknown>;
 }
 
-export async function createParticipantSession(profile: { firstName: string; email: string }) {
-  return request("/api/lmu/session", { method: "POST", body: JSON.stringify(profile) });
-}
-
 export async function loadServerAssessment() {
   const response = await fetch("/api/lmu/assessment", { credentials: "same-origin", cache: "no-store" });
   if (response.status === 401) return null;
@@ -37,19 +33,18 @@ export async function loadServerAssessment() {
   return response.json() as Promise<ServerAssessment>;
 }
 
-export function scheduleSectionSave(progress: ParticipantModuleProgress) {
+export function scheduleSectionSave(progress: ParticipantModuleProgress): Promise<boolean> {
   const sectionKey = sectionKeyFor(progress.moduleId);
-  if (!sectionKey) return;
+  if (!sectionKey) return Promise.resolve(true);
   const existing = pendingSaves.get(sectionKey);
   if (existing) clearTimeout(existing);
 
   if (progress.status === "completed" && progress.result) {
     pendingSaves.delete(sectionKey);
-    void request(`/api/lmu/sections/${sectionKey}/finalize`, {
+    return request(`/api/lmu/sections/${sectionKey}/finalize`, {
       method: "POST",
       body: JSON.stringify({ responseData: progress.responses, resultData: { result: progress.result, derivedResults: progress.derivedResults } }),
-    }).catch(() => undefined);
-    return;
+    }).then((result) => sectionKey !== "motivator_rankings" || Boolean((result as { assessmentCompleted?: boolean }).assessmentCompleted)).catch(() => false);
   }
 
   pendingSaves.set(sectionKey, setTimeout(() => {
@@ -62,6 +57,7 @@ export function scheduleSectionSave(progress: ParticipantModuleProgress) {
       }),
     }).catch(() => undefined);
   }, 1200));
+  return Promise.resolve(true);
 }
 
 export function deleteServerSection(moduleId: string) {

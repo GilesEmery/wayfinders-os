@@ -1,72 +1,42 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { ensureParticipantContext } from "@/lib/experiences/lmu/server/account";
 import { apiError, PayloadError, readJsonObject } from "@/lib/experiences/lmu/server/http";
-import { LMU_SESSION_COOKIE } from "@/lib/experiences/lmu/server/constants";
-import { hashSessionToken, newSessionToken, resolveParticipantSession, sessionCookieOptions, sessionExpiresAt } from "@/lib/experiences/lmu/server/session";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+async function accountContext(fullName?: string) {
+  const supabase = await createServerSupabaseClient();
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) return null;
+  return ensureParticipantContext(user, fullName);
+}
+
+export async function GET() {
+  try {
+    const context = await accountContext();
+    if (!context) return apiError("No authenticated Wayfinders account.", 401);
+    if ("error" in context) {
+      if (context.code === "full_name_required") {
+        return NextResponse.json({ error: context.error, code: context.code }, { status: 409 });
+      }
+      return apiError(context.error ?? "Unable to load your Wayfinders profile.", 500);
+    }
+    return NextResponse.json(context);
+  } catch {
+    return apiError("Unable to load your Wayfinders account.", 500);
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
     const body = await readJsonObject(request);
-    const firstName = typeof body.firstName === "string" ? body.firstName.trim() : "";
-    const email = typeof body.email === "string" ? body.email.trim() : "";
-    const emailNormalized = email.toLowerCase();
-    if (!firstName || firstName.length > 80) return apiError("Enter a valid first name.", 400);
-    if (email.length > 254 || !EMAIL_PATTERN.test(email)) return apiError("Enter a valid email address.", 400);
-
-    const admin = createAdminSupabaseClient();
-    const { data: participant, error: participantError } = await admin
-      .from("participants")
-      .insert({ first_name: firstName, email, email_normalized: emailNormalized })
-      .select("id, first_name, email, created_at, updated_at")
-      .single();
-    if (participantError) return apiError("Unable to start a participant session.", 500);
-
-    const { data: assessment, error: assessmentError } = await admin
-      .from("lmu_assessments")
-      .insert({ participant_id: participant.id, experience_type: "original" })
-      .select("id, experience_type, status, assessment_version, current_module, started_at, completed_at, updated_at")
-      .single();
-    if (assessmentError) {
-      await admin.from("participants").delete().eq("id", participant.id);
-      return apiError("Unable to start an assessment.", 500);
-    }
-
-    const token = newSessionToken();
-    const expires = sessionExpiresAt();
-    const { error: sessionError } = await admin.from("participant_sessions").insert({
-      participant_id: participant.id,
-      assessment_id: assessment.id,
-      token_hash: hashSessionToken(token),
-      expires_at: expires.toISOString(),
-    });
-    if (sessionError) {
-      await admin.from("participants").delete().eq("id", participant.id);
-      return apiError("Unable to create a secure session.", 500);
-    }
-
-    const response = NextResponse.json({ participant, assessment }, { status: 201 });
-    response.cookies.set(LMU_SESSION_COOKIE, token, sessionCookieOptions(expires));
-    return response;
+    const fullName = typeof body.fullName === "string" ? body.fullName.trim() : "";
+    if (!fullName || fullName.length > 160) return apiError("Enter your full name.", 400);
+    const context = await accountContext(fullName);
+    if (!context) return apiError("Sign in to continue.", 401);
+    if ("error" in context) return apiError(context.error ?? "Unable to load your Wayfinders profile.", 500);
+    return NextResponse.json(context);
   } catch (error) {
     if (error instanceof PayloadError) return apiError(error.message, error.status);
-    return apiError("Unable to start a participant session.", 500);
-  }
-}
-
-export async function GET(request: NextRequest) {
-  try {
-    const resolved = await resolveParticipantSession(request);
-    if (!resolved) return apiError("No valid participant session.", 401);
-    const { admin, session } = resolved;
-    const [{ data: participant }, { data: assessment }] = await Promise.all([
-      admin.from("participants").select("id, first_name, email, created_at, updated_at").eq("id", session.participant_id).single(),
-      admin.from("lmu_assessments").select("id, experience_type, status, assessment_version, current_module, started_at, completed_at, updated_at").eq("id", session.assessment_id).single(),
-    ]);
-    if (!participant || !assessment) return apiError("Participant session is unavailable.", 401);
-    return NextResponse.json({ participant, assessment });
-  } catch {
-    return apiError("Unable to load the participant session.", 500);
+    return apiError("Unable to resume your Wayfinders account.", 500);
   }
 }

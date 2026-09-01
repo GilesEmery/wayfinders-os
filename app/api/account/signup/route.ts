@@ -1,0 +1,34 @@
+import { NextResponse, type NextRequest } from "next/server";
+import { ensureParticipantContext } from "@/lib/experiences/lmu/server/account";
+import { LMU_SESSION_COOKIE } from "@/lib/experiences/lmu/server/constants";
+import { PayloadError, apiError, readJsonObject } from "@/lib/experiences/lmu/server/http";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await readJsonObject(request);
+    const fullName = typeof body.fullName === "string" ? body.fullName.trim() : "";
+    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    const password = typeof body.password === "string" ? body.password : "";
+    const confirmPassword = typeof body.confirmPassword === "string" ? body.confirmPassword : "";
+    if (!fullName || fullName.length > 160) return apiError("Enter your full name.", 400);
+    if (!EMAIL_PATTERN.test(email) || email.length > 254) return apiError("Enter a valid email address.", 400);
+    if (password.length < 8) return apiError("Password must be at least 8 characters.", 400);
+    if (password !== confirmPassword) return apiError("Passwords do not match.", 400);
+
+    const supabase = await createServerSupabaseClient();
+    const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
+    if (error) return apiError(error.message, 400);
+    if (!data.user || !data.session) return apiError("Your account was created but requires email confirmation. Turn Confirm Email off for this alpha flow.", 409);
+    const context = await ensureParticipantContext(data.user, fullName);
+    if ("error" in context) return apiError(context.error ?? "Unable to create your Wayfinders profile.", 500);
+    const response = NextResponse.json(context, { status: 201 });
+    response.cookies.delete(LMU_SESSION_COOKIE);
+    return response;
+  } catch (error) {
+    if (error instanceof PayloadError) return apiError(error.message, error.status);
+    return apiError("Unable to create your Wayfinders account.", 500);
+  }
+}

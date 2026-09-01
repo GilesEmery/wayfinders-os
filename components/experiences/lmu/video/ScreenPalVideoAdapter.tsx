@@ -26,7 +26,7 @@ export function ScreenPalVideoAdapter({ embedUrl, onError, onLoad, title, videoI
   return <iframe
     allow="fullscreen"
     allowFullScreen
-    className={visible ? "is-ready" : ""}
+    className={`lmu-video-screenpal${visible ? " is-ready" : ""}`}
     onError={onError}
     onLoad={() => { setVisible(true); onLoad(); }}
     referrerPolicy="strict-origin-when-cross-origin"
