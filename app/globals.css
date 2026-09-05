@@ -119,6 +119,16 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--lmu-orange); ou
 .platform-brand { font-size: 15px; font-weight: 750; letter-spacing: .18em; text-transform: uppercase; }
 .platform-header nav { display: flex; gap: 28px; }
 .platform-header nav a { color: #d4d7d5; font-size: 10px; font-weight: 650; letter-spacing: .16em; text-transform: uppercase; }
+.platform-header-actions { align-items: center; display: flex; gap: clamp(18px, 3vw, 34px); }
+.platform-account-control { flex: 0 0 auto; position: relative; }
+.platform-account-trigger { background: transparent; border: 1px solid rgb(255 255 255 / .72); border-radius: 999px; color: #fff; cursor: pointer; display: block; font: inherit; font-size: 9px; font-weight: 750; letter-spacing: .13em; line-height: 1; max-width: min(220px, 34vw); min-height: 34px; overflow: hidden; padding: 8px 14px; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+.platform-account-trigger:hover, .platform-account-trigger:focus-visible, .platform-account-trigger[aria-expanded="true"] { background: rgb(255 255 255 / .1); border-color: #fff; }
+.platform-account-trigger:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.platform-account-trigger span { display: block; overflow: hidden; text-overflow: ellipsis; }
+.platform-account-menu { background: #fff; border: 1px solid #cfd2cf; color: #252a29; display: grid; min-width: 154px; padding: 6px; position: absolute; right: 0; top: calc(100% + 9px); z-index: 200; }
+.platform-account-menu a, .platform-account-menu button { background: transparent; border: 0; color: inherit; cursor: pointer; display: block; font: inherit; font-size: 9px; font-weight: 750; letter-spacing: .13em; padding: 11px 12px; text-align: left; text-transform: uppercase; width: 100%; }
+.platform-account-menu a:hover, .platform-account-menu a:focus-visible, .platform-account-menu button:hover, .platform-account-menu button:focus-visible { background: #eff0ed; outline: none; }
+.platform-account-menu form { margin: 0; }
 .platform-hero { margin: 0 auto; max-width: 1240px; padding: clamp(100px, 14vw, 190px) clamp(24px, 6vw, 76px) clamp(90px, 12vw, 150px); }
 .platform-eyebrow, .platform-card-type { color: var(--platform-orange); font-size: 10px; font-weight: 750; letter-spacing: .22em; margin: 0 0 26px; text-transform: uppercase; }
 .platform-hero h1, .platform-index h1 { font-size: clamp(54px, 8vw, 108px); font-weight: 760; letter-spacing: -.06em; line-height: .9; margin: 0; max-width: 920px; text-transform: uppercase; }
@@ -136,6 +146,23 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--lmu-orange); ou
 .platform-footer { border-top: 1px solid var(--platform-border); display: flex; font-size: 9px; font-weight: 650; justify-content: space-between; letter-spacing: .16em; padding: 27px clamp(24px, 5vw, 72px); text-transform: uppercase; }
 .platform-footer p { margin: 0; }
 .platform-footer p:last-child { color: var(--platform-muted); }
+.account-page { margin: 0 auto; max-width: 1120px; padding: clamp(72px, 10vw, 126px) clamp(24px, 6vw, 76px); }
+.account-page > header h1 { font-size: clamp(50px, 7vw, 86px); letter-spacing: -.055em; line-height: .92; margin: 0; text-transform: uppercase; }
+.account-page > header > p:last-child { color: var(--platform-muted); font-family: var(--font-editorial), serif; font-size: 20px; line-height: 1.55; max-width: 650px; }
+.account-settings { display: grid; gap: 26px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 58px; }
+.account-settings-section { background: #fff; border: 1px solid var(--platform-border); padding: clamp(28px, 4vw, 42px); }
+.account-settings-section .platform-eyebrow { margin-bottom: 12px; }
+.account-settings-section h2 { font-size: 28px; letter-spacing: -.035em; margin: 0; text-transform: uppercase; }
+.account-settings-section form { display: grid; gap: 18px; margin-top: 30px; }
+.account-settings-section label { color: #4f5552; display: grid; font-size: 9px; font-weight: 750; gap: 8px; letter-spacing: .14em; text-transform: uppercase; }
+.account-settings-section input { background: #fafaf8; border: 1px solid #bdc1bd; border-radius: 0; color: var(--platform-ink); font: inherit; min-height: 49px; padding: 11px 13px; }
+.account-settings-section input[readonly] { color: #707572; }
+.account-settings-section input:focus-visible { border-color: var(--platform-charcoal); outline: 2px solid var(--platform-charcoal); outline-offset: 2px; }
+.account-settings-section form > button { background: var(--platform-charcoal); border: 0; color: #fff; cursor: pointer; font: inherit; font-size: 10px; font-weight: 750; letter-spacing: .14em; min-height: 50px; padding: 0 18px; text-transform: uppercase; }
+.account-settings-section form > button:disabled { cursor: wait; opacity: .6; }
+.account-field-note, .account-form-message { color: var(--platform-muted); font-size: 11px; line-height: 1.5; margin: -8px 0 0; }
+.account-form-message { border-left: 2px solid #7b5b2c; margin: 0; padding-left: 10px; }
+.account-form-message.is-success { border-color: #347353; color: #285c43; }
 
 .wayfinders-auth-backdrop { align-items: center; background: rgb(20 22 22 / .76); display: flex; inset: 0; justify-content: center; padding: 20px; position: fixed; z-index: 1000; }
 .wayfinders-auth-modal { background: #fff; border: 1px solid #d8d8d4; color: #202322; max-height: calc(100svh - 40px); max-width: 540px; overflow-y: auto; padding: clamp(30px, 5vw, 52px); position: relative; width: 100%; }
@@ -170,6 +197,24 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--lmu-orange); ou
 .logo-fallback { display: none; }
 .header-context { color: #a9adab; font-size: 10px; font-weight: 600; letter-spacing: .18em; margin: 0; text-transform: uppercase; }
 .header-module-nav { align-items: center; display: flex; gap: clamp(16px, 3vw, 34px); }
+
+@media (max-width: 760px) {
+  .platform-header { gap: 14px; padding-left: 20px; padding-right: 20px; }
+  .platform-header-actions { gap: 12px; min-width: 0; }
+  .platform-header nav { gap: 12px; }
+  .platform-account-trigger { max-width: 31vw; padding-left: 11px; padding-right: 11px; }
+  .site-header { gap: 14px; padding-left: 20px; padding-right: 20px; }
+  .header-module-nav { justify-content: flex-end; min-width: 0; }
+  .header-context { max-width: min(34vw, 180px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .account-settings { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .platform-header nav { display: none; }
+  .platform-brand { font-size: 12px; }
+  .site-header .header-context { display: none; }
+  .platform-account-trigger { max-width: 42vw; }
+}
 .lmu-top-back { margin: 0 auto; max-width: 1120px; padding: 14px clamp(24px, 6vw, 76px) 0; width: 100%; }
 .lmu-top-back:has(+ .shell-main > .teammates-shell) { padding-left: 48px; padding-right: 48px; }
 .lmu-top-back:has(+ .shell-main > .skills-category) { padding-left: 0; padding-right: 0; }

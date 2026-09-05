@@ -5,6 +5,18 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const PARTICIPANT_COLUMNS = "id,auth_user_id,first_name,full_name,email,email_normalized,created_at,updated_at";
 
+export type PlatformAccount = { email: string; fullName: string; displayName: string };
+
+function accountFromUser(user: User, profileName?: string | null): PlatformAccount {
+  const metadataName = typeof user.user_metadata.full_name === "string" ? user.user_metadata.full_name.trim() : "";
+  const fullName = profileName?.trim() || metadataName;
+  return {
+    email: user.email ?? "",
+    fullName,
+    displayName: fullName || user.email?.split("@")[0] || "Account",
+  };
+}
+
 export async function getPlatformUser() {
   try {
     const supabase = await createServerSupabaseClient();
@@ -13,6 +25,22 @@ export async function getPlatformUser() {
   } catch {
     return null;
   }
+}
+
+export async function getPlatformAccount() {
+  const user = await getPlatformUser();
+  if (!user) return null;
+  try {
+    const admin = createAdminSupabaseClient();
+    const { data } = await admin.from("participants").select("full_name").eq("auth_user_id", user.id).maybeSingle();
+    return accountFromUser(user, data?.full_name);
+  } catch {
+    return accountFromUser(user);
+  }
+}
+
+export function platformAccountFromProfile(user: User, fullName?: string | null) {
+  return accountFromUser(user, fullName);
 }
 
 export async function ensurePlatformProfile(user: User, requestedFullName?: string) {

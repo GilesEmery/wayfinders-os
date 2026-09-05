@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LMULogo } from "./LMULogo";
+import { PlatformAccountControl } from "@/components/platform/PlatformAccountControl";
 
 interface LMUHeaderProps {
   context?: string;
@@ -15,6 +16,7 @@ export function LMUHeader({ context, theme = "light", onJourneyReturn }: LMUHead
       </Link>
       <div className="header-module-nav">
         {context && <p className="header-context">{context}</p>}
+        <PlatformAccountControl />
       </div>
     </header>
   );

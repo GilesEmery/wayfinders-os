@@ -3,14 +3,17 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import type { PlatformAccount } from "@/lib/platform/auth";
 
 type AuthMode = "signin" | "signup";
 type AuthContextValue = {
+  account: PlatformAccount | null;
   authenticated: boolean;
   openAuth: (destination?: string, mode?: AuthMode) => void;
   requireAuth: (destination: string) => void;
+  setAccount: (account: PlatformAccount) => void;
 };
-type ErrorPayload = { error?: string; code?: string };
+type ErrorPayload = { error?: string; code?: string; participant?: { full_name?: string | null; first_name: string; email: string } };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -18,10 +21,11 @@ function safeDestination(value: string | undefined, fallback: string) {
   return value?.startsWith("/") && !value.startsWith("//") ? value : fallback;
 }
 
-export function WayfindersAuthProvider({ children, initialAuthenticated }: { children: ReactNode; initialAuthenticated: boolean }) {
+export function WayfindersAuthProvider({ children, initialAccount }: { children: ReactNode; initialAccount: PlatformAccount | null }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [authenticated, setAuthenticated] = useState(initialAuthenticated);
+  const [account, setAccount] = useState(initialAccount);
+  const authenticated = Boolean(account);
   const [open, setOpen] = useState(false);
   const [required, setRequired] = useState(false);
   const [mode, setMode] = useState<AuthMode>("signin");
@@ -39,7 +43,13 @@ export function WayfindersAuthProvider({ children, initialAuthenticated }: { chi
     let supabase;
     try { supabase = createBrowserSupabaseClient(); } catch { return; }
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAuthenticated(Boolean(session?.user));
+      if (!session?.user) {
+        setAccount(null);
+        return;
+      }
+      void fetch("/api/account", { credentials: "same-origin", cache: "no-store" })
+        .then((response) => response.ok ? response.json() as Promise<PlatformAccount> : null)
+        .then((nextAccount) => { if (nextAccount) setAccount(nextAccount); });
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -96,7 +106,8 @@ export function WayfindersAuthProvider({ children, initialAuthenticated }: { chi
         setErrorCode(payload.code || "");
         return;
       }
-      setAuthenticated(true);
+      const name = payload.participant?.full_name?.trim() || payload.participant?.first_name || email.split("@")[0];
+      setAccount({ email: payload.participant?.email || email, fullName: payload.participant?.full_name || fullName, displayName: name });
       setRequired(false);
       setOpen(false);
       setPassword("");
@@ -110,7 +121,7 @@ export function WayfindersAuthProvider({ children, initialAuthenticated }: { chi
     }
   }
 
-  return <AuthContext.Provider value={{ authenticated, openAuth, requireAuth }}>
+  return <AuthContext.Provider value={{ account, authenticated, openAuth, requireAuth, setAccount }}>
     {children}
     {open && <div className="wayfinders-auth-backdrop" onMouseDown={(event) => {
       if (!required && event.target === event.currentTarget) setOpen(false);
