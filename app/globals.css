@@ -115,7 +115,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--lmu-orange); ou
 
 .platform-shell { background: var(--platform-cream); color: var(--platform-ink); display: flex; flex-direction: column; min-height: 100vh; }
 .platform-main { flex: 1; }
-.platform-header { align-items: center; border-bottom: 1px solid rgba(255,255,255,.13); background: var(--platform-charcoal); color: #fff; display: flex; height: 74px; justify-content: space-between; padding: 0 clamp(24px, 5vw, 72px); }
+.platform-header { align-items: center; border-bottom: 1px solid rgba(255,255,255,.13); background: var(--platform-charcoal); color: #fff; display: flex; height: 74px; justify-content: space-between; padding: 0 clamp(24px, 5vw, 72px); position: sticky; top: 0; z-index: 150; }
 .platform-brand { font-size: 15px; font-weight: 750; letter-spacing: .18em; text-transform: uppercase; }
 .platform-header nav { display: flex; gap: 28px; }
 .platform-header nav a { color: #d4d7d5; font-size: 10px; font-weight: 650; letter-spacing: .16em; text-transform: uppercase; }
@@ -188,7 +188,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--lmu-orange); ou
 .landing-page, .lmu-shell { min-height: 100vh; }
 .lmu-shell { display: flex; flex-direction: column; }
 .shell-main { flex: 1; }
-.site-header { align-items: center; background: var(--lmu-charcoal); color: var(--lmu-white); display: flex; height: 74px; justify-content: space-between; padding: 0 clamp(24px, 5vw, 72px); width: 100%; }
+.site-header { align-items: center; background: var(--lmu-charcoal); color: var(--lmu-white); display: flex; height: 74px; justify-content: space-between; padding: 0 clamp(24px, 5vw, 72px); position: sticky; top: 0; width: 100%; z-index: 150; }
 .wordmark { align-items: center; display: flex; min-height: 44px; }
 .lmu-logo { display: inline-flex; position: relative; }
 .lmu-logo img { display: block; height: auto; object-fit: contain; width: auto; }
