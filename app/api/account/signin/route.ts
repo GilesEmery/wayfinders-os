@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { ensureParticipantContext } from "@/lib/experiences/lmu/server/account";
+import { ensurePlatformProfile } from "@/lib/platform/auth";
 import { LMU_SESSION_COOKIE } from "@/lib/experiences/lmu/server/constants";
 import { PayloadError, apiError, readJsonObject } from "@/lib/experiences/lmu/server/http";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     const supabase = await createServerSupabaseClient();
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error || !data.user) return apiError("Email or password is incorrect.", 401);
-    const context = await ensureParticipantContext(data.user, fullName);
+    const context = await ensurePlatformProfile(data.user, fullName);
     if ("error" in context) {
       if (context.code === "full_name_required") {
         return NextResponse.json({ error: context.error, code: context.code, email: data.user.email }, { status: 409 });

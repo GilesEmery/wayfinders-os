@@ -59,7 +59,7 @@ export default async function ModulePage({ params }: PageProps<"/experiences/lif
   const moduleNumber = allModules.findIndex((item) => item.id === moduleDefinition.id) + 1;
 
   return (
-    <LMUShell context={moduleDefinition.shortTitle} theme="dark" journeyHref="/experiences/life-mapping-u/original">
+    <LMUShell context={moduleDefinition.shortTitle} theme="dark" journeyHref="/experiences/life-mapping-u/original/modules">
       <section className="module-layout">
         <div className="module-intro-panel"><ModuleHeader module={moduleDefinition} moduleNumber={moduleNumber} totalModules={allModules.length} /></div>
         <aside className="module-map-panel">

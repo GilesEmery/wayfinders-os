@@ -1,9 +1,22 @@
-import { ExperienceScreen } from "@/components/experiences/lmu/ExperienceScreen";
-import { getExperienceDefinition } from "@/lib/experiences/lmu/experience-config";
-import { notFound } from "next/navigation";
+import { LMUFooter } from "@/components/experiences/lmu/LMUFooter";
+import { LMUHeader } from "@/components/experiences/lmu/LMUHeader";
+import { MapAccent } from "@/components/experiences/lmu/MapAccent";
+import { ParticipantEntryForm } from "@/components/experiences/lmu/ParticipantEntryForm";
+import { SecondaryButton } from "@/components/experiences/lmu/SecondaryButton";
 
 export default function OriginalExperiencePage() {
-  const experience = getExperienceDefinition("original");
-  if (!experience) notFound();
-  return <ExperienceScreen experience={experience} />;
+  return <div className="landing-page lmu-front-door-page">
+    <LMUHeader context="Original experience" theme="dark" />
+    <main className="lmu-entry-layout">
+      <section className="lmu-front-door-copy">
+        <p className="eyebrow eyebrow-rule">Life Mapping U · Original</p>
+        <h1>Welcome to Life Mapping U</h1>
+        <p className="lmu-front-door-lede">Return to your module journey or begin the original Life Mapping U experience.</p>
+        <ParticipantEntryForm />
+        <SecondaryButton href="/experiences/life-mapping-u">Back</SecondaryButton>
+      </section>
+      <aside className="lmu-front-door-map" aria-hidden="true"><MapAccent density="tight" position="center" opacity={0.2} /></aside>
+    </main>
+    <LMUFooter />
+  </div>;
 }

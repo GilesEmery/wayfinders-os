@@ -15,7 +15,7 @@ export async function GET() {
     const context = await accountContext();
     if (!context) return apiError("No authenticated Wayfinders account.", 401);
     if ("error" in context) {
-      if (context.code === "full_name_required") {
+      if ("code" in context && context.code === "full_name_required") {
         return NextResponse.json({ error: context.error, code: context.code }, { status: 409 });
       }
       return apiError(context.error ?? "Unable to load your Wayfinders profile.", 500);

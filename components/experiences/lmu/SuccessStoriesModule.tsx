@@ -171,7 +171,7 @@ export function SuccessStoriesModule({ media }: { media?: Record<string, LMUInst
   function finishSection() {
     if (validStoryCount < SUCCESS_STORIES_MINIMUM || response.topThreeSelection?.finalStoryIds.length !== 3 || !response.topThreeSelection.finalizedAt) return;
     completeSuccessStories();
-    router.push("/experiences/life-mapping-u/original");
+    router.push("/experiences/life-mapping-u/original/modules");
   }
 
   function openTopThree() {
@@ -266,7 +266,7 @@ export function SuccessStoriesModule({ media }: { media?: Record<string, LMUInst
   const startOverControl = <ModuleStartOverControl experienceId={LMU_ORIGINAL_EXPERIENCE_ID} moduleHref="/experiences/life-mapping-u/module/success-stories" moduleId="success-stories" screen={screen} onBack={screen === "introduction" ? undefined : sectionBack} onBackToSections={preserveSuccessStoriesLocation} redo={topThreeRedo} />;
 
   return (
-    <LMUShell context="Success Stories" theme="dark" journeyHref="/experiences/life-mapping-u/original" onJourneyReturn={preserveSuccessStoriesLocation} onInternalBack={screen === "introduction" ? undefined : sectionBack}>
+    <LMUShell context="Success Stories" theme="dark" journeyHref="/experiences/life-mapping-u/original/modules" onJourneyReturn={preserveSuccessStoriesLocation} onInternalBack={screen === "introduction" ? undefined : sectionBack}>
       {screen === "introduction" && (
         <main className="success-intro">
           <section className="success-intro-copy">

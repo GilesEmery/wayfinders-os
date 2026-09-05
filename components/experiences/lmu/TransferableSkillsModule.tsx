@@ -177,7 +177,7 @@ export function TransferableSkillsModule({ media }: { media?: Record<string, LMU
   function finishSection() {
     const current = readTransferableSkillsResponse(storyIds);
     completeTransferableSkills(current);
-    router.push("/experiences/life-mapping-u/original");
+    router.push("/experiences/life-mapping-u/original/modules");
   }
 
   function redoSkillsNarrowing() {
@@ -198,7 +198,7 @@ export function TransferableSkillsModule({ media }: { media?: Record<string, LMU
   const skillsRedo = hasSkillsNarrowingWork && ["ranking", "review", "final"].includes(activeScreen) ? { label: "Redo Skills Narrowing", title: "Redo Skills Narrowing?", description: "This will erase the choices you made while narrowing and ranking your skills. The skills you identified from your Success Stories will remain, and you will begin the narrowing process again.", onConfirm: redoSkillsNarrowing } : undefined;
   const startOver = <ModuleStartOverControl experienceId={LMU_ORIGINAL_EXPERIENCE_ID} moduleId="transferable-skills" moduleHref="/experiences/life-mapping-u/module/transferable-skills" screen={activeScreen} onBack={handleBack} redo={skillsRedo} />;
 
-  return <LMUShell context="Transferable Skills" theme="dark" journeyHref="/experiences/life-mapping-u/original" onInternalBack={activeScreen === "introduction" ? undefined : handleBack}>
+  return <LMUShell context="Transferable Skills" theme="dark" journeyHref="/experiences/life-mapping-u/original/modules" onInternalBack={activeScreen === "introduction" ? undefined : handleBack}>
     {activeScreen === "introduction" && <main className="success-intro transferable-skills-intro">
       <section className="success-intro-copy transferable-skills-intro-copy">
         <p className="eyebrow eyebrow-rule">Transferable Skills</p>

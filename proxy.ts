@@ -5,4 +5,6 @@ export async function proxy(request: NextRequest) {
   return updateSupabaseSession(request);
 }
 
-export const config = { matcher: ["/admin/:path*", "/api/admin/:path*", "/api/account/:path*", "/api/lmu/:path*", "/experiences/life-mapping-u/:path*"] };
+export const config = {
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+};

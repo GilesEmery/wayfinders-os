@@ -25,7 +25,7 @@ export default function LifeMappingUChoosePage() {
           <div><span className="eyebrow">Coming Soon</span><h2>{emptyNesters.title}</h2><p>{emptyNesters.description}</p></div>
         </div>
       </section>
-      <SecondaryButton href="/experiences/life-mapping-u/start">Back</SecondaryButton>
+      <SecondaryButton href="/experiences/life-mapping-u">Back</SecondaryButton>
     </main>
     <LMUFooter />
   </div>;

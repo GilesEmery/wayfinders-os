@@ -10,7 +10,7 @@ interface LMUHeaderProps {
 export function LMUHeader({ context, theme = "light", onJourneyReturn }: LMUHeaderProps) {
   return (
     <header className={`site-header header-${theme}`}>
-      <Link className="wordmark" href="/experiences/life-mapping-u/original" aria-label="Life Mapping U — Back to Modules" onClick={onJourneyReturn}>
+      <Link className="wordmark" href="/experiences/life-mapping-u/original/modules" aria-label="Life Mapping U — Back to Modules" onClick={onJourneyReturn}>
         <LMULogo variant={theme === "dark" ? "wordmark-invert" : "mark"} priority />
       </Link>
       <div className="header-module-nav">

@@ -80,8 +80,8 @@ export function LifeMapPlaceholder({ module, printMode=false }: { module: LMUMod
     if(item.moduleId==="x-factor") return {...base,heading:"Top 4 X-Factors",items:xresults.map((entry,index)=>({primary:`${index+1}. ${entry.label}`,secondary:xFactorQuestionById.get(entry.questionId)?.title}))};
     const salaryPerspective=compensationPerspective(salary?.tradeoffScenarios??[]); return {...base,heading:"Salary Range & Compensation Perspective",items:[{primary:`Financial Floor: ${money(salary?.financialFloor)}`},{primary:`5-Year Goal: ${money(salary?.fiveYearGoal)}`},...(salary?.tradeoffVersion?[{primary:"Compensation Perspective",body:salaryPerspective.summary},...(salary.compensationReflection?[{primary:"What I Want to Remember",body:salary.compensationReflection}]:[])]:[]),...(salary?.futureFactors??[]).map((entry)=>({primary:entry.customLabel||entry.type,body:entry.note}))]};
   });
-  if(printMode)return <LMUShell context={module.shortTitle} theme="dark" journeyHref="/experiences/life-mapping-u/original"><LifeMapAssessmentReport foundation={foundation} ordered={ordered} isReady={isReady} preview={preview} detail={detail}/></LMUShell>;
-  return <LMUShell context={module.shortTitle} theme="dark" journeyHref="/experiences/life-mapping-u/original"><article className="life-map-report">
+  if(printMode)return <LMUShell context={module.shortTitle} theme="dark" journeyHref="/experiences/life-mapping-u/original/modules"><LifeMapAssessmentReport foundation={foundation} ordered={ordered} isReady={isReady} preview={preview} detail={detail}/></LMUShell>;
+  return <LMUShell context={module.shortTitle} theme="dark" journeyHref="/experiences/life-mapping-u/original/modules"><article className="life-map-report">
     <section className="life-map-synced-grid" ref={mapGridRef}>
       <div className="life-map-synced-map-bg"><MapAccent density="tight" position="center" opacity={.17}/></div>
       <svg aria-hidden="true" className="life-map-synced-trail" viewBox={`0 0 ${trail.width} ${trail.height}`}>
@@ -94,7 +94,7 @@ export function LifeMapPlaceholder({ module, printMode=false }: { module: LMUMod
         <p className="eyebrow eyebrow-rule">The Map You Discovered</p><LMULogo variant="mark"/>
         <h2>{rankingComplete?"Ordered by what matters most now.":"Your discoveries are taking shape."}</h2>
         <p>{rankingComplete?"Success Stories is your foundation. The eight areas that follow reflect your confirmed current priorities.":"Completed areas appear in discovery order until you confirm your Current Motivator Ranking."}</p>
-        <SecondaryButton href="/experiences/life-mapping-u/original">Return to your journey</SecondaryButton>
+        <SecondaryButton href="/experiences/life-mapping-u/original/modules">Return to your journey</SecondaryButton>
       </header>
       {mapSections.map((item,index)=>{
         const isFoundation=item.moduleId==="success-stories";

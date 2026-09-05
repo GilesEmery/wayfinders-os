@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LMUPersistenceHydrator } from "@/components/experiences/lmu/LMUPersistenceHydrator";
+import { PlatformAuthGate } from "@/components/platform/PlatformAuthGate";
 
 export const metadata: Metadata = {
   title: { default: "Life Mapping U", template: "%s | Life Mapping U" },
@@ -7,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function LifeMappingULayout({ children }: LayoutProps<"/experiences/life-mapping-u">) {
-  return <><LMUPersistenceHydrator />{children}</>;
+  return <><PlatformAuthGate /><LMUPersistenceHydrator />{children}</>;
 }

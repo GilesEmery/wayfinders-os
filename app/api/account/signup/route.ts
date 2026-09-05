@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { ensureParticipantContext } from "@/lib/experiences/lmu/server/account";
+import { ensurePlatformProfile } from "@/lib/platform/auth";
 import { LMU_SESSION_COOKIE } from "@/lib/experiences/lmu/server/constants";
 import { PayloadError, apiError, readJsonObject } from "@/lib/experiences/lmu/server/http";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -20,9 +20,11 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createServerSupabaseClient();
     const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } });
-    if (error) return apiError(error.message, 400);
+    const accountExists = error?.code === "user_already_exists" || /already registered|already exists/i.test(error?.message ?? "") || data.user?.identities?.length === 0;
+    if (accountExists) return NextResponse.json({ error: "An account already exists for this email. Sign in instead.", code: "account_exists" }, { status: 409 });
+    if (error) return apiError("Unable to create your Wayfinders account.", 400);
     if (!data.user || !data.session) return apiError("Your account was created but requires email confirmation. Turn Confirm Email off for this alpha flow.", 409);
-    const context = await ensureParticipantContext(data.user, fullName);
+    const context = await ensurePlatformProfile(data.user, fullName);
     if ("error" in context) return apiError(context.error ?? "Unable to create your Wayfinders profile.", 500);
     const response = NextResponse.json(context, { status: 201 });
     response.cookies.delete(LMU_SESSION_COOKIE);

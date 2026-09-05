@@ -3,8 +3,13 @@ import { LMUHeader } from "@/components/experiences/lmu/LMUHeader";
 import { LMUExperienceBadge } from "@/components/experiences/lmu/LMUExperienceBadge";
 import { MapAccent } from "@/components/experiences/lmu/MapAccent";
 import { PrimaryButton } from "@/components/experiences/lmu/PrimaryButton";
+import { getPlatformUser } from "@/lib/platform/auth";
+import { redirect } from "next/navigation";
 
-export default function LifeMappingUPage() {
+export default async function LifeMappingUPage() {
+  const user = await getPlatformUser();
+  if (user) redirect("/experiences/life-mapping-u/original");
+
   return (
     <div className="landing-page">
       <LMUHeader context="A guided discovery process" theme="dark" />
@@ -15,7 +20,7 @@ export default function LifeMappingUPage() {
             <h1>Map what matters.<br />Move toward what is next.</h1>
             <p className="hero-accent">Your story is already pointing somewhere.</p>
             <p className="hero-copy">Life Mapping U helps you recognize the patterns already present in your story, clarify what matters most, and make thoughtful decisions about what comes next.</p>
-            <PrimaryButton href="/experiences/life-mapping-u/start">Explore Life Mapping U</PrimaryButton>
+            <PrimaryButton href="/experiences/life-mapping-u/original">Explore Life Mapping U</PrimaryButton>
           </div>
           <div className="hero-map-panel">
             <MapAccent variant={1} position="center" opacity={0.24} />
