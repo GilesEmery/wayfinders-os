@@ -51,7 +51,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ q
         const person = participantsById.get(row.participant_id);
         const completedCount = completedSectionCount(progressByAssessment.get(row.id) ?? []);
         const progress = assessmentProgress(row.status, completedCount);
-        return <tr key={row.id}><td>{person?.first_name}</td><td>{person?.email}</td><td><strong>{progress}%</strong><small className="admin-progress-detail">{completedCount} of 10 sections</small></td><td><span className={`admin-status is-${row.status}`}>{humanize(row.status)}</span></td><td>{row.status === "completed" ? "—" : humanize(row.current_module)}</td><td>{formatDate(row.started_at)}</td><td>{formatDate(row.updated_at)}</td><td>{formatDate(row.completed_at)}</td><td><Link href={`/admin/life-mapping-u/${row.id}`}>{row.status === "completed" ? "View results" : "View progress"}</Link></td></tr>;
+        return <tr key={row.id}><td>{person?.first_name}</td><td>{person?.email}</td><td><strong>{progress}%</strong><small className="admin-progress-detail">{completedCount} of 10 sections</small></td><td><span className={`admin-status is-${row.status}`}>{humanize(row.status)}</span></td><td>{row.status === "completed" ? "—" : humanize(row.current_module)}</td><td>{formatDate(row.started_at)}</td><td>{formatDate(row.updated_at)}</td><td>{formatDate(row.completed_at)}</td><td><Link href={`/admin/assessments/life-mapping-u/${row.id}`}>{row.status === "completed" ? "View results" : "View progress"}</Link></td></tr>;
       })}
       {!data.length && <tr><td colSpan={9}>No assessments match this view.</td></tr>}
     </tbody></table></div>

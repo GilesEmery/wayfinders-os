@@ -20,7 +20,7 @@ export function AdminAuthForm({ mode }: { mode: Mode }) {
     router.push(mode === "setup" ? "/admin/login?setup=complete" : "/admin"); router.refresh();
   }
   const title = { login: "Admin sign in", setup: "Set up admin account", reset: "Choose a new password" }[mode];
-  return <main className="admin-auth-page"><section className="admin-auth-panel"><p className="admin-kicker">Wayfinders OS</p><h1>{title}</h1><p className="admin-auth-intro">Secure access for authorized Wayfinders administrators.</p><form onSubmit={submit} className="admin-form">
+  return <main className="admin-auth-page"><section className="admin-auth-panel"><p className="admin-kicker">Purpose OS</p><h1>{title}</h1><p className="admin-auth-intro">Secure access for authorized Wayfinders administrators.</p><form onSubmit={submit} className="admin-form">
     {mode !== "reset" && <label>Email Address<input name="email" type="email" required autoComplete="email" /></label>}
     <label>Password<input name="password" type="password" minLength={8} required autoComplete={mode === "login" ? "current-password" : "new-password"} /></label>
     {(mode === "setup" || mode === "reset") && <label>Confirm Password<input name="confirmPassword" type="password" minLength={8} required autoComplete="new-password" /></label>}

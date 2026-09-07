@@ -32,6 +32,7 @@ export function PlatformAccountControl() {
       <span>{account.displayName}</span>
     </button>
     {open && <div className="platform-account-menu" role="menu">
+      {account.isAdmin && <Link href="/admin" onClick={() => setOpen(false)} role="menuitem">Admin</Link>}
       <Link href="/account" onClick={() => setOpen(false)} role="menuitem">Account</Link>
       <form action="/api/account/logout" method="post"><button role="menuitem" type="submit">Log Out</button></form>
     </div>}

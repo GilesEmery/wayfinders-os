@@ -7,6 +7,7 @@ import type { Json } from "@/lib/supabase/database.types";
 export type AdminIdentity = {
   id: string;
   email: string;
+  displayName?: string | null;
   role: "super_admin" | "admin";
   memberId: string;
 };
@@ -27,9 +28,15 @@ export async function getAdmin(): Promise<AdminIdentity | null> {
     .maybeSingle();
   if (!member || (member.role !== "admin" && member.role !== "super_admin"))
     return null;
+  const { data: participant } = await admin
+    .from("participants")
+    .select("full_name,first_name")
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
   return {
     id: user.id,
     email: member.email_normalized,
+    displayName: participant?.full_name ?? participant?.first_name ?? null,
     role: member.role,
     memberId: member.id,
   };

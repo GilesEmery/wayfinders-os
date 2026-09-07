@@ -76,7 +76,7 @@ export function ParticipantEntryForm() {
     <form className="lmu-entry-form" noValidate onSubmit={finishProfile}>
       <p className="eyebrow">Finish Profile Setup</p>
       <h2>What is your full name?</h2>
-      <p className="lmu-account-help">Add your name once to connect this experience to your Wayfinders OS profile.</p>
+      <p className="lmu-account-help">Add your name once to connect this experience to your Purpose OS profile.</p>
       <div><label htmlFor="wayfinders-profile-full-name">Full Name</label><input id="wayfinders-profile-full-name" autoComplete="name" autoFocus maxLength={160} required value={fullName} onChange={(event) => setFullName(event.target.value)} /></div>
       {error && <p className="lmu-field-error" role="alert">{error}</p>}
       <button className="button button-primary" disabled={submitting} type="submit"><span>{submitting ? "Please wait…" : "Continue"}</span><span aria-hidden="true">→</span></button>

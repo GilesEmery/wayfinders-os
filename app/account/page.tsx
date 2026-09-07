@@ -10,7 +10,7 @@ export default async function AccountPage() {
   const account = await getPlatformAccount();
   return <PlatformShell>
     {!account ? <PlatformAuthGate /> : <section className="account-page">
-      <header><p className="platform-eyebrow">Wayfinders OS</p><h1>Account</h1><p>Manage the profile and security attached to your Wayfinders identity.</p></header>
+      <header><p className="platform-eyebrow">Purpose OS</p><h1>Account</h1><p>Manage the profile and security attached to your global Wayfinder identity.</p></header>
       <AccountSettings account={account} />
     </section>}
   </PlatformShell>;

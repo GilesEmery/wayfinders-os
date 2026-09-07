@@ -107,7 +107,9 @@ export function WayfindersAuthProvider({ children, initialAccount }: { children:
         return;
       }
       const name = payload.participant?.full_name?.trim() || payload.participant?.first_name || email.split("@")[0];
-      setAccount({ email: payload.participant?.email || email, fullName: payload.participant?.full_name || fullName, displayName: name });
+      const accountResponse = await fetch("/api/account", { credentials: "same-origin", cache: "no-store" });
+      const refreshedAccount = accountResponse.ok ? await accountResponse.json() as PlatformAccount : null;
+      setAccount(refreshedAccount ?? { email: payload.participant?.email || email, fullName: payload.participant?.full_name || fullName, displayName: name, isAdmin: false });
       setRequired(false);
       setOpen(false);
       setPassword("");
@@ -115,7 +117,7 @@ export function WayfindersAuthProvider({ children, initialAccount }: { children:
       if (destination !== pathname) router.push(destination);
       else router.refresh();
     } catch {
-      setError("Unable to reach Wayfinders OS. Check your connection and try again.");
+      setError("Unable to reach Purpose OS. Check your connection and try again.");
     } finally {
       setSubmitting(false);
     }
@@ -128,7 +130,7 @@ export function WayfindersAuthProvider({ children, initialAccount }: { children:
     }} onKeyDown={(event) => { if (!required && event.key === "Escape") setOpen(false); }}>
       <section aria-labelledby="wayfinders-auth-title" aria-modal="true" className="wayfinders-auth-modal" role="dialog">
         {!required && <button aria-label="Close authentication dialog" className="wayfinders-auth-close" onClick={() => setOpen(false)} type="button">×</button>}
-        <p className="wayfinders-auth-brand">Wayfinders OS</p>
+        <p className="wayfinders-auth-brand">Purpose OS <span>by Wayfinders</span></p>
         <div className="wayfinders-auth-tabs" role="tablist" aria-label="Account access">
           <button aria-selected={mode === "signin"} onClick={() => switchMode("signin")} role="tab" type="button">Sign In</button>
           <button aria-selected={mode === "signup"} onClick={() => switchMode("signup")} role="tab" type="button">Create Account</button>

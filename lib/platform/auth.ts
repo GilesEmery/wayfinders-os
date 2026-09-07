@@ -5,15 +5,16 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const PARTICIPANT_COLUMNS = "id,auth_user_id,first_name,full_name,email,email_normalized,created_at,updated_at";
 
-export type PlatformAccount = { email: string; fullName: string; displayName: string };
+export type PlatformAccount = { email: string; fullName: string; displayName: string; isAdmin: boolean };
 
-function accountFromUser(user: User, profileName?: string | null): PlatformAccount {
+function accountFromUser(user: User, profileName?: string | null, isAdmin = false): PlatformAccount {
   const metadataName = typeof user.user_metadata.full_name === "string" ? user.user_metadata.full_name.trim() : "";
   const fullName = profileName?.trim() || metadataName;
   return {
     email: user.email ?? "",
     fullName,
     displayName: fullName || user.email?.split("@")[0] || "Account",
+    isAdmin,
   };
 }
 
@@ -32,15 +33,29 @@ export async function getPlatformAccount() {
   if (!user) return null;
   try {
     const admin = createAdminSupabaseClient();
-    const { data } = await admin.from("participants").select("full_name").eq("auth_user_id", user.id).maybeSingle();
-    return accountFromUser(user, data?.full_name);
+    const [{ data: profile }, { data: member }] = await Promise.all([
+      admin.from("participants").select("full_name").eq("auth_user_id", user.id).maybeSingle(),
+      admin.from("admin_members").select("id").eq("auth_user_id", user.id).eq("status", "active").in("role", ["admin", "super_admin"]).maybeSingle(),
+    ]);
+    return accountFromUser(user, profile?.full_name, Boolean(member));
   } catch {
     return accountFromUser(user);
   }
 }
 
-export function platformAccountFromProfile(user: User, fullName?: string | null) {
-  return accountFromUser(user, fullName);
+export async function hasPlatformAdminAccess(authUserId: string) {
+  const { data } = await createAdminSupabaseClient()
+    .from("admin_members")
+    .select("id")
+    .eq("auth_user_id", authUserId)
+    .eq("status", "active")
+    .in("role", ["admin", "super_admin"])
+    .maybeSingle();
+  return Boolean(data);
+}
+
+export function platformAccountFromProfile(user: User, fullName?: string | null, isAdmin = false) {
+  return accountFromUser(user, fullName, isAdmin);
 }
 
 export async function ensurePlatformProfile(user: User, requestedFullName?: string) {
