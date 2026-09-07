@@ -1,2 +1,8 @@
-import Link from "next/link"; import { AdminEmptyState, AdminPageHeader, AdminShell } from "@/components/admin/AdminShell"; import { requireAdmin } from "@/lib/admin/auth";
-export default async function Page(){const admin=await requireAdmin();return <AdminShell admin={admin}><AdminPageHeader eyebrow="Wayfinders" title="Create Wayfinder" description="Creation will use the shared Purpose OS identity, not an experience-specific account."/><AdminEmptyState title="Invitation workflow coming next" description="Creating a production identity requires an approved invitation and role/scope workflow. This screen remains intentionally non-mutating." action={<Link className="admin-secondary-link" href="/admin/users">Return to Wayfinders</Link>}/></AdminShell>}
+import { AdminPageHeader, AdminShell } from "@/components/admin/AdminShell";
+import { CreateWayfinderForm } from "@/components/admin/CreateWayfinderForm";
+import { requireAdmin } from "@/lib/admin/auth";
+
+export default async function Page() {
+  const admin = await requireAdmin();
+  return <AdminShell admin={admin}><AdminPageHeader eyebrow="Wayfinders" title="Create Wayfinder" description="Create the shared Purpose OS identity first. Additional access and journey relationships remain additive and separate."/><CreateWayfinderForm /></AdminShell>;
+}

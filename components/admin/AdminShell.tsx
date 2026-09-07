@@ -9,7 +9,8 @@ import type { AdminIdentity } from "@/lib/admin/auth";
 
 const groups = [
   { label: null, items: [{ label: "Dashboard", href: "/admin", icon: LayoutDashboard }] },
-  { label: "Wayfinders", items: [{ label: "Wayfinders", href: "/admin/users", icon: Users }, { label: "Organizations & Hubs", href: "/admin/organizations", icon: Building2 }] },
+  { label: "Wayfinders", items: [{ label: "Wayfinders", href: "/admin/users", icon: Users }] },
+  { label: "Communities", items: [{ label: "Hubs", href: "/admin/hubs", icon: Building2 }, { label: "Partners", href: "/admin/partners", icon: Building2 }] },
   { label: "Experiences", items: [{ label: "Assessments", href: "/admin/assessments", icon: ClipboardCheck }, { label: "Trainings", href: "/admin/trainings", icon: BookOpen }, { label: "Resources", href: "/admin/resources", icon: FileBox }] },
   { label: "Engagement", items: [{ label: "Events", href: "/admin/events", icon: CalendarDays }, { label: "Communications", href: "/admin/communications", icon: Mail }, { label: "Messages", href: "/admin/messages", icon: MessageSquare }, { label: "Notifications", href: "/admin/notifications", icon: Bell }] },
   { label: "Insights", items: [{ label: "Analytics", href: "/admin/analytics", icon: BarChart3 }] },

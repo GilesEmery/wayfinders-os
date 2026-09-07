@@ -40,7 +40,7 @@ export type Database = {
         id: string; organization_id: string; participant_id: string; membership_role: string; status: string; joined_at: string | null; created_at: string; updated_at: string
       }, "organization_id" | "participant_id">
       hubs: FoundationTable<{
-        id: string; organization_id: string | null; slug: string; name: string; description: string | null; status: string; location: Json; created_at: string; updated_at: string
+        id: string; organization_id: string | null; slug: string; name: string; description: string | null; status: string; membership_mode: string; location: Json; created_at: string; updated_at: string
       }, "slug" | "name">
       hub_memberships: FoundationTable<{
         id: string; hub_id: string; participant_id: string; membership_role: string; status: string; joined_at: string | null; created_at: string; updated_at: string
@@ -93,6 +93,21 @@ export type Database = {
       participant_responses: FoundationTable<{
         id: string; participant_id: string; enrollment_id: string; experience_version_id: string; response_definition_id: string; response_data: Json; status: string; finalized_at: string | null; created_at: string; updated_at: string
       }, "participant_id" | "enrollment_id" | "experience_version_id" | "response_definition_id">
+      tags: FoundationTable<{
+        id: string; slug: string; name: string; description: string | null; category: string; status: string; created_at: string; updated_at: string
+      }, "slug" | "name">
+      participant_tags: FoundationTable<{
+        participant_id: string; tag_id: string; assigned_by: string | null; created_at: string
+      }, "participant_id" | "tag_id">
+      participant_preferences: FoundationTable<{
+        participant_id: string; default_hub_id: string | null; created_at: string; updated_at: string
+      }, "participant_id">
+      experience_offerings: FoundationTable<{
+        id: string; experience_id: string; experience_version_id: string | null; hub_id: string | null; cohort_id: string | null; name: string; slug: string; status: string; visibility: string; access_mode: string; is_default: boolean; starts_at: string | null; ends_at: string | null; settings: Json; created_by: string | null; created_at: string; updated_at: string
+      }, "experience_id" | "name" | "slug">
+      participant_offering_assignments: FoundationTable<{
+        id: string; participant_id: string; offering_id: string; source_type: string; source_id: string | null; status: string; starts_at: string; expires_at: string | null; assigned_by: string | null; created_at: string; updated_at: string
+      }, "participant_id" | "offering_id">
       lmu_assessments: {
         Row: {
           assessment_version: string
