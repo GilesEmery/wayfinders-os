@@ -83,14 +83,15 @@ export async function ensurePlatformProfile(user: User, requestedFullName?: stri
       .eq("email_normalized", email)
       .is("auth_user_id", null)
       .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
+      .limit(2);
     if (legacy.error) return { error: "Unable to load your Wayfinders profile." } as const;
-    if (legacy.data) {
+    // Only claim a clear one-to-one email match. Ambiguous duplicate records are
+    // left for the future Merge Wayfinders workflow instead of choosing arbitrarily.
+    if (legacy.data?.length === 1) {
       const linked = await admin
         .from("participants")
         .update({ auth_user_id: user.id, email: user.email, email_normalized: email })
-        .eq("id", legacy.data.id)
+        .eq("id", legacy.data[0].id)
         .is("auth_user_id", null)
         .select(PARTICIPANT_COLUMNS)
         .maybeSingle();

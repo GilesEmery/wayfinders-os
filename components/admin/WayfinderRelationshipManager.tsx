@@ -1,30 +1,24 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 
 type Option = { id: string; name: string };
 type Existing = { kind: "organization" | "hub" | "cohort" | "tag"; targetId: string; name: string; role: string };
+type Kind = Existing["kind"];
 
-export function WayfinderRelationshipManager({ participantId, organizations, hubs, cohorts, tags, existing }: { participantId: string; organizations: Option[]; hubs: Option[]; cohorts: Option[]; tags: Option[]; existing: Existing[] }) {
-  const router = useRouter(); const [busy, setBusy] = useState(false); const [message, setMessage] = useState("");
-  async function send(body: Record<string, string>) {
-    setBusy(true); setMessage("");
-    const response = await fetch(`/api/admin/wayfinders/${participantId}/relationships`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-    const payload = await response.json().catch(() => ({})) as { error?: string };
-    setBusy(false); setMessage(response.ok ? "Relationship updated." : payload.error ?? "Unable to update relationship.");
-    if (response.ok) router.refresh();
-  }
-  function submit(kind: Existing["kind"]) { return (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); const data = new FormData(event.currentTarget); void send({ kind, targetId: String(data.get("targetId") ?? ""), role: String(data.get("role") ?? "member"), operation: "assign" }); }; }
-  const groups: Array<{ kind: Existing["kind"]; label: string; options: Option[]; roles: Array<[string, string]> }> = [
-    { kind: "organization", label: "Organization", options: organizations, roles: [["member", "Member"], ["leader", "Leader"], ["organization_admin", "Organization Admin"]] },
-    { kind: "hub", label: "Hub", options: hubs, roles: [["member", "Member"], ["hub_leader", "Hub Leader"]] },
-    { kind: "cohort", label: "Cohort", options: cohorts, roles: [["participant", "Participant"], ["facilitator", "Facilitator"]] },
-    { kind: "tag", label: "Journey Classification", options: tags, roles: [["classification", "Classification"]] },
-  ];
+function RelationshipSelector({ label, options, onSelect, disabled }: { label: string; options: Option[]; onSelect: (id: string) => void; disabled: boolean }) {
+  const listId = useId(); const [value, setValue] = useState("");
+  return <div className="crm-relationship-search"><label>{label}<input disabled={disabled} list={listId} onChange={(event) => setValue(event.target.value)} placeholder={`Search ${label.toLowerCase()}…`} value={value}/></label><datalist id={listId}>{options.map((option) => <option key={option.id} value={option.name}/>)}</datalist><button className="admin-primary" disabled={disabled || !options.some((option) => option.name === value)} onClick={() => { const option = options.find((item) => item.name === value); if (option) { onSelect(option.id); setValue(""); } }} type="button">Add</button></div>;
+}
+
+export function WayfinderRelationshipManager({ participantId, organizations, hubs, cohorts, tags, existing, defaultHubId, canManageLeadership }: { participantId: string; organizations: Option[]; hubs: Option[]; cohorts: Option[]; tags: Option[]; existing: Existing[]; defaultHubId?: string | null; canManageLeadership: boolean }) {
+  const router = useRouter(); const [busy, setBusy] = useState(false); const [message, setMessage] = useState(""); const [roles, setRoles] = useState<Record<Kind, string>>({ organization: "member", hub: "member", cohort: "participant", tag: "classification" });
+  async function send(body: Record<string, string>) { setBusy(true); setMessage(""); try { const response = await fetch(`/api/admin/wayfinders/${participantId}/relationships`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }); const payload = await response.json().catch(() => ({})) as { error?: string }; if (!response.ok) throw new Error(payload.error ?? "Unable to update relationship."); setMessage("Relationship updated."); router.refresh(); } catch (error) { setMessage(error instanceof Error ? error.message : "Unable to update relationship."); } finally { setBusy(false); } }
+  const groups: Array<{ kind: Kind; label: string; options: Option[]; roleOptions: Array<[string, string]> }> = [{ kind: "hub", label: "Hub membership", options: hubs, roleOptions: canManageLeadership ? [["member", "Member"], ["hub_leader", "Hub Leader capacity"]] : [["member", "Member"]] }, { kind: "cohort", label: "Cohort", options: cohorts, roleOptions: canManageLeadership ? [["participant", "Participant"], ["facilitator", "Facilitator capacity"]] : [["participant", "Participant"]] }, { kind: "organization", label: "Partner relationship", options: organizations, roleOptions: canManageLeadership ? [["member", "Member"], ["leader", "Leader"], ["organization_admin", "Organization Admin capacity"]] : [["member", "Member"], ["leader", "Leader"]] }, { kind: "tag", label: "Classification", options: tags, roleOptions: [["classification", "Classification"]] }];
   return <div className="admin-relationship-manager">
-    <div className="admin-relationship-list">{existing.length ? existing.map((item) => <div className="admin-record-row" key={`${item.kind}-${item.targetId}-${item.role}`}><div><strong>{item.name}</strong><span>{item.kind} · {item.role.replaceAll("_", " ")}</span></div><button className="admin-text-button" disabled={busy} onClick={() => void send({ kind: item.kind, targetId: item.targetId, role: item.role, operation: "remove" })} type="button">Remove</button></div>) : <p>No communities or journey classifications assigned.</p>}</div>
-    <div className="admin-relationship-forms">{groups.map((group) => <form key={group.kind} onSubmit={submit(group.kind)}><strong>Add {group.label}</strong><select name="targetId" required defaultValue=""><option disabled value="">Choose {group.label}</option>{group.options.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}</select>{group.kind !== "tag" && <select name="role">{group.roles.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>}<button className="admin-primary" disabled={busy || !group.options.length}>Add</button></form>)}</div>
+    <div className="crm-relationship-groups">{groups.map((group) => { const current = existing.filter((item) => item.kind === group.kind); return <article key={group.kind}><header><div><h3>{group.label}</h3><span>{current.length} current</span></div>{group.kind !== "tag" && <select aria-label={`${group.label} capacity`} disabled={busy} onChange={(event) => setRoles((value) => ({ ...value, [group.kind]: event.target.value }))} value={roles[group.kind]}>{group.roleOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>}</header><div>{current.map((item) => <div className="admin-record-row" key={`${item.targetId}-${item.role}`}><div><strong>{item.name}</strong><span>{item.role.replaceAll("_", " ")}</span></div><button className="admin-text-button" disabled={busy} onClick={() => void send({ kind: item.kind, targetId: item.targetId, role: item.role, operation: "remove" })} type="button">Remove</button></div>)}{!current.length && <p>No current {group.label.toLowerCase()} records.</p>}</div><RelationshipSelector disabled={busy} label={group.label} options={group.options.filter((option) => !current.some((item) => item.targetId === option.id))} onSelect={(targetId) => void send({ kind: group.kind, targetId, role: roles[group.kind], operation: "assign" })}/></article>; })}</div>
+    <form className="crm-default-hub" onSubmit={(event: FormEvent<HTMLFormElement>) => { event.preventDefault(); const form = new FormData(event.currentTarget); void send({ kind: "default_hub", targetId: String(form.get("targetId") ?? ""), role: "context", operation: "assign" }); }}><div><strong>Default Hub</strong><span>Context preference only—never authorization.</span></div><select defaultValue={defaultHubId ?? ""} name="targetId"><option value="">No default Hub</option>{hubs.filter((hub) => existing.some((item) => item.kind === "hub" && item.targetId === hub.id)).map((hub) => <option key={hub.id} value={hub.id}>{hub.name}</option>)}</select><button className="admin-primary" disabled={busy}>Save</button></form>
     {message && <p className="admin-form-message" role="status">{message}</p>}
   </div>;
 }

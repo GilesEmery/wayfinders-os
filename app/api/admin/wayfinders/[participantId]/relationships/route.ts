@@ -3,7 +3,7 @@ import { audit, getAdmin } from "@/lib/admin/auth";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { PayloadError, apiError, readJsonObject } from "@/lib/experiences/lmu/server/http";
 
-const kinds = ["organization", "hub", "cohort", "tag"] as const;
+const kinds = ["organization", "hub", "cohort", "tag", "default_hub"] as const;
 type Kind = typeof kinds[number];
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ participantId: string }> }) {
@@ -16,7 +16,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const targetId = typeof body.targetId === "string" ? body.targetId : "";
     const operation = body.operation === "remove" ? "remove" : "assign";
     const requestedRole = typeof body.role === "string" ? body.role : "member";
-    if (!kind || !targetId) return apiError("Choose a valid relationship.", 400);
+    if (!kind || (!targetId && kind !== "default_hub")) return apiError("Choose a valid relationship.", 400);
+    if (["hub_leader", "facilitator", "organization_admin"].includes(requestedRole) && identity.role !== "super_admin") return apiError("Super Admin access is required to manage leadership authorization.", 403);
 
     const db = createAdminSupabaseClient();
     const { data: participant } = await db.from("participants").select("id,auth_user_id").eq("id", participantId).maybeSingle();
@@ -36,7 +37,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
     if (kind === "hub") {
       const role = requestedRole === "hub_leader" ? "hub_leader" : "member";
-      if (operation === "remove") await db.from("hub_memberships").delete().eq("participant_id", participantId).eq("hub_id", targetId);
+      if (operation === "remove") {
+        await db.from("hub_memberships").delete().eq("participant_id", participantId).eq("hub_id", targetId);
+        await db.from("participant_preferences").update({ default_hub_id: null }).eq("participant_id", participantId).eq("default_hub_id", targetId);
+      }
       else await db.from("hub_memberships").upsert({ participant_id: participantId, hub_id: targetId, membership_role: role, status: "active", joined_at: new Date().toISOString() }, { onConflict: "hub_id,participant_id" });
       if (participant.auth_user_id) {
         if (operation === "remove" || role !== "hub_leader") await db.from("platform_role_assignments").delete().eq("auth_user_id", participant.auth_user_id).eq("role", "hub_leader").eq("scope_type", "hub").eq("scope_id", targetId);
@@ -61,6 +65,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (kind === "tag") {
       if (operation === "remove") await db.from("participant_tags").delete().eq("participant_id", participantId).eq("tag_id", targetId);
       else await db.from("participant_tags").upsert({ participant_id: participantId, tag_id: targetId, assigned_by: identity.id }, { onConflict: "participant_id,tag_id" });
+    }
+    if (kind === "default_hub") {
+      if (targetId) {
+        const { data: membership } = await db.from("hub_memberships").select("id").eq("participant_id", participantId).eq("hub_id", targetId).eq("status", "active").maybeSingle();
+        if (!membership) return apiError("The default Hub must be an active Hub membership.", 400);
+      }
+      const { error } = await db.from("participant_preferences").upsert({ participant_id: participantId, default_hub_id: targetId || null }, { onConflict: "participant_id" });
+      if (error) return apiError("Unable to update the default Hub.", 400);
     }
 
     await audit(identity, `${operation === "remove" ? "removed" : "assigned"}_wayfinder_${kind}`, "participant", participantId, { target_id: targetId, role: requestedRole });

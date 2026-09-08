@@ -108,6 +108,15 @@ export type Database = {
       participant_offering_assignments: FoundationTable<{
         id: string; participant_id: string; offering_id: string; source_type: string; source_id: string | null; status: string; starts_at: string; expires_at: string | null; assigned_by: string | null; created_at: string; updated_at: string
       }, "participant_id" | "offering_id">
+      crm_notes: FoundationTable<{
+        id: string; participant_id: string | null; organization_id: string | null; hub_id: string | null; body: string; visibility: string; created_by: string | null; created_at: string; updated_at: string
+      }, "body">
+      crm_imports: FoundationTable<{
+        id: string; import_type: string; file_name: string; status: string; column_mapping: Json; row_count: number; result_summary: Json; created_by: string; confirmed_at: string | null; completed_at: string | null; created_at: string; updated_at: string
+      }, "file_name" | "column_mapping" | "row_count" | "created_by">
+      crm_import_rows: FoundationTable<{
+        id: string; import_id: string; row_number: number; source_data: Json; first_name: string | null; last_name: string | null; email: string | null; email_normalized: string | null; classification: string; existing_participant_id: string | null; issue: string | null; selected: boolean; outcome: string; created_participant_id: string | null; error_detail: string | null; created_at: string; updated_at: string
+      }, "import_id" | "row_number" | "source_data" | "classification">
       lmu_assessments: {
         Row: {
           assessment_version: string
@@ -325,6 +334,13 @@ export type Database = {
           email_normalized: string
           first_name: string
           full_name: string | null
+          preferred_name: string | null
+          phone: string | null
+          city: string | null
+          state_region: string | null
+          country: string | null
+          timezone: string | null
+          short_bio: string | null
           id: string
           updated_at: string
         }
@@ -335,6 +351,13 @@ export type Database = {
           email_normalized: string
           first_name: string
           full_name?: string | null
+          preferred_name?: string | null
+          phone?: string | null
+          city?: string | null
+          state_region?: string | null
+          country?: string | null
+          timezone?: string | null
+          short_bio?: string | null
           id?: string
           updated_at?: string
         }
@@ -345,6 +368,13 @@ export type Database = {
           email_normalized?: string
           first_name?: string
           full_name?: string | null
+          preferred_name?: string | null
+          phone?: string | null
+          city?: string | null
+          state_region?: string | null
+          country?: string | null
+          timezone?: string | null
+          short_bio?: string | null
           id?: string
           updated_at?: string
         }
