@@ -40,7 +40,7 @@ export default async function DashboardPage() {
   const continueLmuHref = latestLmu?.status === "completed" ? "/experiences/life-mapping-u/module/your-life-map" : currentLmuModule ? `/experiences/life-mapping-u/module/${currentLmuModule}` : "/experiences/life-mapping-u/original/modules";
   const hubById = new Map(data.hubs.map((hub) => [hub.id, hub]));
   const ledHubs = data.roles.filter((role) => role.role === "hub_leader" && role.scope_type === "hub" && role.scope_id).flatMap((role) => { const hub = hubById.get(role.scope_id!); return hub ? [hub] : []; });
-  const adminRole = data.adminAccess?.role === "admin" || data.adminAccess?.role === "super_admin" ? data.adminAccess.role : null;
+  const adminRole = data.capabilities.globalRole;
   const navigation = buildDashboardNavigation({
     hasAssessments: Boolean(latestLmu),
     hasTrainings: trainings.length > 0,
@@ -50,7 +50,7 @@ export default async function DashboardPage() {
     ledHubs,
   });
 
-  return <PlatformShell><div className="purpose-dashboard-layout"><DashboardNavigation groups={navigation} showAdminDashboard={Boolean(adminRole)}/><div className="wayfinder-dashboard" id="overview">
+  return <PlatformShell><div className="purpose-dashboard-layout"><DashboardNavigation groups={navigation}/><div className="wayfinder-dashboard" id="overview">
     <header className="dashboard-welcome"><p className="platform-eyebrow">My Journey</p><h1>Welcome back, {name}</h1><p>Your Purpose OS journey home—what is active, what you have completed, and where you can continue.</p></header>
     <section className="dashboard-summary" aria-label="Journey summary">
       <div><span>Active experiences</span><strong>{activeJourney.length + (latestLmu?.status === "in_progress" ? 1 : 0)}</strong></div>
@@ -75,6 +75,6 @@ export default async function DashboardPage() {
       <section className="dashboard-section"><header><h2>My Purpose Profile</h2></header><div className="dashboard-profile"><strong>{name}</strong><span>Wayfinder</span><span>{data.participant.email}</span>{data.tags.map((tag) => <span key={tag.id}>{tag.name}</span>)}</div><Link className="dashboard-text-link" href="/account">Manage Account →</Link></section>
     </div>
     <section className="dashboard-section dashboard-recommendations"><header><h2>Recommended Next Steps</h2></header><p className="dashboard-empty">Personalized pathway recommendations are being thoughtfully developed. Nothing will be recommended until Purpose OS has enough real journey context to make it useful.</p></section>
-    {adminRole && <section className="dashboard-section dashboard-workspaces"><header><p>Operational access</p><h2>Your Responsibilities</h2></header><article className="dashboard-access-card"><div><span>{adminRole === "super_admin" ? "Super Admin" : "Admin"}</span><h3>Purpose OS Operations</h3><p>Review network operations and open the secure workspaces where your administrative tasks, notices, and responsibilities will gather as those systems come online.</p></div><Link href="/admin">Open Operations →</Link></article></section>}
+    {adminRole && data.networkOverview && <section className="dashboard-section dashboard-workspaces"><header><p>What I am responsible for</p><h2>Network Overview</h2></header><div className="dashboard-network-summary"><Link href="/admin/users"><span>Wayfinders</span><strong>{data.networkOverview.wayfinders}</strong></Link><Link href="/admin/hubs"><span>Active Hubs</span><strong>{data.networkOverview.activeHubs}</strong></Link><Link href="/admin/partners"><span>Partners</span><strong>{data.networkOverview.partners}</strong></Link></div>{data.networkOverview.recentActivity.length > 0 && <div className="dashboard-operational-activity"><h3>Recent operational activity</h3><ul className="dashboard-activity">{data.networkOverview.recentActivity.map((item) => <li key={item.id}><span>{titleCase(item.action)}</span><time dateTime={item.created_at}>{new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(new Date(item.created_at))}</time></li>)}</ul></div>}<article className="dashboard-access-card"><div><span>{adminRole === "super_admin" ? "Super Admin" : "Admin"}</span><h3>Purpose OS Operations</h3><p>Open the secure operational workspaces linked in your sidebar. Your personal journey remains your dashboard’s first priority.</p></div><Link href="/admin">Open Operations →</Link></article></section>}
   </div></div></PlatformShell>;
 }

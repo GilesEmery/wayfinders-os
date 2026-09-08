@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { audit, getAdmin } from "@/lib/admin/auth";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { PayloadError, apiError, readJsonObject } from "@/lib/experiences/lmu/server/http";
+import { assertCanMutateRole, RoleAuthorizationError, type ManagedRole } from "@/lib/admin/role-authorization";
 
 const kinds = ["organization", "hub", "cohort", "tag", "default_hub"] as const;
 type Kind = typeof kinds[number];
@@ -17,11 +18,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const operation = body.operation === "remove" ? "remove" : "assign";
     const requestedRole = typeof body.role === "string" ? body.role : "member";
     if (!kind || (!targetId && kind !== "default_hub")) return apiError("Choose a valid relationship.", 400);
-    if (["hub_leader", "facilitator", "organization_admin"].includes(requestedRole) && identity.role !== "super_admin") return apiError("Super Admin access is required to manage leadership authorization.", 403);
-
     const db = createAdminSupabaseClient();
     const { data: participant } = await db.from("participants").select("id,auth_user_id").eq("id", participantId).maybeSingle();
     if (!participant) return apiError("Wayfinder not found.", 404);
+    const roleScope = requestedRole === "hub_leader" ? { role: "hub_leader" as ManagedRole, type: "hub" as const }
+      : requestedRole === "facilitator" ? { role: "facilitator" as ManagedRole, type: "cohort" as const }
+      : requestedRole === "organization_admin" ? { role: "organization_admin" as ManagedRole, type: "organization" as const }
+      : null;
+    if (roleScope) {
+      if (!participant.auth_user_id) return apiError("This Wayfinder must claim an account before receiving authorization.", 400);
+      assertCanMutateRole({ actor: identity, action: operation, targetRole: roleScope.role, targetUserId: participant.auth_user_id, scope: { type: roleScope.type, id: targetId } });
+    }
 
     if (kind === "organization") {
       const role = ["member", "leader", "organization_admin"].includes(requestedRole) ? requestedRole : "member";
@@ -63,6 +70,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       }
     }
     if (kind === "tag") {
+      if (operation === "assign") {
+        const { data: tag } = await db.from("tags").select("id").eq("id", targetId).eq("status", "active").maybeSingle();
+        if (!tag) return apiError("Archived or unavailable classifications cannot be assigned.", 400);
+      }
       if (operation === "remove") await db.from("participant_tags").delete().eq("participant_id", participantId).eq("tag_id", targetId);
       else await db.from("participant_tags").upsert({ participant_id: participantId, tag_id: targetId, assigned_by: identity.id }, { onConflict: "participant_id,tag_id" });
     }
@@ -78,6 +89,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     await audit(identity, `${operation === "remove" ? "removed" : "assigned"}_wayfinder_${kind}`, "participant", participantId, { target_id: targetId, role: requestedRole });
     return NextResponse.json({ ok: true });
   } catch (error) {
+    if (error instanceof RoleAuthorizationError) return apiError(error.message, error.status);
     if (error instanceof PayloadError) return apiError(error.message, error.status);
     return apiError("Unable to update this Wayfinder relationship.", 500);
   }

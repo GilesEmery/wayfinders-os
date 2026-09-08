@@ -8,16 +8,48 @@ export type PlatformAuthorizationContext = {
   assignments: Array<{ role: string; scope_type: string; scope_id: string | null }>;
 };
 
-export async function getAuthorizationContext(authUserId?: string): Promise<PlatformAuthorizationContext | null> {
-  const resolvedId = authUserId ?? (await getPlatformUser())?.id;
+export type DashboardCapabilities = {
+  isWayfinder: true;
+  isAdmin: boolean;
+  isSuperAdmin: boolean;
+  globalRole: "super_admin" | "admin" | null;
+  hubLeaderships: Array<{ hubId: string }>;
+};
+
+export async function getAuthorizationContext(authUserId?: string, userEmail?: string): Promise<PlatformAuthorizationContext | null> {
+  const platformUser = authUserId && userEmail ? null : await getPlatformUser();
+  const resolvedId = authUserId ?? platformUser?.id;
   if (!resolvedId) return null;
   const db = createAdminSupabaseClient();
-  const [{ data: member }, { data: assignments }] = await Promise.all([
+  const [memberResult, assignmentsResult] = await Promise.all([
     db.from("admin_members").select("role,status").eq("auth_user_id", resolvedId).eq("status", "active").maybeSingle(),
     db.from("platform_role_assignments").select("role,scope_type,scope_id").eq("auth_user_id", resolvedId).eq("status", "active"),
   ]);
+  let member = memberResult.data;
+  const assignments = assignmentsResult.data;
+  const normalizedEmail = (userEmail ?? platformUser?.email)?.trim().toLowerCase();
+  if (!member && normalizedEmail) {
+    const invited = await db.from("admin_members").select("id,role,status,auth_user_id").eq("email_normalized", normalizedEmail).in("status", ["active", "invited"]).maybeSingle();
+    if (invited.data && !invited.data.auth_user_id) {
+      const linked = await db.from("admin_members").update({ auth_user_id: resolvedId, status: "active", last_login_at: new Date().toISOString() }).eq("id", invited.data.id).is("auth_user_id", null).select("role,status").maybeSingle();
+      member = linked.data;
+    } else if (invited.data?.auth_user_id === resolvedId && invited.data.status === "active") {
+      member = invited.data;
+    }
+  }
   const globalRole = member?.role === "super_admin" || member?.role === "admin" ? member.role : null;
   return { authUserId: resolvedId, globalRole, assignments: assignments ?? [] };
+}
+
+export async function resolveDashboardCapabilities(authUserId: string, userEmail?: string): Promise<DashboardCapabilities> {
+  const context = await getAuthorizationContext(authUserId, userEmail);
+  return {
+    isWayfinder: true,
+    isAdmin: context?.globalRole === "admin" || context?.globalRole === "super_admin",
+    isSuperAdmin: context?.globalRole === "super_admin",
+    globalRole: context?.globalRole ?? null,
+    hubLeaderships: (context?.assignments ?? []).filter((assignment) => assignment.role === "hub_leader" && assignment.scope_type === "hub" && assignment.scope_id).map((assignment) => ({ hubId: assignment.scope_id! })),
+  };
 }
 
 export function canManagePlatform(context: PlatformAuthorizationContext | null) {

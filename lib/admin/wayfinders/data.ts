@@ -84,7 +84,7 @@ export async function loadWayfinderWorkspace(participantId: string) {
     db.from("participant_preferences").select("default_hub_id").eq("participant_id", participantId).maybeSingle(),
     db.from("crm_notes").select("id,body,created_by,created_at,updated_at").eq("participant_id", participantId).order("created_at", { ascending: false }),
     db.from("admin_audit_log").select("id,admin_email,action,metadata,created_at").eq("entity_type", "participant").eq("entity_id", participantId).order("created_at", { ascending: false }).limit(100),
-    db.from("organizations").select("id,name,status").order("name"), db.from("hubs").select("id,name,status").order("name"), db.from("cohorts").select("id,name,experience_id,status,start_date,end_date").order("name"), db.from("tags").select("id,name,status").order("name"), db.from("experiences").select("id,name,slug").order("name"), db.from("experience_offerings").select("id,name,experience_id,hub_id,cohort_id,access_mode").order("name"),
+    db.from("organizations").select("id,name,status").order("name"), db.from("hubs").select("id,name,status").order("name"), db.from("cohorts").select("id,name,experience_id,status,start_date,end_date").order("name"), db.from("tags").select("id,name,description,status").order("name"), db.from("experiences").select("id,name,slug").order("name"), db.from("experience_offerings").select("id,name,experience_id,hub_id,cohort_id,access_mode").order("name"),
   ]);
   if (participant.error) throw participant.error;
   const authId = participant.data?.auth_user_id;
