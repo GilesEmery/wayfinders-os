@@ -34,7 +34,6 @@ export function PlatformAccountControl() {
     {open && <div className="platform-account-menu" role="menu">
       <Link href="/dashboard" onClick={() => setOpen(false)} role="menuitem">My Dashboard</Link>
       <Link href="/account" onClick={() => setOpen(false)} role="menuitem">Account</Link>
-      {account.isAdmin && <Link href="/admin" onClick={() => setOpen(false)} role="menuitem">Admin</Link>}
       <form action="/api/account/logout" method="post"><button role="menuitem" type="submit">Log Out</button></form>
     </div>}
   </div>;
