@@ -5,8 +5,12 @@ import { getPlatformUser } from "@/lib/platform/auth";
 export type PlatformAuthorizationContext = {
   authUserId: string;
   globalRole: "super_admin" | "admin" | null;
-  assignments: Array<{ role: string; scope_type: string; scope_id: string | null }>;
+  assignments: PlatformRoleAssignment[];
 };
+
+export type PlatformRole = "super_admin" | "admin" | "organization_admin" | "hub_leader" | "facilitator" | "course_builder" | "course_admin";
+export type PlatformScopeType = "global" | "organization" | "hub" | "cohort" | "experience";
+export type PlatformRoleAssignment = { role: PlatformRole; scope_type: PlatformScopeType; scope_id: string | null };
 
 export type DashboardCapabilities = {
   isWayfinder: true;
@@ -38,7 +42,7 @@ export async function getAuthorizationContext(authUserId?: string, userEmail?: s
     }
   }
   const globalRole = member?.role === "super_admin" || member?.role === "admin" ? member.role : null;
-  return { authUserId: resolvedId, globalRole, assignments: assignments ?? [] };
+  return { authUserId: resolvedId, globalRole, assignments: (assignments ?? []) as PlatformRoleAssignment[] };
 }
 
 export async function resolveDashboardCapabilities(authUserId: string, userEmail?: string): Promise<DashboardCapabilities> {
@@ -54,6 +58,48 @@ export async function resolveDashboardCapabilities(authUserId: string, userEmail
 
 export function canManagePlatform(context: PlatformAuthorizationContext | null) {
   return context?.globalRole === "super_admin" || context?.globalRole === "admin";
+}
+
+function hasExperienceRole(context: PlatformAuthorizationContext | null, roles: PlatformRole[], experienceId: string, ownerOrganizationId?: string | null) {
+  if (!context) return false;
+  return context.assignments.some((assignment) => roles.includes(assignment.role) && (
+    (assignment.scope_type === "global" && assignment.scope_id === null)
+    || (assignment.scope_type === "experience" && assignment.scope_id === experienceId)
+    || (Boolean(ownerOrganizationId) && assignment.scope_type === "organization" && assignment.scope_id === ownerOrganizationId)
+  ));
+}
+
+export function canBuildExperience(context: PlatformAuthorizationContext | null, experienceId: string, ownerOrganizationId?: string | null) {
+  return canManagePlatform(context) || hasExperienceRole(context, ["course_builder", "course_admin"], experienceId, ownerOrganizationId);
+}
+
+export function canAdminExperience(context: PlatformAuthorizationContext | null, experienceId: string, ownerOrganizationId?: string | null) {
+  return canManagePlatform(context) || hasExperienceRole(context, ["course_admin"], experienceId, ownerOrganizationId);
+}
+
+export function canPublishExperience(context: PlatformAuthorizationContext | null, experienceId: string, ownerOrganizationId?: string | null) {
+  return canAdminExperience(context, experienceId, ownerOrganizationId);
+}
+
+async function getVerifiedExperienceOwner(experienceId: string) {
+  const { data, error } = await createAdminSupabaseClient().from("experiences").select("id,owner_organization_id").eq("id", experienceId).maybeSingle();
+  if (error) throw new Error(`Unable to verify Experience ownership: ${error.message}`);
+  return data;
+}
+
+export async function canBuildExperienceById(context: PlatformAuthorizationContext | null, experienceId: string) {
+  const experience = await getVerifiedExperienceOwner(experienceId);
+  return Boolean(experience && canBuildExperience(context, experience.id, experience.owner_organization_id));
+}
+
+export async function canAdminExperienceById(context: PlatformAuthorizationContext | null, experienceId: string) {
+  const experience = await getVerifiedExperienceOwner(experienceId);
+  return Boolean(experience && canAdminExperience(context, experience.id, experience.owner_organization_id));
+}
+
+export async function canPublishExperienceById(context: PlatformAuthorizationContext | null, experienceId: string) {
+  const experience = await getVerifiedExperienceOwner(experienceId);
+  return Boolean(experience && canPublishExperience(context, experience.id, experience.owner_organization_id));
 }
 
 export function canPerformGlobalDestructiveAction(context: PlatformAuthorizationContext | null) {

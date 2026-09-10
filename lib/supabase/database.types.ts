@@ -49,20 +49,29 @@ export type Database = {
         id: string; auth_user_id: string; role: string; scope_type: string; scope_id: string | null; status: string; granted_by: string | null; created_at: string; updated_at: string
       }, "auth_user_id" | "role" | "scope_type">
       experiences: FoundationTable<{
-        id: string; slug: string; name: string; description: string | null; experience_type: string; delivery_mode: string; status: string; accent_color: string | null; visibility: string; created_by: string | null; created_at: string; updated_at: string
+        id: string; slug: string; name: string; description: string | null; experience_type: string; delivery_mode: string; status: string; accent_color: string | null; visibility: string; created_by: string | null; current_published_version_id: string | null; owner_organization_id: string | null; default_theme_id: string | null; created_at: string; updated_at: string
       }, "slug" | "name" | "experience_type">
       experience_versions: FoundationTable<{
-        id: string; experience_id: string; version_label: string; status: string; title: string; description: string | null; published_at: string | null; created_by: string | null; created_at: string; updated_at: string
+        id: string; experience_id: string; version_label: string; status: string; title: string; description: string | null; published_at: string | null; created_by: string | null; based_on_version_id: string | null; published_by: string | null; release_type: string | null; theme_id: string | null; created_at: string; updated_at: string
       }, "experience_id" | "version_label" | "title">
       experience_modules: FoundationTable<{
-        id: string; experience_version_id: string; title: string; description: string | null; sort_order: number; is_required: boolean; metadata: Json; created_at: string; updated_at: string
-      }, "experience_version_id" | "title" | "sort_order">
+        id: string; experience_version_id: string; module_key: string; title: string; description: string | null; sort_order: number; is_required: boolean; requirement_level: string; metadata: Json; created_at: string; updated_at: string
+      }, "experience_version_id" | "module_key" | "title" | "sort_order">
       experience_lessons: FoundationTable<{
-        id: string; module_id: string; experience_version_id: string; title: string; description: string | null; sort_order: number; is_required: boolean; completion_rule: string; metadata: Json; created_at: string; updated_at: string
-      }, "module_id" | "experience_version_id" | "title" | "sort_order">
+        id: string; module_id: string; experience_version_id: string; lesson_key: string; title: string; description: string | null; sort_order: number; is_required: boolean; requirement_level: string; completion_rule: string; metadata: Json; created_at: string; updated_at: string
+      }, "module_id" | "experience_version_id" | "lesson_key" | "title" | "sort_order">
+      experience_sections: FoundationTable<{
+        id: string; lesson_id: string; module_id: string; experience_version_id: string; section_key: string; title: string; description: string | null; sort_order: number; requirement_level: string; renderer_mode: string; custom_renderer_key: string | null; completion_rule: string; settings: Json; metadata: Json; created_at: string; updated_at: string
+      }, "lesson_id" | "module_id" | "experience_version_id" | "section_key" | "title">
+      section_layouts: FoundationTable<{
+        id: string; section_id: string; layout_mode: string; participant_resizing_enabled: boolean; settings: Json; created_at: string; updated_at: string
+      }, "section_id">
+      section_columns: FoundationTable<{
+        id: string; section_layout_id: string; section_id: string; column_key: string; label: string | null; sort_order: number; width_percent: number; sticky: boolean; collapsible: boolean; default_collapsed: boolean; mobile_order: number; mobile_behavior: string; settings: Json; created_at: string; updated_at: string
+      }, "section_layout_id" | "section_id" | "column_key" | "width_percent">
       content_blocks: FoundationTable<{
-        id: string; lesson_id: string; block_type: string; sort_order: number; content: Json; settings: Json; created_at: string; updated_at: string
-      }, "lesson_id" | "block_type" | "sort_order">
+        id: string; lesson_id: string; section_id: string | null; column_id: string | null; block_key: string; block_type: string; sort_order: number; content: Json; settings: Json; requirement_level: string; status: string; visibility: string; completion_rule: string; custom_renderer_key: string | null; metadata: Json; created_at: string; updated_at: string
+      }, "lesson_id" | "block_key" | "block_type" | "sort_order">
       resources: FoundationTable<{
         id: string; title: string; description: string | null; resource_type: string; status: string; external_url: string | null; storage_bucket: string | null; storage_path: string | null; metadata: Json; created_by: string | null; created_at: string; updated_at: string
       }, "title" | "resource_type">
@@ -82,13 +91,37 @@ export type Database = {
         id: string; participant_id: string; experience_id: string; source_type: string; source_id: string | null; status: string; starts_at: string; expires_at: string | null; granted_by: string | null; created_at: string; updated_at: string
       }, "participant_id" | "experience_id" | "source_type">
       experience_progress: FoundationTable<{
-        id: string; enrollment_id: string; participant_id: string; experience_id: string; experience_version_id: string | null; status: string; current_module_id: string | null; current_lesson_id: string | null; started_at: string | null; completed_at: string | null; created_at: string; updated_at: string
+        id: string; enrollment_id: string; participant_id: string; experience_id: string; experience_version_id: string | null; status: string; current_module_id: string | null; current_lesson_id: string | null; current_section_id: string | null; started_at: string | null; completed_at: string | null; created_at: string; updated_at: string
       }, "enrollment_id" | "participant_id" | "experience_id">
       lesson_progress: FoundationTable<{
         id: string; enrollment_id: string; participant_id: string; experience_version_id: string; lesson_id: string; status: string; resume_state: Json; started_at: string | null; completed_at: string | null; created_at: string; updated_at: string
       }, "enrollment_id" | "participant_id" | "experience_version_id" | "lesson_id">
+      section_progress: FoundationTable<{
+        id: string; enrollment_id: string; participant_id: string; experience_version_id: string; section_id: string; status: string; resume_state: Json; started_at: string | null; completed_at: string | null; created_at: string; updated_at: string
+      }, "enrollment_id" | "participant_id" | "experience_version_id" | "section_id">
+      experience_themes: FoundationTable<{
+        id: string; theme_key: string; revision: number; name: string; organization_id: string | null; status: string; configuration: Json; created_by: string | null; created_at: string; updated_at: string
+      }, "theme_key" | "name">
+      delivery_plan_templates: FoundationTable<{
+        id: string; experience_id: string; experience_version_id: string; name: string; description: string | null; sharing_scope: string; organization_id: string | null; hub_id: string | null; status: string; settings: Json; created_by: string | null; created_at: string; updated_at: string
+      }, "experience_id" | "experience_version_id" | "name">
+      delivery_plan_template_modules: FoundationTable<{
+        id: string; template_id: string; experience_version_id: string; source_module_id: string; sort_order: number; display_title: string | null; visibility: string; settings: Json; created_at: string; updated_at: string
+      }, "template_id" | "experience_version_id" | "source_module_id">
+      delivery_plan_template_sections: FoundationTable<{
+        id: string; template_id: string; template_module_id: string; experience_version_id: string; source_section_id: string; sort_order: number; visibility: string; display_title: string | null; release_at: string | null; settings: Json; created_at: string; updated_at: string
+      }, "template_id" | "template_module_id" | "experience_version_id" | "source_section_id">
+      cohort_course_plans: FoundationTable<{
+        id: string; cohort_id: string; experience_id: string; experience_version_id: string; based_on_template_id: string | null; name: string | null; status: string; group_mode_override: string | null; settings: Json; created_by: string | null; created_at: string; updated_at: string
+      }, "cohort_id" | "experience_id" | "experience_version_id">
+      cohort_course_plan_modules: FoundationTable<{
+        id: string; plan_id: string; experience_version_id: string; source_module_id: string; sort_order: number; display_title: string | null; visibility: string; settings: Json; created_at: string; updated_at: string
+      }, "plan_id" | "experience_version_id" | "source_module_id">
+      cohort_course_plan_sections: FoundationTable<{
+        id: string; plan_id: string; plan_module_id: string; experience_version_id: string; occurrence_type: string; source_section_id: string | null; sort_order: number; visibility: string; display_title: string | null; release_at: string | null; settings: Json; created_at: string; updated_at: string
+      }, "plan_id" | "plan_module_id" | "experience_version_id">
       response_definitions: FoundationTable<{
-        id: string; lesson_id: string; experience_version_id: string; block_id: string | null; response_key: string; response_type: string; label: string; instructions: string | null; is_required: boolean; configuration: Json; created_at: string; updated_at: string
+        id: string; lesson_id: string; experience_version_id: string; block_id: string | null; response_key: string; response_type: string; label: string; instructions: string | null; is_required: boolean; configuration: Json; raw_visibility: string; result_visibility: string; share_mode: string; visibility_settings: Json; created_at: string; updated_at: string
       }, "lesson_id" | "experience_version_id" | "response_key" | "response_type" | "label">
       participant_responses: FoundationTable<{
         id: string; participant_id: string; enrollment_id: string; experience_version_id: string; response_definition_id: string; response_data: Json; status: string; finalized_at: string | null; created_at: string; updated_at: string
@@ -103,7 +136,7 @@ export type Database = {
         participant_id: string; default_hub_id: string | null; created_at: string; updated_at: string
       }, "participant_id">
       experience_offerings: FoundationTable<{
-        id: string; experience_id: string; experience_version_id: string | null; hub_id: string | null; cohort_id: string | null; name: string; slug: string; status: string; visibility: string; access_mode: string; is_default: boolean; starts_at: string | null; ends_at: string | null; settings: Json; created_by: string | null; created_at: string; updated_at: string
+        id: string; experience_id: string; experience_version_id: string | null; hub_id: string | null; cohort_id: string | null; name: string; slug: string; status: string; visibility: string; access_mode: string; is_default: boolean; starts_at: string | null; ends_at: string | null; settings: Json; created_by: string | null; group_mode: string; default_delivery_plan_template_id: string | null; created_at: string; updated_at: string
       }, "experience_id" | "name" | "slug">
       participant_offering_assignments: FoundationTable<{
         id: string; participant_id: string; offering_id: string; source_type: string; source_id: string | null; status: string; starts_at: string; expires_at: string | null; assigned_by: string | null; created_at: string; updated_at: string

@@ -1,2 +1,18 @@
-import type { CSSProperties } from "react"; import { AdminEmptyState, AdminPageHeader, AdminShell } from "@/components/admin/AdminShell"; import { requireAdmin } from "@/lib/admin/auth"; import { trainingCatalog } from "@/lib/admin/catalog";
-export default async function Page(){const admin=await requireAdmin();return <AdminShell admin={admin}><AdminPageHeader eyebrow="Experiences" title="Trainings & pathways" description="Reusable Purpose OS experience definitions—separate from their cohorts, enrollments, participant progress, and persistent domain outputs." action={<span className="admin-disabled-action">CREATE EXPERIENCE · ARCHITECTURE ONLY</span>}/><section className="admin-product-grid">{trainingCatalog.map(item=><article className="admin-product-card" style={{"--product-accent":item.accent} as CSSProperties} key={item.slug}><span className="admin-product-status is-future">Planned · {item.type}</span><h2>{item.name}</h2><p>{item.description}</p><div className="admin-capability-list"><span>Content</span><span>Cohorts</span><span>Participants</span><span>Publish</span></div><span className="admin-coming-label">Definition registered</span></article>)}</section><AdminEmptyState title="Experience management is not connected yet" description="The registry establishes shared definitions without building the Experience Builder, duplicating cohort curricula, or creating production records."/></AdminShell>}
+import Link from "next/link";
+import { AdminPageHeader, AdminShell } from "@/components/admin/AdminShell";
+import { requireAdmin } from "@/lib/admin/auth";
+import { formatDate, humanize } from "@/lib/admin/format";
+import { getAdminExperienceIndex } from "@/lib/experiences/admin/data";
+
+export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const admin = await requireAdmin();
+  const { filter = "all" } = await searchParams;
+  const { experiences } = await getAdminExperienceIndex();
+  const rows = experiences.filter(item => filter === "all" || (filter === "active" ? item.status === "active" : item.status === filter || item.delivery_mode === filter));
+  const tabs = [["all","All"],["draft","Draft"],["active","Active"],["archived","Archived"],["builder","Builder"],["hybrid","Hybrid"],["custom_code","Custom Code"]];
+  return <AdminShell admin={admin}>
+    <AdminPageHeader eyebrow="Experiences" title="Experience registry" description="The canonical Purpose OS registry for builder, hybrid, and custom-coded experiences." action={<div className="admin-heading-actions"><Link className="admin-secondary-link" href="/admin/trainings/themes">Themes</Link><Link className="admin-primary admin-primary-link" href="/admin/trainings/new">Create Experience</Link></div>}/>
+    <nav className="admin-channel-tabs" aria-label="Filter Experiences">{tabs.map(([value,label]) => <Link className={filter === value ? "is-active" : ""} href={value === "all" ? "/admin/trainings" : `/admin/trainings?filter=${value}`} key={value}>{label}</Link>)}</nav>
+    <div className="admin-table-wrap"><table><thead><tr><th>Experience</th><th>Type</th><th>Delivery</th><th>Status</th><th>Visibility</th><th>Published version</th><th>Owner</th><th>Updated</th></tr></thead><tbody>{rows.map(item => <tr key={item.id}><td><Link href={`/admin/trainings/${item.id}`}><strong>{item.name}</strong><br/><small>{item.slug}</small></Link></td><td>{humanize(item.experience_type)}</td><td>{humanize(item.delivery_mode)}</td><td><span className={`admin-status is-${item.status}`}>{humanize(item.status)}</span></td><td>{humanize(item.visibility)}</td><td>{item.currentVersion?.version_label ?? "—"}</td><td>{item.ownerName ?? "Platform"}</td><td>{formatDate(item.updated_at)}</td></tr>)}{!rows.length && <tr><td colSpan={8}>No Experiences match this view.</td></tr>}</tbody></table></div>
+  </AdminShell>;
+}

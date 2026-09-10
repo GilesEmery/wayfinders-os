@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { BarChart3, Bell, BookOpen, Building2, CalendarDays, ClipboardCheck, Columns3, CreditCard, FileBox, FileText, FolderKanban, GanttChart, LayoutDashboard, ListChecks, Mail, MessageSquare, Radio, Settings, ShieldCheck, Users, Workflow } from "lucide-react";
 import { DashboardContextLink, DashboardSwitcher } from "@/components/platform/DashboardSwitcher";
+import { PURPOSE_OS_SIDEBAR_SCROLL_KEY, useSidebarScrollPersistence } from "@/components/platform/useSidebarScrollPersistence";
 import type { DashboardNavigationGroup, DashboardNavigationIcon } from "@/lib/platform/dashboard-navigation";
 
 const icons = {
@@ -18,6 +19,7 @@ export function DashboardNavIcon({ icon }: { icon: DashboardNavigationIcon }) { 
 
 export function DashboardNavigation({ groups }: { groups: DashboardNavigationGroup[] }) {
   const [activeHash, setActiveHash] = useState("#overview");
+  const { sidebarRef, rememberScroll } = useSidebarScrollPersistence(PURPOSE_OS_SIDEBAR_SCROLL_KEY);
   useEffect(() => {
     const sectionIds = groups.flatMap((group) => group.items).filter((item) => item.href.startsWith("#")).map((item) => item.href.slice(1));
     const sections = sectionIds.flatMap((id) => { const element = document.getElementById(id); return element ? [element] : []; });
@@ -25,5 +27,5 @@ export function DashboardNavigation({ groups }: { groups: DashboardNavigationGro
     update(); window.addEventListener("scroll", update, { passive: true }); window.addEventListener("hashchange", update);
     return () => { window.removeEventListener("scroll", update); window.removeEventListener("hashchange", update); };
   }, [groups]);
-  return <aside className="purpose-dashboard-nav"><DashboardSwitcher/><nav aria-label="Purpose OS dashboard navigation">{groups.map((group) => <section className={group.context ? "dashboard-context-section" : undefined} key={group.label}>{group.context ? <DashboardContextLink href={group.context.href} label={group.context.label}/> : null}<h2>{group.label}</h2>{group.items.map((item) => <Link aria-current={item.href === activeHash ? "location" : undefined} className={item.href === activeHash ? "is-active" : undefined} href={item.href} key={`${group.label}-${item.href}-${item.label}`}><DashboardNavIcon icon={item.icon}/><span>{item.label}</span></Link>)}</section>)}</nav></aside>;
+  return <aside className="purpose-dashboard-nav" onScroll={rememberScroll} ref={sidebarRef}><DashboardSwitcher/><nav aria-label="Purpose OS dashboard navigation">{groups.map((group) => <section className={group.context ? "dashboard-context-section" : undefined} key={group.label}>{group.context ? <DashboardContextLink href={group.context.href} label={group.context.label}/> : null}<h2>{group.label}</h2>{group.items.map((item) => <Link aria-current={item.href === activeHash ? "location" : undefined} className={item.href === activeHash ? "is-active" : undefined} href={item.href} key={`${group.label}-${item.href}-${item.label}`}><DashboardNavIcon icon={item.icon}/><span>{item.label}</span></Link>)}</section>)}</nav></aside>;
 }

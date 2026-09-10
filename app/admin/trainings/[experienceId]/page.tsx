@@ -1,0 +1,45 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { AdminPageHeader, AdminShell } from "@/components/admin/AdminShell";
+import { ThemePreview } from "@/components/admin/ThemePreview";
+import { requireAdmin } from "@/lib/admin/auth";
+import { formatDate, humanize } from "@/lib/admin/format";
+import { getAdminExperienceDetail } from "@/lib/experiences/admin/data";
+import { FALLBACK_EXPERIENCE_THEME } from "@/lib/experiences/builder/theme-resolver";
+import { validateThemeConfiguration } from "@/lib/experiences/builder/theme-validation";
+import { createDraftVersionAction, updateExperienceAction } from "../actions";
+import { assignVersionThemeAction } from "../themes/actions";
+
+const architectureCopy: Record<string, string> = {
+  builder: "Purpose OS renders this Experience from its versioned curriculum.",
+  hybrid: "Generic curriculum may use approved source-controlled Section and block renderers.",
+  custom_code: "The database owns identity and metadata; a source-controlled adapter owns runtime behavior.",
+};
+
+export default async function Page({ params, searchParams }: { params: Promise<{ experienceId: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const admin = await requireAdmin();
+  const { experienceId } = await params;
+  const notice = await searchParams;
+  const data = await getAdminExperienceDetail(experienceId);
+  if (!data) notFound();
+  const { experience, versions, organizations, themes } = data;
+  const defaultTheme = themes.find((item) => item.id === experience.default_theme_id);
+  const parsedTheme = validateThemeConfiguration(defaultTheme?.configuration);
+  const previewTheme = parsedTheme.ok ? parsedTheme.value : FALLBACK_EXPERIENCE_THEME;
+  const activeThemes = themes.filter((item) => (item.status === "active" || item.id === experience.default_theme_id) && (!item.organization_id || item.organization_id === experience.owner_organization_id));
+  const versionThemes = themes.filter((item) => (item.status === "active" || item.status === "draft") && (!item.organization_id || item.organization_id === experience.owner_organization_id));
+  const themeById = new Map(themes.map((theme) => [theme.id, theme]));
+  const ownerName = organizations.find((item) => item.id === experience.owner_organization_id)?.name ?? "Platform";
+
+  return <AdminShell admin={admin}>
+    <AdminPageHeader eyebrow="Experience registry" title={experience.name} description={experience.description ?? "No description has been added."} action={<div className="admin-heading-actions"><Link className="admin-secondary-link" href="/admin/trainings/themes">Themes</Link><Link className="admin-secondary-link" href="/admin/trainings">Registry</Link></div>}/>
+    {notice.error && <p className="admin-form-message" role="alert">{notice.error}</p>}
+    {(notice.created || notice.updated) && <p className="admin-form-message is-success">Experience settings saved.</p>}
+    {notice.versionCreated && <p className="admin-form-message is-success">Draft version metadata created.</p>}
+    {notice.themeUpdated && <p className="admin-form-message is-success">Draft version theme updated.</p>}
+    <section className="admin-detail-meta"><div><span>Slug</span><strong>{experience.slug}</strong></div><div><span>Type</span><strong>{humanize(experience.experience_type)}</strong></div><div><span>Delivery</span><strong>{humanize(experience.delivery_mode)}</strong></div><div><span>Status</span><strong>{humanize(experience.status)}</strong></div><div><span>Visibility</span><strong>{humanize(experience.visibility)}</strong></div></section>
+    <div className="admin-experience-columns"><section className="admin-panel"><p className="admin-kicker">Overview</p><h2>Experience settings</h2><form action={updateExperienceAction.bind(null, experience.id)} className="admin-form admin-experience-form"><label>Name<input name="name" defaultValue={experience.name} required maxLength={160}/></label><label>Slug<input value={experience.slug} readOnly aria-describedby="slug-note"/></label><label className="is-wide">Description<textarea name="description" defaultValue={experience.description ?? ""} maxLength={3000}/></label><label>Visibility<select name="visibility" defaultValue={experience.visibility}><option value="private">Private</option><option value="unlisted">Unlisted</option><option value="public">Public</option></select></label><label>Lifecycle status<select name="status" defaultValue={experience.status}><option value="draft">Draft</option><option value="active">Active</option><option value="inactive">Inactive</option><option value="archived">Archived</option></select></label><label>Owner organization<select name="owner_organization_id" defaultValue={experience.owner_organization_id ?? ""}><option value="">Platform</option>{organizations.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label>Default theme<select name="default_theme_id" defaultValue={experience.default_theme_id ?? ""}><option value="">Purpose OS fallback</option>{activeThemes.map(item => <option key={item.id} value={item.id}>{item.name} · R{item.revision} · {item.organization_id ? "Organization" : "Global"}</option>)}</select></label><p className="admin-field-note is-wide" id="slug-note">The default theme is a fallback for new draft work. It does not rewrite published version pins. Slug and delivery mode are protected.</p><button className="admin-primary" type="submit">Save settings</button></form></section><aside className="admin-panel"><p className="admin-kicker">Architecture</p><h2>{humanize(experience.delivery_mode)}</h2><p>{architectureCopy[experience.delivery_mode] ?? "Runtime configuration is unavailable."}</p><dl className="admin-definition-list"><div><dt>Owner</dt><dd>{ownerName}</dd></div><div><dt>Offerings</dt><dd>{data.offeringCount}</dd></div><div><dt>Cohorts</dt><dd>{data.cohortCount}</dd></div></dl></aside></div>
+    <section className="admin-panel admin-branding-panel"><div className="admin-branding-heading"><div><p className="admin-kicker">Branding</p><h2>{defaultTheme ? `${defaultTheme.name} · R${defaultTheme.revision}` : "Purpose OS fallback"}</h2><p className="admin-field-note">{defaultTheme ? `${humanize(defaultTheme.status)} · ${defaultTheme.organization_id ? "Organization" : "Global"} theme` : "Source-controlled safe defaults"}</p></div>{defaultTheme && <Link className="admin-secondary-link" href={`/admin/trainings/themes/${defaultTheme.id}`}>Open theme</Link>}</div><ThemePreview configuration={previewTheme}/></section>
+    <section className="admin-panel admin-version-panel" id="versions"><p className="admin-kicker">Versions</p><h2>Version administration</h2><div className="admin-table-wrap"><table><thead><tr><th>Version</th><th>Status</th><th>Release</th><th>Theme</th><th>Published</th><th>Current</th></tr></thead><tbody>{versions.map(version => { const pinned = version.theme_id ? themeById.get(version.theme_id) : null; return <tr key={version.id}><td><Link href={`/admin/trainings/${experience.id}/versions/${version.id}`}><strong>{version.version_label}</strong><br/><small>{version.title}</small></Link></td><td>{humanize(version.status)}</td><td>{humanize(version.release_type)}</td><td>{version.status === "draft" ? <form action={assignVersionThemeAction.bind(null, experience.id, version.id)} className="admin-table-form"><select name="theme_id" defaultValue={version.theme_id ?? ""}><option value="">Inherit Experience default</option>{versionThemes.map(theme => <option key={theme.id} value={theme.id}>{theme.name} · R{theme.revision} · {humanize(theme.status)}</option>)}</select><button type="submit">Save</button></form> : pinned ? <Link href={`/admin/trainings/themes/${pinned.id}`}>{pinned.name} · R{pinned.revision}</Link> : "Experience default at publication"}</td><td>{formatDate(version.published_at)}</td><td>{experience.current_published_version_id === version.id ? "Current" : "—"}</td></tr>; })}{!versions.length && <tr><td colSpan={6}>No versions exist for this custom-coded Experience.</td></tr>}</tbody></table></div><form action={createDraftVersionAction.bind(null, experience.id)} className="admin-inline-form admin-version-form"><label>Version label<input name="version_label" required maxLength={80} placeholder="0.2"/></label><label>Title<input name="title" maxLength={200} defaultValue={experience.name}/></label><label>Based on<select name="based_on_version_id" defaultValue=""><option value="">Metadata shell only</option>{versions.map(item => <option key={item.id} value={item.id}>{item.version_label} · {item.title}</option>)}</select></label><label>Release type<select name="release_type" defaultValue=""><option value="">Not set</option><option value="correction">Correction</option><option value="structural">Structural</option><option value="major">Major</option></select></label><button className="admin-primary" type="submit">Create draft version</button><p className="admin-field-note">Curriculum cloning and publishing remain deferred.</p></form></section>
+  </AdminShell>;
+}

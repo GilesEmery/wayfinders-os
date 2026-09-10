@@ -1,12 +1,12 @@
 import { ExperienceCard } from "@/components/platform/ExperienceCard";
 import { PlatformShell } from "@/components/platform/PlatformShell";
-import { getPlatformExperiences } from "@/lib/platform/experience-registry";
+import { getCanonicalPublicExperiences } from "@/lib/platform/canonical-experience-registry";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Experiences" };
 
-export default function ExperiencesPage() {
-  const experiences = getPlatformExperiences();
+export default async function ExperiencesPage() {
+  const experiences = await getCanonicalPublicExperiences();
 
   return (
     <PlatformShell>
