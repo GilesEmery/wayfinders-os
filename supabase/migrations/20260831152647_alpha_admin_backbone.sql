@@ -45,3 +45,4 @@ values ('giles@yourwayfinders.org', 'giles@yourwayfinders.org', 'super_admin', '
 on conflict (email_normalized) do update
 set role = excluded.role
 where public.admin_members.auth_user_id is null;
+;

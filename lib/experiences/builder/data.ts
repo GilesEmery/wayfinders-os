@@ -50,8 +50,11 @@ function mobileBehavior(value: string): MobileColumnBehavior {
 }
 
 function asBlock(row: Tables<"content_blocks">): BuilderContentBlock {
+  const { content: configurationValue, ...record } = row;
+  const configuration = configurationValue && typeof configurationValue === "object" && !Array.isArray(configurationValue) ? configurationValue : {};
   return {
-    ...row,
+    ...record,
+    configuration,
     requirement_level: requirement(row.requirement_level),
     status: row.status === "archived" ? "archived" : "active",
     visibility: row.visibility === "hidden" ? "hidden" : "visible",
@@ -158,9 +161,22 @@ export async function getLessonSections(lessonId: string, db: Db = createAdminSu
   return requireData(result.data, result.error, `Sections for Lesson ${lessonId}`).map(asSection);
 }
 
-export async function getSectionBlocks(sectionId: string, db: Db = createAdminSupabaseClient()) {
+export async function getBlocksForSection(sectionId: string, db: Db = createAdminSupabaseClient()) {
   const result = await db.from("content_blocks").select("*").eq("section_id", sectionId).order("sort_order");
   return requireData(result.data, result.error, `blocks for Section ${sectionId}`).map(asBlock);
+}
+
+export const getSectionBlocks = getBlocksForSection;
+
+export async function getBlocksForColumn(columnId: string, db: Db = createAdminSupabaseClient()) {
+  const result = await db.from("content_blocks").select("*").eq("column_id", columnId).order("sort_order").order("created_at");
+  return requireData(result.data, result.error, `blocks for Column ${columnId}`).map(asBlock);
+}
+
+export async function getBlockById(blockId: string, db: Db = createAdminSupabaseClient()) {
+  const result = await db.from("content_blocks").select("*").eq("id", blockId).maybeSingle();
+  if (result.error) throw new Error(`Unable to load Block ${blockId}: ${result.error.message}`);
+  return result.data ? asBlock(result.data) : null;
 }
 
 export async function getSectionWithLayout(sectionId: string, db: Db = createAdminSupabaseClient()): Promise<BuilderSection | null> {

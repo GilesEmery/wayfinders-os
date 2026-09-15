@@ -86,15 +86,12 @@ export async function createDraftVersion(experienceId: string, form: FormData) {
   const context = await getAuthorizationContext(admin.id, admin.email);
   if (!await canBuildExperienceById(context, experienceId)) throw new Error("You are not authorized to author this Experience.");
   const basedOnId = text(form, "based_on_version_id", 36) || null;
+  if (basedOnId) throw new Error("Use Create New Draft on a Published Version to copy curriculum.");
   const releaseType = text(form, "release_type", 20) || null;
   if (releaseType && !RELEASES.has(releaseType)) throw new Error("Invalid release type.");
   const db = createAdminSupabaseClient();
   const experience = await db.from("experiences").select("name,description,default_theme_id").eq("id", experienceId).maybeSingle();
   if (!experience.data) throw new Error("Experience not found.");
-  if (basedOnId) {
-    const source = await db.from("experience_versions").select("id").eq("id", basedOnId).eq("experience_id", experienceId).maybeSingle();
-    if (!source.data) throw new Error("The source version does not belong to this Experience.");
-  }
   const versionLabel = text(form, "version_label", 80, true);
   const created = await db.from("experience_versions").insert({ experience_id: experienceId, version_label: versionLabel, title: text(form, "title", 200) || experience.data.name, description: experience.data.description, status: "draft", based_on_version_id: basedOnId, release_type: releaseType, theme_id: experience.data.default_theme_id, created_by: admin.id }).select("id").single();
   if (created.error) throw new Error(`Unable to create draft version: ${created.error.message}`);

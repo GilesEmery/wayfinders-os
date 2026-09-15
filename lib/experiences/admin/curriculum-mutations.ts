@@ -130,6 +130,7 @@ export async function createLesson(experienceId: string, versionId: string, modu
   const result = await db.from("experience_lessons").insert({ module_id: moduleId, experience_version_id: versionId, lesson_key: lessonKey, title, description: field(form, "description", 3000) || null, requirement_level: level, is_required: level === "required", completion_rule: completion, sort_order: await parentMax("experience_lessons", "module_id", moduleId) }).select("id").single();
   if (result.error) throw new Error(`Unable to create Lesson: ${result.error.message}`);
   await audit(admin, "lesson.created", "experience_lesson", result.data.id, { experienceId, versionId, moduleId, lessonKey });
+  return result.data.id;
 }
 
 export async function updateLesson(experienceId: string, versionId: string, lessonId: string, form: FormData) {
@@ -161,7 +162,21 @@ export async function createSection(experienceId: string, versionId: string, les
   if (customKey && !isApprovedSectionRendererKey(customKey)) throw new Error("That Section renderer key is not approved in the source-controlled registry.");
   const result = await db.from("experience_sections").insert({ lesson_id: lessonId, module_id: lesson.data.module_id, experience_version_id: versionId, section_key: sectionKey, title, description: field(form, "description", 3000) || null, requirement_level: requirement(form), renderer_mode: rendererMode, custom_renderer_key: customKey, completion_rule: completion, sort_order: await parentMax("experience_sections", "lesson_id", lessonId) }).select("id").single();
   if (result.error) throw new Error(`Unable to create Section: ${result.error.message}`);
+  if (rendererMode === "builder" || (rendererMode === "hybrid" && !customKey)) {
+    const layout = await db.from("section_layouts").insert({ section_id: result.data.id, layout_mode: "single_column", participant_resizing_enabled: false }).select("id").single();
+    if (layout.error) {
+      await db.from("experience_sections").delete().eq("id", result.data.id);
+      throw new Error(`Unable to create the default Page layout: ${layout.error.message}`);
+    }
+    const column = await db.from("section_columns").insert({ section_layout_id: layout.data.id, section_id: result.data.id, column_key: "main", label: "Content", sort_order: 0, mobile_order: 0, width_percent: 100 });
+    if (column.error) {
+      await db.from("section_layouts").delete().eq("id", layout.data.id);
+      await db.from("experience_sections").delete().eq("id", result.data.id);
+      throw new Error(`Unable to create the default Page column: ${column.error.message}`);
+    }
+  }
   await audit(admin, "section.created", "experience_section", result.data.id, { experienceId, versionId, lessonId, sectionKey });
+  return result.data.id;
 }
 
 export async function updateSection(experienceId: string, versionId: string, sectionId: string, form: FormData) {

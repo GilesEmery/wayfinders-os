@@ -78,7 +78,8 @@ export interface SectionColumn extends Omit<SectionColumnRecord, "mobile_behavio
   mobile_behavior: MobileColumnBehavior;
 }
 
-export interface BuilderContentBlock extends Omit<ContentBlockRecord, "requirement_level" | "status" | "visibility" | "completion_rule"> {
+export interface BuilderContentBlock extends Omit<ContentBlockRecord, "content" | "requirement_level" | "status" | "visibility" | "completion_rule"> {
+  configuration: RendererConfiguration;
   requirement_level: RequirementLevel;
   status: BlockStatus;
   visibility: BlockVisibility;

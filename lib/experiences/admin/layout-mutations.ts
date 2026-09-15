@@ -52,8 +52,11 @@ export async function configureSectionLayout(experienceId: string, versionId: st
   if (current.error) throw new Error(`Unable to load columns: ${current.error.message}`);
   const extras = (current.data ?? []).slice(count);
   if (extras.length) {
-    const used = await db.from("content_blocks").select("id", { count: "exact", head: true }).in("column_id", extras.map((column) => column.id));
-    if (used.count) throw new Error("The layout cannot remove columns that contain Blocks.");
+    const used = await db.from("content_blocks").select("column_id").in("column_id", extras.map((column) => column.id));
+    if (used.error) throw new Error(`Unable to verify Column contents: ${used.error.message}`);
+    const populated = new Set((used.data ?? []).map((block) => block.column_id));
+    const blockedColumns = extras.filter((column) => populated.has(column.id)).map((column) => column.label || column.column_key);
+    if (blockedColumns.length) throw new Error(`The layout cannot remove populated Columns: ${blockedColumns.join(", ")}. Move or delete their Blocks first.`);
     const removed = await db.from("section_columns").delete().in("id", extras.map((column) => column.id)).eq("section_id", sectionId);
     if (removed.error) throw new Error(`Unable to remove empty columns: ${removed.error.message}`);
   }

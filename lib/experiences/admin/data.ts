@@ -11,8 +11,10 @@ export async function getAdminExperienceIndex() {
   ]);
   if (experiences.error || versions.error || organizations.error) throw new Error("Unable to load the Experience registry.");
   const versionMap = new Map((versions.data ?? []).map((version) => [version.id, version]));
+  const draftCounts = new Map<string, number>();
+  for (const version of versions.data ?? []) if (version.status === "draft") draftCounts.set(version.experience_id, (draftCounts.get(version.experience_id) ?? 0) + 1);
   const organizationMap = new Map((organizations.data ?? []).map((organization) => [organization.id, organization.name]));
-  return { experiences: (experiences.data ?? []).map((experience) => ({ ...experience, currentVersion: experience.current_published_version_id ? versionMap.get(experience.current_published_version_id) ?? null : null, ownerName: experience.owner_organization_id ? organizationMap.get(experience.owner_organization_id) ?? null : null })), organizations: organizations.data ?? [] };
+  return { experiences: (experiences.data ?? []).map((experience) => ({ ...experience, currentVersion: experience.current_published_version_id ? (versionMap.get(experience.current_published_version_id)?.status === "published" ? versionMap.get(experience.current_published_version_id) ?? null : null) : null, draftVersionCount: draftCounts.get(experience.id) ?? 0, ownerName: experience.owner_organization_id ? organizationMap.get(experience.owner_organization_id) ?? null : null })), organizations: organizations.data ?? [] };
 }
 
 export async function getAdminExperienceDetail(experienceId: string) {

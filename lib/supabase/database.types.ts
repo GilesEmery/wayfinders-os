@@ -52,7 +52,7 @@ export type Database = {
         id: string; slug: string; name: string; description: string | null; experience_type: string; delivery_mode: string; status: string; accent_color: string | null; visibility: string; created_by: string | null; current_published_version_id: string | null; owner_organization_id: string | null; default_theme_id: string | null; created_at: string; updated_at: string
       }, "slug" | "name" | "experience_type">
       experience_versions: FoundationTable<{
-        id: string; experience_id: string; version_label: string; status: string; title: string; description: string | null; published_at: string | null; created_by: string | null; based_on_version_id: string | null; published_by: string | null; release_type: string | null; theme_id: string | null; created_at: string; updated_at: string
+        id: string; experience_id: string; version_label: string; status: string; title: string; description: string | null; published_at: string | null; created_by: string | null; based_on_version_id: string | null; published_by: string | null; release_type: string | null; theme_id: string | null; shell_mode: string; created_at: string; updated_at: string
       }, "experience_id" | "version_label" | "title">
       experience_modules: FoundationTable<{
         id: string; experience_version_id: string; module_key: string; title: string; description: string | null; sort_order: number; is_required: boolean; requirement_level: string; metadata: Json; created_at: string; updated_at: string
@@ -418,7 +418,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      publish_experience_version: {
+        Args: { p_experience_id: string; p_version_id: string; p_actor_id: string }
+        Returns: string
+      }
+      clone_experience_version: {
+        Args: { p_experience_id: string; p_source_version_id: string; p_version_label: string; p_actor_id: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

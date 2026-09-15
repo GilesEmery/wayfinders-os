@@ -4,3 +4,8 @@ export * from "./runtime-registry";
 export * from "./runtime";
 export * from "./theme-validation";
 export * from "./theme-resolver";
+export * from "./block-registry";
+export * from "./response-registry";
+export * from "./participant-runtime";
+export * from "./progress";
+export * from "./course-templates";

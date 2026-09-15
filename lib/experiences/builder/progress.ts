@@ -1,57 +1,56 @@
 import "server-only";
 
-import type { Json, TablesInsert, TablesUpdate } from "@/lib/supabase/database.types";
-import { getPlatformUser } from "@/lib/platform/auth";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
-import type { SectionProgress } from "./types";
+import type { BuilderCourseStructure, SectionProgressState } from "./types";
 
-function isJsonObject(value: Json): value is { [key: string]: Json | undefined } {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+type Db = ReturnType<typeof createAdminSupabaseClient>;
+type DerivedState = "not_started" | "in_progress" | "completed";
+
+export type ProgressCounts = Readonly<{ requiredTotal: number; requiredCompleted: number; total: number; completed: number; requiredPercent: number; status: DerivedState }>;
+export type ParticipantProgressSnapshot = Readonly<{ enrollmentId: string | null; currentSectionId: string | null; sections: Readonly<Record<string, SectionProgressState>>; lessons: Readonly<Record<string, DerivedState>>; modules: Readonly<Record<string, DerivedState>>; experience: ProgressCounts }>;
+
+function derivedState(statuses: SectionProgressState[], requiredStatuses: SectionProgressState[]): DerivedState {
+  if (requiredStatuses.length > 0 && requiredStatuses.every((status) => status === "completed")) return "completed";
+  if (statuses.some((status) => status !== "not_started")) return "in_progress";
+  return "not_started";
 }
 
-export async function getOwnSectionProgress(enrollmentId: string, sectionId: string): Promise<SectionProgress | null> {
-  const user = await getPlatformUser();
-  if (!user) return null;
-  const db = createAdminSupabaseClient();
-  const participantResult = await db.from("participants").select("id").eq("auth_user_id", user.id).maybeSingle();
-  if (participantResult.error) throw new Error(`Unable to identify the participant: ${participantResult.error.message}`);
-  if (!participantResult.data) return null;
-  const enrollmentResult = await db.from("experience_enrollments").select("id,experience_version_id").eq("id", enrollmentId).eq("participant_id", participantResult.data.id).maybeSingle();
-  if (enrollmentResult.error) throw new Error(`Unable to verify the enrollment: ${enrollmentResult.error.message}`);
-  if (!enrollmentResult.data?.experience_version_id) return null;
-  const progressResult = await db.from("section_progress").select("*")
-    .eq("enrollment_id", enrollmentId)
-    .eq("participant_id", participantResult.data.id)
-    .eq("experience_version_id", enrollmentResult.data.experience_version_id)
-    .eq("section_id", sectionId)
-    .maybeSingle();
-  if (progressResult.error) throw new Error(`Unable to load Section progress: ${progressResult.error.message}`);
-  if (!progressResult.data) return null;
-  const status = ["in_progress", "completed", "skipped"].includes(progressResult.data.status)
-    ? progressResult.data.status as SectionProgress["status"]
-    : "not_started";
-  return { ...progressResult.data, status };
+export function normalizeSectionProgress(status: string): SectionProgressState {
+  return status === "in_progress" || status === "completed" || status === "skipped" ? status : "not_started";
 }
 
-export function prepareSectionProgressStart(input: {
-  enrollmentId: string;
-  participantId: string;
-  experienceVersionId: string;
-  sectionId: string;
-  now?: string;
-}): TablesInsert<"section_progress"> {
-  const now = input.now ?? new Date().toISOString();
-  return { enrollment_id: input.enrollmentId, participant_id: input.participantId, experience_version_id: input.experienceVersionId, section_id: input.sectionId, status: "in_progress", resume_state: {}, started_at: now, updated_at: now };
+export function summarizeParticipantProgress(structure: BuilderCourseStructure, sectionStates: Readonly<Record<string, SectionProgressState>>): Omit<ParticipantProgressSnapshot, "enrollmentId" | "currentSectionId"> {
+  const sections = structure.modules.flatMap((module) => module.lessons.flatMap((lesson) => lesson.sections.filter((section) => !section.legacy)));
+  const state = (sectionId: string): SectionProgressState => sectionStates[sectionId] ?? "not_started";
+  const required = sections.filter((section) => section.requirement_level === "required");
+  const completed = sections.filter((section) => state(section.id) === "completed").length;
+  const requiredCompleted = required.filter((section) => state(section.id) === "completed").length;
+  const anyStarted = sections.some((section) => state(section.id) !== "not_started");
+  const allRequiredComplete = required.length > 0 && requiredCompleted === required.length;
+  const experience: ProgressCounts = { requiredTotal: required.length, requiredCompleted, total: sections.length, completed, requiredPercent: required.length ? Math.round(requiredCompleted / required.length * 100) : 0, status: allRequiredComplete ? "completed" : anyStarted ? "in_progress" : "not_started" };
+  const lessons = Object.fromEntries(structure.modules.flatMap((module) => module.lessons.map((lesson) => {
+    const trackable = lesson.sections.filter((section) => !section.legacy);
+    const statuses = trackable.map((section) => state(section.id));
+    const requiredStatuses = trackable.filter((section) => section.requirement_level === "required").map((section) => state(section.id));
+    return [lesson.id, derivedState(statuses, requiredStatuses)];
+  })));
+  const modules = Object.fromEntries(structure.modules.map((module) => {
+    const descendants = module.lessons.flatMap((lesson) => lesson.sections.filter((section) => !section.legacy));
+    const statuses = descendants.map((section) => state(section.id));
+    const requiredStatuses = descendants.filter((section) => section.requirement_level === "required").map((section) => state(section.id));
+    return [module.id, derivedState(statuses, requiredStatuses)];
+  }));
+  return { sections: sectionStates, lessons, modules, experience };
 }
 
-export function prepareSectionResumeUpdate(resumeState: Json, now = new Date().toISOString()): TablesUpdate<"section_progress"> {
-  if (!isJsonObject(resumeState)) throw new Error("Section resume state must be a JSON object.");
-  return { status: "in_progress", resume_state: resumeState, updated_at: now };
+export async function loadParticipantProgress({ enrollmentId, participantId, versionId, structure, db = createAdminSupabaseClient() }: { enrollmentId: string | null; participantId: string; versionId: string; structure: BuilderCourseStructure; db?: Db }): Promise<ParticipantProgressSnapshot> {
+  if (!enrollmentId) return { enrollmentId: null, currentSectionId: null, ...summarizeParticipantProgress(structure, {}) };
+  const [experienceResult, sectionsResult] = await Promise.all([
+    db.from("experience_progress").select("current_section_id").eq("enrollment_id", enrollmentId).eq("participant_id", participantId).eq("experience_version_id", versionId).maybeSingle(),
+    db.from("section_progress").select("section_id,status").eq("enrollment_id", enrollmentId).eq("participant_id", participantId).eq("experience_version_id", versionId),
+  ]);
+  const error = experienceResult.error || sectionsResult.error;
+  if (error) throw new Error(`Unable to load participant progress: ${error.message}`);
+  const states = Object.fromEntries((sectionsResult.data ?? []).map((row) => [row.section_id, normalizeSectionProgress(row.status)]));
+  return { enrollmentId, currentSectionId: experienceResult.data?.current_section_id ?? null, ...summarizeParticipantProgress(structure, states) };
 }
-
-export function prepareSectionCompletion(now = new Date().toISOString()): TablesUpdate<"section_progress"> {
-  return { status: "completed", completed_at: now, updated_at: now };
-}
-
-// These helpers intentionally prepare validated mutations only. Server actions must
-// authorize the participant/enrollment pair before applying them with the admin client.

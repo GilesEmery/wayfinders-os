@@ -125,3 +125,4 @@ revoke all on table public.lmu_responses from anon, authenticated;
 revoke all on table public.lmu_results from anon, authenticated;
 revoke all on table public.participant_sessions from anon, authenticated;
 revoke execute on function public.set_updated_at() from public, anon, authenticated;
+;

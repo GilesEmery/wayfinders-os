@@ -12,12 +12,13 @@ export async function getSectionLayoutWorkspace(experienceId: string, versionId:
   ]);
   if (experience.error || version.error || section.error || layout.error) throw new Error("Unable to load the Section layout workspace.");
   if (!experience.data || !version.data || !section.data) return null;
-  const [module, lesson, columns, theme] = await Promise.all([
+  const [module, lesson, columns, blocks, theme] = await Promise.all([
     db.from("experience_modules").select("id,title").eq("id", section.data.module_id).eq("experience_version_id", versionId).maybeSingle(),
     db.from("experience_lessons").select("id,title,module_id").eq("id", section.data.lesson_id).eq("experience_version_id", versionId).maybeSingle(),
     layout.data ? db.from("section_columns").select("*").eq("section_layout_id", layout.data.id).eq("section_id", sectionId).order("sort_order") : Promise.resolve({ data: [], error: null }),
+    db.from("content_blocks").select("*").eq("section_id", sectionId).order("sort_order").order("created_at"),
     version.data.theme_id || experience.data.default_theme_id ? db.from("experience_themes").select("configuration").eq("id", version.data.theme_id ?? experience.data.default_theme_id!).maybeSingle() : Promise.resolve({ data: null, error: null }),
   ]);
-  if (module.error || lesson.error || columns.error || theme.error || !module.data || !lesson.data || lesson.data.module_id !== module.data.id) throw new Error("Section hierarchy integrity check failed.");
-  return { experience: experience.data, version: version.data, module: module.data, lesson: lesson.data, section: section.data, layout: layout.data, columns: columns.data ?? [], themeConfiguration: theme.data?.configuration ?? null };
+  if (module.error || lesson.error || columns.error || blocks.error || theme.error || !module.data || !lesson.data || lesson.data.module_id !== module.data.id) throw new Error("Section hierarchy integrity check failed.");
+  return { experience: experience.data, version: version.data, module: module.data, lesson: lesson.data, section: section.data, layout: layout.data, columns: columns.data ?? [], blocks: blocks.data ?? [], themeConfiguration: theme.data?.configuration ?? null };
 }
