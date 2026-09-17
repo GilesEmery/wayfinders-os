@@ -2241,3 +2241,14 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
 
 /* The saved secondary Accent controls the selected learner-navigation item. */
 .participant-course-navigator li :is(a,button).is-active{background:color-mix(in srgb,var(--experience-accent-secondary,var(--experience-accent)) 20%,var(--experience-surface));border-left-color:var(--experience-accent-secondary,var(--experience-accent));box-shadow:inset 3px 0 0 var(--experience-accent-secondary,var(--experience-accent));color:var(--experience-text);font-weight:750}
+
+/* Rich Text uses the same document typography in Edit, Preview, and Published views. */
+.participant-rich-text-block{font-family:var(--font-editorial),serif;font-size:18px;line-height:1.7;white-space:normal}
+:is(.inline-text-surface,.participant-rich-text-block)>*:first-child{margin-top:0}
+:is(.inline-text-surface,.participant-rich-text-block)>*:last-child{margin-bottom:0}
+:is(.inline-text-surface,.participant-rich-text-block) :is(h1,h2,h3){font-family:var(--font-editorial),serif;font-weight:600;line-height:1.2;margin:1.25em 0 .5em}
+:is(.inline-text-surface,.participant-rich-text-block) h1{font-size:1.65em}
+:is(.inline-text-surface,.participant-rich-text-block) h2{font-size:1.4em}
+:is(.inline-text-surface,.participant-rich-text-block) h3{font-size:1.18em}
+:is(.inline-text-surface,.participant-rich-text-block) :is(ul,ol){display:grid;gap:.35em;padding-left:1.4em}
+:is(.inline-text-surface,.participant-rich-text-block) li>p{margin:0}
