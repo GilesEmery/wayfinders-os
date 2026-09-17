@@ -180,3 +180,44 @@ export async function resolveParticipantCourse(slug: string): Promise<Participan
 export function participantSectionHref(slug: string, moduleKey: string, lessonKey: string, sectionKey: string) {
   return `/experiences/${encodeURIComponent(slug)}/course/${encodeURIComponent(moduleKey)}/${encodeURIComponent(lessonKey)}/${encodeURIComponent(sectionKey)}`;
 }
+
+type SectionRoute = { moduleKey: string; lessonKey: string; sectionKey: string };
+
+function sectionRoutes(structure: BuilderCourseStructure): SectionRoute[] {
+  return structure.modules.flatMap((module) => module.lessons.flatMap((lesson) => lesson.sections.map((section) => ({
+    moduleKey: module.module_key,
+    lessonKey: lesson.lesson_key,
+    sectionKey: section.section_key,
+  }))));
+}
+
+export async function participantMissingSectionFallback(result: Extract<ParticipantCourseResolution, { status: "ready" }>, requested: SectionRoute) {
+  const current = sectionRoutes(result.structure);
+  const sameLesson = current.find((item) => item.moduleKey === requested.moduleKey && item.lessonKey === requested.lessonKey);
+  if (sameLesson) return participantSectionHref(result.structure.experience.slug, sameLesson.moduleKey, sameLesson.lessonKey, sameLesson.sectionKey);
+
+  if (result.enrollmentId) {
+    const db = createAdminSupabaseClient();
+    const history = await db.from("experience_enrollment_version_history")
+      .select("experience_version_id")
+      .eq("enrollment_id", result.enrollmentId)
+      .not("ended_at", "is", null)
+      .order("ended_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!history.error && history.data) {
+      try {
+        const previous = sectionRoutes(await getExperienceStructure(result.structure.experience.id, history.data.experience_version_id, db));
+        const requestedIndex = previous.findIndex((item) => item.moduleKey === requested.moduleKey && item.lessonKey === requested.lessonKey && item.sectionKey === requested.sectionKey);
+        const currentKeys = new Set(current.map((item) => JSON.stringify(item)));
+        const next = requestedIndex >= 0 ? previous.slice(requestedIndex + 1).find((item) => currentKeys.has(JSON.stringify(item))) : null;
+        if (next) return participantSectionHref(result.structure.experience.slug, next.moduleKey, next.lessonKey, next.sectionKey);
+      } catch {
+        // Historical structure may have been retired; the first current Page remains safe.
+      }
+    }
+  }
+
+  const first = current[0];
+  return first ? participantSectionHref(result.structure.experience.slug, first.moduleKey, first.lessonKey, first.sectionKey) : null;
+}

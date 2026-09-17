@@ -79,8 +79,11 @@ export type Database = {
         content_block_id: string; resource_id: string; sort_order: number; created_at: string
       }, "content_block_id" | "resource_id">
       companion_modules: FoundationTable<{
-        id: string; experience_version_id: string; module_type: string; scope: string; audience: string; target_module_id: string | null; target_lesson_id: string | null; target_section_id: string | null; display_title: string; sort_order: number; visibility: string; configuration: Json; created_by: string | null; created_at: string; updated_at: string
+        id: string; experience_version_id: string; module_key: string; module_type: string; scope: string; audience: string; target_module_id: string | null; target_lesson_id: string | null; target_section_id: string | null; display_title: string; sort_order: number; visibility: string; configuration: Json; created_by: string | null; created_at: string; updated_at: string
       }, "experience_version_id" | "module_type" | "scope" | "audience" | "display_title">
+      companion_draft_identity_decisions: FoundationTable<{
+        draft_version_id: string; source_companion_module_id: string; decision: string; decided_by: string; decided_at: string
+      }, "draft_version_id" | "source_companion_module_id" | "decision" | "decided_by">
       companion_delivery_overrides: FoundationTable<{
         id: string; companion_module_id: string; experience_version_id: string; offering_id: string | null; cohort_course_plan_id: string | null; visibility: string; configuration: Json; updated_by: string | null; created_at: string; updated_at: string
       }, "companion_module_id" | "experience_version_id">
@@ -103,8 +106,11 @@ export type Database = {
         id: string; cohort_id: string; participant_id: string; membership_role: string; status: string; joined_at: string | null; created_at: string; updated_at: string
       }, "cohort_id" | "participant_id">
       experience_enrollments: FoundationTable<{
-        id: string; experience_id: string; experience_version_id: string | null; participant_id: string; cohort_id: string | null; offering_id: string | null; source_type: string; source_id: string | null; status: string; enrolled_at: string; started_at: string | null; completed_at: string | null; created_at: string; updated_at: string
+        id: string; experience_id: string; experience_version_id: string | null; participant_id: string; cohort_id: string | null; offering_id: string | null; source_type: string; source_id: string | null; status: string; version_policy: string; completed_experience_version_id: string | null; enrolled_at: string; started_at: string | null; completed_at: string | null; created_at: string; updated_at: string
       }, "experience_id" | "participant_id">
+      experience_enrollment_version_history: FoundationTable<{
+        id: string; enrollment_id: string; participant_id: string; experience_id: string; experience_version_id: string; transition_reason: string; artifact_snapshot: Json; started_at: string; ended_at: string | null; created_at: string
+      }, "enrollment_id" | "participant_id" | "experience_id" | "experience_version_id" | "transition_reason">
       experience_entitlements: FoundationTable<{
         id: string; participant_id: string; experience_id: string; source_type: string; source_id: string | null; status: string; starts_at: string; expires_at: string | null; granted_by: string | null; created_at: string; updated_at: string
       }, "participant_id" | "experience_id" | "source_type">
@@ -447,6 +453,18 @@ export type Database = {
       clone_experience_version: {
         Args: { p_experience_id: string; p_source_version_id: string; p_version_label: string; p_actor_id: string }
         Returns: string
+      }
+      clone_experience_version_with_companion_keys: {
+        Args: { p_experience_id: string; p_source_version_id: string; p_version_label: string; p_actor_id: string }
+        Returns: string
+      }
+      reconcile_draft_companion_module_key: {
+        Args: { p_draft_companion_module_id: string; p_source_companion_module_id: string }
+        Returns: undefined
+      }
+      acknowledge_draft_companion_module_removal: {
+        Args: { p_draft_version_id: string; p_source_companion_module_id: string; p_actor_id: string }
+        Returns: undefined
       }
     }
     Enums: {

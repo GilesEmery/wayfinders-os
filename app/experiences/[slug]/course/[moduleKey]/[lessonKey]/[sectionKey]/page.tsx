@@ -3,7 +3,7 @@ import { flattenCourseSections } from "@/components/experiences/builder/CourseNa
 import { ParticipantCourseRuntime, ParticipantCourseState } from "@/components/experiences/builder/ParticipantCourseRuntime";
 import { PlatformAuthGate } from "@/components/platform/PlatformAuthGate";
 import { PlatformShell } from "@/components/platform/PlatformShell";
-import { resolveParticipantCourse } from "@/lib/experiences/builder/participant-runtime";
+import { participantMissingSectionFallback, resolveParticipantCourse } from "@/lib/experiences/builder/participant-runtime";
 
 type Params = Promise<{ slug: string; moduleKey: string; lessonKey: string; sectionKey: string }>;
 type SearchParams = Promise<{ progressError?: string; companionError?: string; companionSaved?: string }>;
@@ -28,6 +28,8 @@ export default async function ParticipantCoursePage({ params, searchParams }: { 
 
   const current = flattenCourseSections(result.structure).find((item) => item.moduleKey === moduleKey && item.lessonKey === lessonKey && item.section.section_key === sectionKey);
   if (!current) {
+    const fallback = await participantMissingSectionFallback(result, { moduleKey, lessonKey, sectionKey });
+    if (fallback) redirect(fallback);
     return <PlatformShell><ParticipantCourseState title="Section unavailable"><p>The requested Section is not part of this published Experience Version.</p></ParticipantCourseState></PlatformShell>;
   }
 

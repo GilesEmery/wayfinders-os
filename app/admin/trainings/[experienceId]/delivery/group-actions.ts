@@ -59,12 +59,13 @@ export async function attachExistingGroupAction(experienceId: string, form: Form
 export async function addGroupMemberAction(experienceId: string, offeringId: string, form: FormData) {
   const { admin, db, offering } = await authorized(experienceId, offeringId);
   const participantId = String(form.get("participant_id") ?? "");
-  const enrollment = await db.from("experience_enrollments").select("id").eq("participant_id", participantId).eq("experience_id", experienceId).in("status", ["enrolled", "in_progress", "completed"]).order("updated_at", { ascending: false }).limit(1).maybeSingle();
+  const enrollment = await db.from("experience_enrollments").select("id,experience_version_id").eq("participant_id", participantId).eq("experience_id", experienceId).in("status", ["enrolled", "in_progress", "completed"]).order("updated_at", { ascending: false }).limit(1).maybeSingle();
   if (!enrollment.data) throw new Error("This person is not enrolled in this training.");
+  if (enrollment.data.experience_version_id !== offering!.experience_version_id) throw new Error("This learner must be enrolled in the Group's pinned Course Version before being added.");
   await db.from("cohort_memberships").delete().eq("cohort_id", offering!.cohort_id!).eq("participant_id", participantId);
   const membership = await db.from("cohort_memberships").insert({ cohort_id: offering!.cohort_id!, participant_id: participantId, membership_role: "participant", status: "active", joined_at: new Date().toISOString() });
   if (membership.error) throw new Error(`Member could not be added: ${membership.error.message}`);
-  const linked = await db.from("experience_enrollments").update({ cohort_id: offering!.cohort_id, offering_id: offeringId }).eq("id", enrollment.data.id);
+  const linked = await db.from("experience_enrollments").update({ cohort_id: offering!.cohort_id, offering_id: offeringId, version_policy: "locked" }).eq("id", enrollment.data.id);
   if (linked.error) throw new Error(`The enrollment could not be linked to this Group: ${linked.error.message}`);
   await audit(admin, "course.group.member_added", "cohort", offering!.cohort_id!, { experienceId, offeringId, participantId });
   revalidatePath(deliveryPath(experienceId)); redirect(deliveryPath(experienceId, "Member added."));

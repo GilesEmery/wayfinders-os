@@ -29,7 +29,7 @@ export async function selfEnrollAction(slug: string) {
   const current = existing.data?.find((item) => item.experience_version_id === versionId);
   if (!current) {
     if (existing.data?.length) redirect(`/experiences/${slug}?enrollmentError=${encodeURIComponent("You already have an active enrollment in another version of this training.")}`);
-    const created = await db.from("experience_enrollments").insert({ experience_id: target.id, experience_version_id: versionId, participant_id: profile.participant.id, status: "enrolled", source_type: "self", source_id: profile.participant.id }).select("id").single();
+    const created = await db.from("experience_enrollments").insert({ experience_id: target.id, experience_version_id: versionId, participant_id: profile.participant.id, version_policy: "follow_current", status: "enrolled", source_type: "self", source_id: profile.participant.id }).select("id").single();
     if (created.error) {
       const raced = await db.from("experience_enrollments").select("id").eq("participant_id", profile.participant.id).eq("experience_id", target.id).eq("experience_version_id", versionId).is("cohort_id", null).in("status", ACTIVE_ENROLLMENTS).maybeSingle();
       if (raced.error || !raced.data) redirect(`/experiences/${slug}?enrollmentError=${encodeURIComponent("Enrollment could not be completed.")}`);

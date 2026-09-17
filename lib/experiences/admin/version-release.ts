@@ -34,6 +34,9 @@ export async function publishVersion(experienceId: string, versionId: string): P
   if (result.error) {
     console.error("publish_experience_version failed", { experienceId, versionId, code: result.error.code, message: result.error.message });
     if (result.error.message === "Publish requires a Draft Version") throw new Error("This Version is no longer Draft. Reload before publishing.");
+    if (result.error.message.includes("Draft Companion modules require stable-key reconciliation before publishing.")) {
+      throw new Error("Review Companion continuity before publishing. Confirm inherited modules or acknowledge intentionally removed modules in the Companion reconciliation panel.");
+    }
     if (result.error.message.startsWith("Cannot publish:")) throw new Error(result.error.message);
     throw new Error("Publication could not be completed. No Version state was changed.");
   }
@@ -48,12 +51,12 @@ export async function clonePublishedVersion(experienceId: string, sourceVersionI
   if (version.status !== "published") throw new Error("Only a Published Version can be cloned into a new Draft.");
   const label = requestedLabel.trim();
   if (!LABEL.test(label)) throw new Error("Enter a Version label of 1 to 80 characters.");
-  const result = await db.rpc("clone_experience_version", {
+  const result = await db.rpc("clone_experience_version_with_companion_keys", {
     p_experience_id: experienceId, p_source_version_id: sourceVersionId,
     p_version_label: label, p_actor_id: admin.id,
   });
   if (result.error) {
-    console.error("clone_experience_version failed", { experienceId, sourceVersionId, code: result.error.code, message: result.error.message });
+    console.error("clone_experience_version_with_companion_keys failed", { experienceId, sourceVersionId, code: result.error.code, message: result.error.message });
     if (result.error.code === "23505" || /duplicate version label/i.test(result.error.message)) throw new Error("That Version label is already in use. Choose another label.");
     if (result.error.message === "Clone requires a Published source Version") throw new Error("The source Version is no longer Published. Reload and try again.");
     throw new Error("The new Draft could not be created. The Published Version was not changed.");
