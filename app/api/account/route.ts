@@ -15,7 +15,10 @@ export async function GET() {
     const identity = await authenticatedUser();
     if (!identity) return apiError("Sign in to view your account.", 401);
     const profile = await ensurePlatformProfile(identity.user);
-    if ("error" in profile) return apiError(profile.error ?? "Unable to load your profile.", "code" in profile && profile.code === "full_name_required" ? 409 : 500);
+    if ("error" in profile) return NextResponse.json(
+      { error: profile.error ?? "Unable to load your profile.", code: "code" in profile ? profile.code : undefined },
+      { status: "code" in profile && typeof profile.code === "string" && ["full_name_required", "account_link_ambiguous", "account_link_conflict"].includes(profile.code) ? 409 : 500 },
+    );
     const isAdmin = await hasPlatformAdminAccess(identity.user.id);
     return NextResponse.json(platformAccountFromProfile(identity.user, profile.participant.full_name, isAdmin));
   } catch {

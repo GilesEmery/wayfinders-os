@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import type { PlatformAccount } from "@/lib/platform/auth";
@@ -11,7 +12,7 @@ type AuthContextValue = {
   authenticated: boolean;
   openAuth: (destination?: string, mode?: AuthMode) => void;
   requireAuth: (destination: string) => void;
-  setAccount: (account: PlatformAccount) => void;
+  setAccount: (account: PlatformAccount | null) => void;
 };
 type ErrorPayload = { error?: string; code?: string; participant?: { full_name?: string | null; first_name: string; email: string } };
 
@@ -141,6 +142,7 @@ export function WayfindersAuthProvider({ children, initialAccount }: { children:
           {(mode === "signup" || errorCode === "full_name_required") && <label>Full Name<input autoComplete="name" maxLength={160} required value={fullName} onChange={(event) => setFullName(event.target.value)} /></label>}
           <label>Email Address<input ref={emailInput} autoComplete="email" maxLength={254} required type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
           <label>Password<input autoComplete={mode === "signup" ? "new-password" : "current-password"} minLength={8} required type="password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
+          {mode === "signin" && <Link className="wayfinders-auth-forgot" href="/account/forgot-password" onClick={() => setOpen(false)}>Forgot password?</Link>}
           {mode === "signup" && <label>Confirm Password<input autoComplete="new-password" minLength={8} required type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} /></label>}
           {error && <div className="wayfinders-auth-error" role="alert"><p>{error}</p>{errorCode === "account_exists" && <button onClick={() => switchMode("signin")} type="button">Sign in instead</button>}</div>}
           <button className="wayfinders-auth-submit" disabled={submitting} type="submit">{submitting ? "Please wait…" : mode === "signin" ? "Sign In" : "Create Account"}<span aria-hidden="true">→</span></button>

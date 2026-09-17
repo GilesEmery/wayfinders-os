@@ -9,6 +9,8 @@ import { loadParticipantProgress, type ParticipantProgressSnapshot } from "./pro
 import { resolveExperienceRuntime } from "./runtime";
 import type { BuilderCourseStructure, ExperienceDeliveryMode } from "./types";
 import { resolveCourseTemplate, type CourseTemplate } from "./course-templates";
+import { resolveCourseCoverUrl, resolveCourseLogoUrl } from "./course-cover";
+import { resolveCourseAssets, type ResolvedAsset } from "./resource-assets";
 
 type Db = ReturnType<typeof createAdminSupabaseClient>;
 type Enrollment = Tables<"experience_enrollments">;
@@ -31,7 +33,7 @@ export type ParticipantCourseResolution =
   | { status: "custom"; route: string }
   | { status: "denied"; experience: Tables<"experiences"> }
   | { status: "unavailable"; experience: Tables<"experiences">; reason: "runtime" | "version" | "curriculum" }
-  | { status: "ready"; structure: BuilderCourseStructure; courseTemplate: CourseTemplate; themeConfiguration: unknown; accessSource: ParticipantExperienceAccess["source"]; participantId: string; enrollmentId: string | null; progress: ParticipantProgressSnapshot; responses: Readonly<Record<string, ParticipantResponseContext>> };
+  | { status: "ready"; structure: BuilderCourseStructure; courseTemplate: CourseTemplate; themeConfiguration: unknown; coverUrl: string | null; logoUrl: string | null; assets: { blocks: Record<string, ResolvedAsset>; heroes: Record<string, ResolvedAsset> }; accessSource: ParticipantExperienceAccess["source"]; participantId: string; enrollmentId: string | null; progress: ParticipantProgressSnapshot; responses: Readonly<Record<string, ParticipantResponseContext>> };
 
 const ENROLLMENT_ACCESS = new Set(["enrolled", "in_progress", "completed"]);
 
@@ -45,6 +47,22 @@ function newest<T extends { updated_at: string }>(rows: T[]) {
 
 function preferredOffering(rows: Offering[]) {
   return [...rows].sort((left, right) => Number(right.is_default) - Number(left.is_default) || Date.parse(right.updated_at) - Date.parse(left.updated_at))[0] ?? null;
+}
+
+function hiddenLessonIds(settings: unknown) { if (!settings || typeof settings !== "object" || Array.isArray(settings)) return new Set<string>(); const value = (settings as Record<string, unknown>).hidden_lesson_ids; return new Set(Array.isArray(value) ? value.filter((id): id is string => typeof id === "string") : []); }
+
+function filterDeliveryStructure(structure: BuilderCourseStructure, moduleRows: Array<{ source_module_id: string; sort_order: number; visibility: string }>, sectionRows: Array<{ source_section_id: string | null; sort_order: number; visibility: string }>, hiddenLessons: Set<string>): BuilderCourseStructure {
+  const modules = new Map(moduleRows.map((row) => [row.source_module_id, row])); const sections = new Map(sectionRows.filter((row) => row.source_section_id).map((row) => [row.source_section_id!, row]));
+  return { ...structure, modules: structure.modules.filter((module) => modules.get(module.id)?.visibility !== "hidden").map((module) => ({ ...module, lessons: module.lessons.filter((lesson) => !hiddenLessons.has(lesson.id)).map((lesson) => ({ ...lesson, sections: lesson.sections.filter((section) => sections.get(section.id)?.visibility !== "hidden").sort((a, b) => (sections.get(a.id)?.sort_order ?? a.sort_order) - (sections.get(b.id)?.sort_order ?? b.sort_order)) })) })).sort((a, b) => (modules.get(a.id)?.sort_order ?? a.sort_order) - (modules.get(b.id)?.sort_order ?? b.sort_order)) };
+}
+
+async function effectiveDeliveryStructure(structure: BuilderCourseStructure, offering: Offering | null, db: Db) {
+  if (!offering) return structure;
+  const plan = offering.cohort_id ? await db.from("cohort_course_plans").select("id,settings").eq("cohort_id", offering.cohort_id).eq("experience_version_id", structure.version.id).eq("status", "active").maybeSingle() : { data: null, error: null };
+  if (plan.error) throw new Error(`Unable to load cohort Journey: ${plan.error.message}`);
+  if (plan.data) { const [modules, sections] = await Promise.all([db.from("cohort_course_plan_modules").select("source_module_id,sort_order,visibility").eq("plan_id", plan.data.id), db.from("cohort_course_plan_sections").select("source_section_id,sort_order,visibility").eq("plan_id", plan.data.id).eq("occurrence_type", "canonical")]); const error = modules.error || sections.error; if (error) throw new Error(`Unable to load cohort Journey: ${error.message}`); return filterDeliveryStructure(structure, modules.data ?? [], sections.data ?? [], hiddenLessonIds(plan.data.settings)); }
+  if (!offering.default_delivery_plan_template_id) return structure;
+  const [template, modules, sections] = await Promise.all([db.from("delivery_plan_templates").select("settings").eq("id", offering.default_delivery_plan_template_id).eq("status", "active").maybeSingle(), db.from("delivery_plan_template_modules").select("source_module_id,sort_order,visibility").eq("template_id", offering.default_delivery_plan_template_id), db.from("delivery_plan_template_sections").select("source_section_id,sort_order,visibility").eq("template_id", offering.default_delivery_plan_template_id)]); const error = template.error || modules.error || sections.error; if (error) throw new Error(`Unable to load offering Journey: ${error.message}`); if (!template.data) return structure; return filterDeliveryStructure(structure, modules.data ?? [], sections.data ?? [], hiddenLessonIds(template.data.settings));
 }
 
 export async function resolveParticipantExperienceAccess({ participantId, experienceId, db = createAdminSupabaseClient() }: { participantId: string; experienceId: string; db?: Db }): Promise<ParticipantExperienceAccess> {
@@ -129,11 +147,12 @@ export async function resolveParticipantCourse(slug: string): Promise<Participan
   if (!versionResult.data) return { status: "unavailable", experience, reason: "version" };
 
   const themeId = versionResult.data.theme_id ?? experience.default_theme_id;
-  const [structure, themeResult] = await Promise.all([
+  const [canonicalStructure, themeResult] = await Promise.all([
     getExperienceStructure(experience.id, versionResult.data.id, db),
     themeId ? db.from("experience_themes").select("configuration").eq("id", themeId).maybeSingle() : Promise.resolve({ data: null, error: null }),
   ]);
   if (themeResult.error) throw new Error(`Unable to load the Experience theme: ${themeResult.error.message}`);
+  const structure = await effectiveDeliveryStructure(canonicalStructure, access.offering, db);
   // Progress foreign keys require the enrollment itself to be pinned to this Version.
   const enrollmentId = access.enrollment?.experience_version_id === versionResult.data.id ? access.enrollment.id : null;
   const progress = await loadParticipantProgress({ enrollmentId, participantId: participant.id, versionId: versionResult.data.id, structure, db });
@@ -145,7 +164,11 @@ export async function resolveParticipantCourse(slug: string): Promise<Participan
   if (participantResponseResult.error) throw new Error(`Unable to load participant responses: ${participantResponseResult.error.message}`);
   const participantResponses = new Map((participantResponseResult.data ?? []).map((response) => [response.response_definition_id, response]));
   const responses = Object.fromEntries((definitionResult.data ?? []).filter((definition) => definition.block_id).map((definition) => [definition.block_id!, { definition, response: participantResponses.get(definition.id) ?? null }]));
-  return { status: "ready", structure, courseTemplate: resolveCourseTemplate(experience.delivery_mode as ExperienceDeliveryMode, structure.version.shell_mode), themeConfiguration: themeResult.data?.configuration ?? null, accessSource: access.source, participantId: participant.id, enrollmentId, progress, responses };
+  const themeConfiguration = themeResult.data?.configuration ?? null;
+  const [coverUrl, logoUrl] = await Promise.all([resolveCourseCoverUrl(structure.version.course_configuration, themeConfiguration, db), resolveCourseLogoUrl(structure.version.course_configuration, themeConfiguration, db)]);
+  const sections = structure.modules.flatMap((module) => module.lessons.flatMap((lesson) => lesson.sections));
+  const assets = await resolveCourseAssets(db, blockIds, sections);
+  return { status: "ready", structure, courseTemplate: resolveCourseTemplate(experience.delivery_mode as ExperienceDeliveryMode, structure.version.shell_mode), themeConfiguration, coverUrl, logoUrl, assets, accessSource: access.source, participantId: participant.id, enrollmentId, progress, responses };
 }
 
 export function participantSectionHref(slug: string, moduleKey: string, lessonKey: string, sectionKey: string) {

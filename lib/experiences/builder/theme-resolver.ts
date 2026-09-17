@@ -3,7 +3,7 @@ import type { ThemeConfiguration } from "./types";
 import { validateThemeConfiguration } from "./theme-validation";
 
 export const FALLBACK_EXPERIENCE_THEME: ThemeConfiguration = Object.freeze({
-  colors: { primaryAccent: "#303735", secondaryAccent: "#6b7471", background: "#f7f6f1", surface: "#ffffff", elevatedSurface: "#ffffff", text: "#252a29", mutedText: "#69716e", borderColor: "#d7d5cc" },
+  colors: { primaryAccent: "#0054a1", secondaryAccent: "#303735", background: "#f7f5ef", surface: "#ffffff", elevatedSurface: "#ffffff", text: "#252925", mutedText: "#69716e", borderColor: "#d7d5cc", completion: "#0054a1" },
   typographyKey: "purpose_mixed",
   headingTreatment: "standard",
   buttonVariant: "solid",
@@ -40,6 +40,7 @@ export function resolveExperienceTheme(input: unknown): ResolvedExperienceTheme 
       "--experience-text": colors.text,
       "--experience-muted": colors.mutedText,
       "--experience-border": colors.borderColor,
+      "--experience-completion": colors.completion,
     } as CSSProperties,
     typographyClass: `experience-type-${configuration.typographyKey}`,
     headingClass: `experience-heading-${configuration.headingTreatment}`,

@@ -16,13 +16,13 @@ export function SectionVisitRecorder({ slug, moduleKey, lessonKey, sectionKey, e
 
 function CompletionButton() {
   const { pending } = useFormStatus();
-  return <button disabled={pending} type="submit">{pending ? "Recording completion…" : "Mark section complete"}</button>;
+  return <button disabled={pending} type="submit">{pending ? "Recording completion…" : "Mark complete"}</button>;
 }
 
 export function SectionCompletionControl({ slug, moduleKey, lessonKey, sectionKey, completionRule, status, enabled }: RouteKeys & { completionRule: string; status: string; enabled: boolean }) {
-  if (!enabled) return <p className="participant-completion-note">Progress is not recorded for this Section.</p>;
-  if (status === "completed") return <p className="participant-section-complete" role="status">Section complete</p>;
+  if (!enabled) return <p className="participant-completion-note">Progress is not recorded here.</p>;
+  if (status === "completed") return <p className="participant-section-complete" role="status">Complete · you can continue</p>;
   if (completionRule === "manual") return <form action={markSectionCompleteAction.bind(null, slug, moduleKey, lessonKey, sectionKey)} className="participant-completion-control"><CompletionButton/></form>;
   if (completionRule !== "view") return <p className="participant-completion-note">Completion is recorded when this activity is finished.</p>;
-  return <p className="participant-completion-note">Completion is recorded when this Section is opened.</p>;
+  return <p className="participant-completion-note">Completion is recorded when you continue forward.</p>;
 }

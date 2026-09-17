@@ -22,12 +22,10 @@ export function normalizeSectionProgress(status: string): SectionProgressState {
 export function summarizeParticipantProgress(structure: BuilderCourseStructure, sectionStates: Readonly<Record<string, SectionProgressState>>): Omit<ParticipantProgressSnapshot, "enrollmentId" | "currentSectionId"> {
   const sections = structure.modules.flatMap((module) => module.lessons.flatMap((lesson) => lesson.sections.filter((section) => !section.legacy)));
   const state = (sectionId: string): SectionProgressState => sectionStates[sectionId] ?? "not_started";
-  const required = sections.filter((section) => section.requirement_level === "required");
+  const required = structure.modules.filter((module) => module.requirement_level === "required").flatMap((module) => module.lessons.filter((lesson) => lesson.requirement_level === "required").flatMap((lesson) => lesson.sections.filter((section) => !section.legacy && section.requirement_level === "required")));
   const completed = sections.filter((section) => state(section.id) === "completed").length;
   const requiredCompleted = required.filter((section) => state(section.id) === "completed").length;
   const anyStarted = sections.some((section) => state(section.id) !== "not_started");
-  const allRequiredComplete = required.length > 0 && requiredCompleted === required.length;
-  const experience: ProgressCounts = { requiredTotal: required.length, requiredCompleted, total: sections.length, completed, requiredPercent: required.length ? Math.round(requiredCompleted / required.length * 100) : 0, status: allRequiredComplete ? "completed" : anyStarted ? "in_progress" : "not_started" };
   const lessons = Object.fromEntries(structure.modules.flatMap((module) => module.lessons.map((lesson) => {
     const trackable = lesson.sections.filter((section) => !section.legacy);
     const statuses = trackable.map((section) => state(section.id));
@@ -35,11 +33,14 @@ export function summarizeParticipantProgress(structure: BuilderCourseStructure, 
     return [lesson.id, derivedState(statuses, requiredStatuses)];
   })));
   const modules = Object.fromEntries(structure.modules.map((module) => {
-    const descendants = module.lessons.flatMap((lesson) => lesson.sections.filter((section) => !section.legacy));
-    const statuses = descendants.map((section) => state(section.id));
-    const requiredStatuses = descendants.filter((section) => section.requirement_level === "required").map((section) => state(section.id));
+    const statuses = module.lessons.map((lesson) => lessons[lesson.id]);
+    const requiredStatuses = module.lessons.filter((lesson) => lesson.requirement_level === "required").map((lesson) => lessons[lesson.id]);
     return [module.id, derivedState(statuses, requiredStatuses)];
   }));
+  const moduleStatuses = structure.modules.map((module) => modules[module.id]);
+  const requiredModuleStatuses = structure.modules.filter((module) => module.requirement_level === "required").map((module) => modules[module.id]);
+  const status = derivedState(moduleStatuses, requiredModuleStatuses);
+  const experience: ProgressCounts = { requiredTotal: required.length, requiredCompleted, total: sections.length, completed, requiredPercent: required.length ? Math.round(requiredCompleted / required.length * 100) : 0, status: status === "not_started" && anyStarted ? "in_progress" : status };
   return { sections: sectionStates, lessons, modules, experience };
 }
 

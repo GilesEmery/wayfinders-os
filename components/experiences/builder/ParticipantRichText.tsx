@@ -34,9 +34,16 @@ export function ParticipantRichText({ title, text }: { title: string; text: stri
       blocks.push(unordered ? <ul key={start}>{items}</ul> : <ol key={start}>{items}</ol>);
       continue;
     }
+    if (/^>\s?/.test(line)) {
+      const start = index;
+      const quote: string[] = [];
+      while (index < lines.length && /^>\s?/.test(lines[index].trim())) { quote.push(lines[index].trim().replace(/^>\s?/, "")); index += 1; }
+      blocks.push(<blockquote key={start}>{inline(quote.join(" "))}</blockquote>);
+      continue;
+    }
     const start = index;
     const paragraph: string[] = [];
-    while (index < lines.length && lines[index].trim() && !/^(#{1,3}\s+|[-*]\s+|\d+\.\s+)/.test(lines[index].trim())) { paragraph.push(lines[index].trim()); index += 1; }
+    while (index < lines.length && lines[index].trim() && !/^(#{1,3}\s+|[-*]\s+|\d+\.\s+|>\s?)/.test(lines[index].trim())) { paragraph.push(lines[index].trim()); index += 1; }
     blocks.push(<p key={start}>{inline(paragraph.join(" "))}</p>);
   }
   return <div className="participant-rich-text-block">{title && <h3>{title}</h3>}{blocks}</div>;

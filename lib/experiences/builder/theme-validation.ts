@@ -1,7 +1,7 @@
 import type { ThemeButtonVariant, ThemeCardTreatment, ThemeConfiguration, ThemeCornerPreset, ThemeNavigationTreatment, ThemeSpacingPreset, ThemeTypographyKey, ValidationResult } from "./types";
 
 const KEYS = new Set(["logoResourceId", "coverImageResourceId", "colors", "headingTreatment", "buttonVariant", "typographyKey", "cardTreatment", "navigationTreatment", "spacingPreset", "cornerPreset", "decorativeResourceIds"]);
-const COLOR_KEYS = new Set(["primaryAccent", "secondaryAccent", "background", "surface", "elevatedSurface", "text", "mutedText", "borderColor"]);
+const COLOR_KEYS = new Set(["primaryAccent", "secondaryAccent", "background", "surface", "elevatedSurface", "text", "mutedText", "borderColor", "completion"]);
 const HEX = /^#[0-9a-f]{6}$/i;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TYPOGRAPHY = new Set<ThemeTypographyKey>(["purpose_sans", "purpose_editorial", "purpose_mixed"]);

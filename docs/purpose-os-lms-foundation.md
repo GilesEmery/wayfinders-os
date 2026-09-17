@@ -181,3 +181,36 @@ PurposeOS normal Builder courses use one course workspace: a Week/Lesson outline
 The Standard player is Navigator + Content with a restrained outline, release-pinned progress and a spacious editorial lesson surface. Enhanced adds a visually subordinate Companion rail; CODEX 16 does not claim Notes, Community, or Resource tabs are live. On small screens, Content remains primary, the outline is expandable, and the Companion follows below. Course-theme tokens may alter presentation without replacing shared progress, responses, Blocks, or access rules.
 
 Standard PurposeOS courses consume shared Block Registry and participant runtime capabilities. Flagship courses such as a future Kaleo theme should extend them through a Course Theme/adapter or approved custom Page renderer, not fork generic Text, Media, Resources, responses, progress, or navigation. A useful flagship-only capability should be generalized into the shared registry and reused by the flagship; likewise, a new shared Block should be available to compatible flagship and Hybrid courses unless deliberately disabled. Life Mapping U remains a separate custom-code experience and was not redesigned here. The next refinement can address drag-and-drop only after its lesson-wide ordering semantics are safely maintained, plus richer Companion features when their data and privacy architecture exists.
+
+### CODEX 16.1 Version-owned course choices
+
+The append-only `20260915235913_version_course_configuration.sql` migration adds `experience_versions.course_configuration` as a non-null JSON object defaulting to `{}`. It is local-only until reviewed and applied. Its contract contains `terminology.group_label` (`module`, `week`, `section`, `unit`, `stage`, `session`, `chapter`, `phase`) and `appearance.header_treatment` (`minimal`, `image`, `color`), `reading_width` (`focused`, `standard`, `wide`), and optional six-digit hex `accent_color`. Unsupported or malformed values normalize to Module, minimal, standard, and no override. Creator-facing labels are capitalized in the application. These are curated release choices, not raw CSS or arbitrary style tokens.
+
+Version appearance overrides remain separate from reusable Themes. The accent fallback order is Version override → explicit Theme primary accent → existing Experience accent → PurposeOS fallback. Image header treatment uses a validated existing Theme cover Resource only when it is an active image with a public HTTPS URL; otherwise it shows an honest gradient fallback. No upload path is stored in configuration. Uploaded Course Covers remain pending an authorized Storage bucket, policies, and URL/access design. The new migration replaces only Clone so a successor Draft copies its source Version's `course_configuration`; Publish remains unchanged and older Published Versions retain their choices.
+
+Admin Preview and participant playback share the same runtime. The Navigator is opened by default, and preview response controls are disabled without fake submission or persistence actions. Normal Builder courses use a focused shell without the global Admin sidebar, curriculum terminology from the Version, and a contextual lesson inspector. The Builder's Appearance form saves only Draft Version configuration after `requireAdmin()` and scoped build authorization.
+
+The continuation adds Desktop, Tablet, and Mobile visual Preview controls; these frame presets are not substitutes for real viewport/device testing. Text-oriented Blocks open their edit form by clicking the learner-like content; media and response settings can be edited in a selected-Block inspector. Block overflow contains secondary actions, while Add Content remains categorized at the lesson end. The normal Course overview keeps live/Draft/access/learner status primary and places lifecycle/version internals behind an advanced disclosure. Admin-safe View Live Course points to the Published Version's Preview route, preserving participant enrollment checks. The single-enrollment picker now searches its loaded, bounded participant list; full-directory server-side search remains a separate improvement.
+## Native course assets
+
+CODEX 17 reuses `public.resources` as the canonical asset record and
+`content_block_resources` as the reusable Block relationship. File bytes live in
+one private `purposeos-assets` Storage bucket. Admin Server Actions validate files
+(allowlisted MIME plus signature, 25 MiB maximum), generate collision-safe paths,
+upload without upsert, and persist the Resource record. Participant and Admin
+Preview loaders issue 15-minute signed URLs only after their existing Course
+authorization checks have succeeded; no `anon` or `authenticated` Storage object
+policy is added.
+
+Uploaded Resources are immutable file identities. Replacing media in a Draft
+means linking a different Resource, never overwriting an object used by a
+Published Version. Course Covers use
+`experience_versions.course_configuration.appearance.cover_resource_id`; Lesson
+Heroes use `experience_sections.settings.hero_resource_id`. Both references are
+copied naturally by the existing deep clone while continuing to reuse the same
+Resource and Storage object. Removing an asset from a Block, Cover, or Hero only
+unlinks that usage. Orphan discovery and deletion remain a future Admin-library
+operation; this phase does not automatically delete shared files.
+
+Native video upload/transcoding is deliberately excluded. Video and external-link
+Blocks continue to use validated HTTPS sources.

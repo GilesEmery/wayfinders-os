@@ -3,7 +3,7 @@ import "server-only";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { getBlockDefinition } from "./block-registry";
 import { resolveParticipantCourse } from "./participant-runtime";
-import { completeParticipantSectionFromResponses, recordParticipantSectionVisit } from "./progress-mutations";
+import { recordParticipantSectionVisit } from "./progress-mutations";
 import { responseDataJson, validateResponseData } from "./response-registry";
 
 const KEY = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -44,7 +44,6 @@ async function mutate(mode: "draft" | "final", slug: string, moduleKey: string, 
     : await db.from("participant_responses").insert(payload);
   if (result.error) throw new Error(`Unable to ${mode === "final" ? "submit" : "save"} the response: ${result.error.message}`);
   await recordParticipantSectionVisit(slug, moduleKey, lessonKey, sectionKey);
-  if (mode === "final") await completeParticipantSectionFromResponses(slug, moduleKey, lessonKey, sectionKey);
 }
 
 export const saveParticipantResponseDraft = mutate.bind(null, "draft");

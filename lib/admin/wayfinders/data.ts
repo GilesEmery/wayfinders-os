@@ -45,7 +45,7 @@ export async function loadWayfinderRegistry(filters: WayfinderRegistryFilters) {
 
   const orderColumn = filters.sort === "name" ? "full_name" : filters.sort === "updated" ? "updated_at" : "created_at";
   const ascending = filters.sort === "name";
-  let query = db.from("participants").select("id,auth_user_id,full_name,first_name,preferred_name,email,created_at,updated_at", { count: "exact" });
+  let query = db.from("participants").select("id,auth_user_id,full_name,first_name,preferred_name,email,email_normalized,created_at,updated_at", { count: "exact" });
   if (filters.q) query = query.or(`full_name.ilike.%${filters.q.replaceAll(",", "")}%,first_name.ilike.%${filters.q.replaceAll(",", "")}%,email.ilike.%${filters.q.replaceAll(",", "")}%`);
   if (filters.account === "active") query = query.not("auth_user_id", "is", null);
   if (filters.account === "unclaimed") query = query.is("auth_user_id", null);
@@ -55,6 +55,13 @@ export async function loadWayfinderRegistry(filters: WayfinderRegistryFilters) {
   if (error) throw error;
   const ids = (people ?? []).map((person) => person.id);
   const authIds = (people ?? []).flatMap((person) => person.auth_user_id ? [person.auth_user_id] : []);
+  const pageEmails = [...new Set((people ?? []).map((person) => person.email_normalized))];
+  const duplicateEmailRows = pageEmails.length
+    ? await db.from("participants").select("id,email_normalized").in("email_normalized", pageEmails)
+    : { data: [] };
+  const emailCounts = new Map<string, number>();
+  for (const row of duplicateEmailRows.data ?? []) emailCounts.set(row.email_normalized, (emailCounts.get(row.email_normalized) ?? 0) + 1);
+  const linkingIssueIds = new Set((people ?? []).filter((person) => (emailCounts.get(person.email_normalized) ?? 0) > 1).map((person) => person.id));
   const [hubRows, tagRows, enrollments, assessments, preferences, adminMembers, scopedRoles] = ids.length ? await Promise.all([
     db.from("hub_memberships").select("participant_id,hub_id,membership_role").in("participant_id", ids).eq("status", "active"),
     db.from("participant_tags").select("participant_id,tag_id").in("participant_id", ids),
@@ -65,13 +72,13 @@ export async function loadWayfinderRegistry(filters: WayfinderRegistryFilters) {
     authIds.length ? db.from("platform_role_assignments").select("auth_user_id,role,scope_type,scope_id").in("auth_user_id", authIds).eq("status", "active") : Promise.resolve({ data: [] }),
   ]) : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }];
 
-  return { people: people ?? [], count: count ?? 0, hubs: hubs ?? [], tags: tags ?? [], experiences: experiences ?? [], cohorts: cohorts ?? [], hubRows: hubRows.data ?? [], tagRows: tagRows.data ?? [], enrollments: enrollments.data ?? [], assessments: assessments.data ?? [], preferences: preferences.data ?? [], adminMembers: adminMembers.data ?? [], scopedRoles: scopedRoles.data ?? [] };
+  return { people: people ?? [], count: count ?? 0, linkingIssueIds, hubs: hubs ?? [], tags: tags ?? [], experiences: experiences ?? [], cohorts: cohorts ?? [], hubRows: hubRows.data ?? [], tagRows: tagRows.data ?? [], enrollments: enrollments.data ?? [], assessments: assessments.data ?? [], preferences: preferences.data ?? [], adminMembers: adminMembers.data ?? [], scopedRoles: scopedRoles.data ?? [] };
 }
 
 export async function loadWayfinderWorkspace(participantId: string) {
   const db = createAdminSupabaseClient();
   const [participant, assessments, orgMemberships, hubMemberships, cohortMemberships, participantTags, enrollments, progress, entitlements, assignments, preferences, notes, auditRows, orgs, hubs, cohorts, tags, experiences, offerings] = await Promise.all([
-    db.from("participants").select("id,auth_user_id,full_name,first_name,preferred_name,email,phone,city,state_region,country,timezone,short_bio,created_at,updated_at").eq("id", participantId).maybeSingle(),
+    db.from("participants").select("id,auth_user_id,full_name,first_name,preferred_name,email,email_normalized,phone,city,state_region,country,timezone,short_bio,created_at,updated_at").eq("id", participantId).maybeSingle(),
     db.from("lmu_assessments").select("id,status,current_module,started_at,completed_at,updated_at").eq("participant_id", participantId).order("updated_at", { ascending: false }),
     db.from("organization_memberships").select("organization_id,membership_role,status,joined_at,created_at").eq("participant_id", participantId),
     db.from("hub_memberships").select("hub_id,membership_role,status,joined_at,created_at").eq("participant_id", participantId),
@@ -87,7 +94,10 @@ export async function loadWayfinderWorkspace(participantId: string) {
     db.from("organizations").select("id,name,status").order("name"), db.from("hubs").select("id,name,status").order("name"), db.from("cohorts").select("id,name,experience_id,status,start_date,end_date").order("name"), db.from("tags").select("id,name,description,status").order("name"), db.from("experiences").select("id,name,slug").order("name"), db.from("experience_offerings").select("id,name,experience_id,hub_id,cohort_id,access_mode").order("name"),
   ]);
   if (participant.error) throw participant.error;
+  const emailMatches = participant.data
+    ? await db.from("participants").select("id", { count: "exact", head: true }).eq("email_normalized", participant.data.email_normalized)
+    : { count: 0 };
   const authId = participant.data?.auth_user_id;
   const [adminMember, roles] = authId ? await Promise.all([db.from("admin_members").select("role,status").eq("auth_user_id", authId).maybeSingle(), db.from("platform_role_assignments").select("id,role,scope_type,scope_id,status,created_at").eq("auth_user_id", authId).eq("status", "active")]) : [{ data: null }, { data: [] }];
-  return { participant: participant.data, assessments: assessments.data ?? [], orgMemberships: orgMemberships.data ?? [], hubMemberships: hubMemberships.data ?? [], cohortMemberships: cohortMemberships.data ?? [], participantTags: participantTags.data ?? [], enrollments: enrollments.data ?? [], progress: progress.data ?? [], entitlements: entitlements.data ?? [], assignments: assignments.data ?? [], preferences: preferences.data, notes: notes.data ?? [], auditRows: auditRows.data ?? [], orgs: orgs.data ?? [], hubs: hubs.data ?? [], cohorts: cohorts.data ?? [], tags: tags.data ?? [], experiences: experiences.data ?? [], offerings: offerings.data ?? [], adminMember: adminMember.data, roles: roles.data ?? [] };
+  return { participant: participant.data, accountLinkingIssue: (emailMatches.count ?? 0) > 1, assessments: assessments.data ?? [], orgMemberships: orgMemberships.data ?? [], hubMemberships: hubMemberships.data ?? [], cohortMemberships: cohortMemberships.data ?? [], participantTags: participantTags.data ?? [], enrollments: enrollments.data ?? [], progress: progress.data ?? [], entitlements: entitlements.data ?? [], assignments: assignments.data ?? [], preferences: preferences.data, notes: notes.data ?? [], auditRows: auditRows.data ?? [], orgs: orgs.data ?? [], hubs: hubs.data ?? [], cohorts: cohorts.data ?? [], tags: tags.data ?? [], experiences: experiences.data ?? [], offerings: offerings.data ?? [], adminMember: adminMember.data, roles: roles.data ?? [] };
 }

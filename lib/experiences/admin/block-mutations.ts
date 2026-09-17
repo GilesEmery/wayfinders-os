@@ -6,6 +6,7 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import type { Json, TablesInsert } from "@/lib/supabase/database.types";
 import { getBlockDefinition, parseBlockConfiguration } from "../builder/block-registry";
 import { assertVersionEditable, validateBuilderBlockPlacement } from "../builder/validation";
+import { uploadCourseAsset } from "../builder/resource-assets";
 
 type Db = ReturnType<typeof createAdminSupabaseClient>;
 type Direction = "up" | "down";
@@ -69,6 +70,7 @@ function formConfiguration(blockType: string, form: FormData): unknown {
   if (blockType === "card_selection") return optionConfiguration(form, false);
   if (blockType === "checklist") return optionConfiguration(form, true);
   if (blockType === "check_in") return { affirmativeLabel: form.get("affirmative_label") };
+  if (blockType === "pdf_reader") return { title: form.get("title") ?? "", description: form.get("description") ?? "", readerMode: form.get("reader_mode") ?? "reader" };
   if (["video", "image", "document", "download", "external_link"].includes(blockType)) return { title: form.get("title") ?? "", description: form.get("description") ?? "", url: form.get("url") ?? "", caption: form.get("caption") ?? "", alt: form.get("alt") ?? "", linkLabel: form.get("link_label") ?? "" };
   throw new Error(`Unavailable Block type: ${blockType}.`);
 }
@@ -149,7 +151,7 @@ async function blockInContext(db: Db, blockId: string, sectionId: string) {
   return result.data;
 }
 
-export async function createBlock(experienceId: string, versionId: string, sectionId: string, columnId: string, blockType: string) {
+export async function createBlock(experienceId: string, versionId: string, sectionId: string, columnId: string, blockType: string): Promise<string> {
   const { admin, db, section, lesson, columns } = await context(experienceId, versionId, sectionId);
   const column = columns.find((candidate) => candidate.id === columnId);
   const definition = getBlockDefinition(blockType);
@@ -168,7 +170,13 @@ export async function createBlock(experienceId: string, versionId: string, secti
     payload.sort_order = await nextLessonOrder(db, lesson.id);
     result = await db.from("content_blocks").insert(payload).select("id").single();
   }
-  if (result.error) throw new Error(`Unable to create Block: ${result.error.message}`);
+  if (result.error) {
+    console.error("Unable to create Content Block", { blockType, code: result.error.code, message: result.error.message, details: result.error.details, hint: result.error.hint });
+    if (result.error.code === "23514" && result.error.message.includes("content_blocks_block_type_check")) {
+      throw new Error(`${definition.label} is not enabled in this environment yet. Apply the pending native-media Block type migration.`);
+    }
+    throw new Error(`Unable to create ${definition.label}. Please try again or ask an administrator to review the server log.`);
+  }
   if (definition.response) {
     const responseResult = await db.from("response_definitions").insert(responsePayload(definition, result.data.id, lesson.id, versionId, blockKey.replace(/-/g, "_"), parsed.value as Json));
     if (responseResult.error) {
@@ -177,6 +185,7 @@ export async function createBlock(experienceId: string, versionId: string, secti
     }
   }
   await audit(admin, "section.block.created", "content_block", result.data.id, { experienceId, versionId, sectionId, columnId, blockType, blockKey });
+  return result.data.id;
 }
 
 export async function updateBlock(experienceId: string, versionId: string, sectionId: string, blockId: string, form: FormData) {
@@ -219,6 +228,68 @@ export async function updateBlock(experienceId: string, versionId: string, secti
     if (responseResult.error || !responseResult.data) throw new Error(`Unable to update the linked response definition${responseResult.error ? `: ${responseResult.error.message}` : "."}`);
   }
   await audit(admin, "section.block.updated", "content_block", blockId, { experienceId, versionId, sectionId, columnId: block.column_id, blockType: block.block_type });
+}
+
+export async function updateBlockSettings(experienceId: string, versionId: string, sectionId: string, blockId: string, form: FormData) {
+  const { admin, db, columns } = await context(experienceId, versionId, sectionId);
+  const block = await blockInContext(db, blockId, sectionId);
+  if (!columns.some((column) => column.id === block.column_id)) throw new Error("The Block Column does not belong to this Section layout.");
+  const requirement = String(form.get("requirement_level") ?? "optional");
+  const visibility = String(form.get("visibility") ?? "visible");
+  if (!REQUIREMENTS.has(requirement) || !VISIBILITIES.has(visibility)) throw new Error("Invalid Block requirement or visibility.");
+  const updates: { requirement_level: string; visibility: string; content?: Json } = { requirement_level: requirement, visibility };
+  if (block.block_type === "heading") {
+    const current = block.content && typeof block.content === "object" && !Array.isArray(block.content) ? block.content : {};
+    const merged = {
+      ...current,
+      alignment: String(form.get("alignment") ?? current.alignment ?? "left"),
+      eyebrow: String(form.get("eyebrow") ?? current.eyebrow ?? ""),
+    };
+    const parsed = parseBlockConfiguration("heading", merged);
+    if (!parsed.ok) throw new Error(parsed.errors.join(" "));
+    updates.content = parsed.value as Json;
+  }
+  const result = await db.from("content_blocks").update(updates).eq("id", blockId).eq("section_id", sectionId).eq("column_id", block.column_id!);
+  if (result.error) throw new Error(`Unable to update Block settings: ${result.error.message}`);
+  await audit(admin, "section.block.settings.updated", "content_block", blockId, { experienceId, versionId, sectionId, columnId: block.column_id, requirement, visibility });
+}
+
+export async function setBlockAsset(experienceId: string, versionId: string, sectionId: string, blockId: string, form: FormData) {
+  const { admin, db } = await context(experienceId, versionId, sectionId);
+  const block = await blockInContext(db, blockId, sectionId);
+  if (!new Set(["image", "pdf_reader", "document", "download"]).has(block.block_type)) throw new Error("Native uploads are available for Image, PDF Reader, Document, and Download Blocks.");
+  const operation = String(form.get("asset_operation") ?? "select");
+  let resourceId = String(form.get("resource_id") ?? "");
+  if (operation === "upload") {
+    const file = form.get("file");
+    if (!(file instanceof File)) throw new Error("Choose a file to upload.");
+    if (block.block_type === "pdf_reader" && file.type !== "application/pdf") throw new Error("PDF Reader Blocks require a PDF file.");
+    const asset = await uploadCourseAsset(db, file, experienceId, admin.id, String(form.get("asset_title") ?? ""));
+    resourceId = asset.id;
+  }
+  if (operation === "remove") {
+    const removed = await db.from("content_block_resources").delete().eq("content_block_id", blockId);
+    if (removed.error) throw new Error(`Unable to remove the asset from this Block: ${removed.error.message}`);
+    await audit(admin, "section.block.asset.unlinked", "content_block", blockId, { experienceId, versionId, sectionId });
+    return;
+  }
+  const resource = await db.from("resources").select("id,resource_type,status,storage_path,mime_type").eq("id", resourceId).eq("status", "active").not("storage_path", "is", null).maybeSingle();
+  if (resource.error || !resource.data) throw new Error("Choose an available uploaded asset.");
+  if (block.block_type === "image" && resource.data.resource_type !== "image") throw new Error("Image Blocks require an uploaded image.");
+  if (block.block_type === "pdf_reader" && (resource.data.resource_type !== "pdf" || resource.data.mime_type !== "application/pdf")) throw new Error("PDF Reader Blocks require an uploaded PDF.");
+  if (!["image", "pdf_reader"].includes(block.block_type) && !["pdf", "download", "worksheet", "guide"].includes(resource.data.resource_type)) throw new Error("Choose a PDF or document asset.");
+  const existing = await db.from("content_block_resources").select("resource_id").eq("content_block_id", blockId);
+  if (existing.error) throw new Error(`Unable to inspect current asset links: ${existing.error.message}`);
+  if (!(existing.data ?? []).some((link) => link.resource_id === resourceId)) {
+    const inserted = await db.from("content_block_resources").insert({ content_block_id: blockId, resource_id: resourceId, sort_order: 0 });
+    if (inserted.error) throw new Error(`Unable to attach the asset: ${inserted.error.message}`);
+  }
+  const stale = (existing.data ?? []).map((link) => link.resource_id).filter((id) => id !== resourceId);
+  if (stale.length) {
+    const removed = await db.from("content_block_resources").delete().eq("content_block_id", blockId).in("resource_id", stale);
+    if (removed.error) throw new Error(`Unable to replace the Block asset: ${removed.error.message}`);
+  }
+  await audit(admin, "section.block.asset.linked", "content_block", blockId, { experienceId, versionId, sectionId, resourceId });
 }
 
 export async function deleteBlock(experienceId: string, versionId: string, sectionId: string, blockId: string, confirmed: boolean) {

@@ -4,7 +4,7 @@ import { validateResponseOptions, type DatabaseResponseType, type ResponseKind }
 import { validateMediaConfiguration } from "./media-source";
 
 export type BlockCategory = "content" | "media" | "interaction" | "resource" | "navigation" | "communication" | "system" | "custom";
-export type BlockEditorKey = "heading" | "rich_text" | "callout" | "response" | "media";
+export type BlockEditorKey = "heading" | "rich_text" | "callout" | "response" | "media" | "pdf_reader";
 export type BlockPreviewKey = BlockEditorKey;
 export type BlockConfiguration = Readonly<Record<string, Json | undefined>>;
 
@@ -117,6 +117,15 @@ function booleanResponse(input: unknown): ValidationResult<BlockConfiguration> {
   return result({ affirmativeLabel: affirmativeLabel.value }, [...parsed.errors, affirmativeLabel.error]);
 }
 
+function pdfReader(input: unknown): ValidationResult<BlockConfiguration> {
+  const parsed = strict(input, ["title", "description", "readerMode"]);
+  if (!parsed.value) return { ok: false, errors: parsed.errors };
+  const title = text(parsed.value.title ?? "", "Title", 200);
+  const description = text(parsed.value.description ?? "", "Description", 3000);
+  const readerMode = oneOf(parsed.value.readerMode, ["reader", "slides", "fit_width"] as const, "Reader mode");
+  return result({ title: title.value, description: description.value, readerMode: readerMode.value }, [...parsed.errors, title.error, description.error, readerMode.error]);
+}
+
 const definitions = [
   {
     blockType: "heading", label: "Heading", description: "Introduce a topic or divide content with a clear heading.", category: "content", iconKey: "heading", editorKey: "heading", previewKey: "heading", participantRendererKey: "heading.v1", defaultCompletionRule: "none",
@@ -159,27 +168,32 @@ const definitions = [
     supportsResponse: true, supportsCompletion: true, supportsResources: false, duplicable: true, availability: "available", response: { responseKind: "boolean", responseType: "choice", completionSignal: "response_submitted" },
   },
   {
-    blockType: "video", label: "Video", description: "Embed a supported HTTPS video or link to hosted video.", category: "media", iconKey: "video", editorKey: "media", previewKey: "media", participantRendererKey: "video.v1", defaultCompletionRule: "none",
+    blockType: "video", label: "Video", description: "Embed a video from a supported external provider.", category: "media", iconKey: "video", editorKey: "media", previewKey: "media", participantRendererKey: "video.v1", defaultCompletionRule: "none",
     defaultConfiguration: () => ({ title: "", description: "", url: "", caption: "", alt: "", linkLabel: "" }), validateConfiguration: (input) => validateMediaConfiguration(input, "video"),
     supportsResponse: false, supportsCompletion: false, supportsResources: true, duplicable: true, availability: "available",
   },
   {
-    blockType: "image", label: "Image", description: "Show an externally hosted image with meaningful alt text.", category: "media", iconKey: "image", editorKey: "media", previewKey: "media", participantRendererKey: "image.v1", defaultCompletionRule: "none",
+    blockType: "image", label: "Image", description: "Upload an image or choose an existing asset.", category: "media", iconKey: "image", editorKey: "media", previewKey: "media", participantRendererKey: "image.v1", defaultCompletionRule: "none",
     defaultConfiguration: () => ({ title: "", description: "", url: "", caption: "", alt: "Describe this image", linkLabel: "" }), validateConfiguration: (input) => validateMediaConfiguration(input, "image"),
     supportsResponse: false, supportsCompletion: false, supportsResources: true, duplicable: true, availability: "available",
   },
   {
-    blockType: "document", label: "PDF / Document", description: "Open an externally hosted document.", category: "resource", iconKey: "document", editorKey: "media", previewKey: "media", participantRendererKey: "document.v1", defaultCompletionRule: "none",
-    defaultConfiguration: () => ({ title: "New Document", description: "", url: "", caption: "", alt: "", linkLabel: "Open Document" }), validateConfiguration: (input) => validateMediaConfiguration(input, "document"),
+    blockType: "pdf_reader", label: "PDF Reader", description: "Display a PDF, slide deck, workbook, or guide directly inside the Lesson.", category: "media", iconKey: "document", editorKey: "pdf_reader", previewKey: "pdf_reader", participantRendererKey: "pdf-reader.v1", defaultCompletionRule: "none",
+    defaultConfiguration: () => ({ title: "", description: "", readerMode: "reader" }), validateConfiguration: pdfReader,
     supportsResponse: false, supportsCompletion: false, supportsResources: true, duplicable: true, availability: "available",
   },
   {
-    blockType: "download", label: "File / Download", description: "Link to an externally hosted downloadable file.", category: "resource", iconKey: "download", editorKey: "media", previewKey: "media", participantRendererKey: "download.v1", defaultCompletionRule: "none",
+    blockType: "document", label: "Document / File", description: "Upload a PDF, document, worksheet, or other file. Participants can open or download it.", category: "resource", iconKey: "document", editorKey: "media", previewKey: "media", participantRendererKey: "document.v1", defaultCompletionRule: "none",
+    defaultConfiguration: () => ({ title: "New Document / File", description: "", url: "", caption: "", alt: "", linkLabel: "" }), validateConfiguration: (input) => validateMediaConfiguration(input, "document"),
+    supportsResponse: false, supportsCompletion: false, supportsResources: true, duplicable: true, availability: "available",
+  },
+  {
+    blockType: "download", label: "Document / File", description: "Legacy file Block. Participants can open or download its Resource.", category: "resource", iconKey: "download", editorKey: "media", previewKey: "media", participantRendererKey: "download.v1", defaultCompletionRule: "none",
     defaultConfiguration: () => ({ title: "New File", description: "", url: "", caption: "", alt: "", linkLabel: "Open File" }), validateConfiguration: (input) => validateMediaConfiguration(input, "download"),
     supportsResponse: false, supportsCompletion: false, supportsResources: true, duplicable: true, availability: "available",
   },
   {
-    blockType: "external_link", label: "External Link", description: "Open an approved HTTPS resource.", category: "resource", iconKey: "link", editorKey: "media", previewKey: "media", participantRendererKey: "external-link.v1", defaultCompletionRule: "none",
+    blockType: "external_link", label: "External Link", description: "Link to an external website or resource.", category: "resource", iconKey: "link", editorKey: "media", previewKey: "media", participantRendererKey: "external-link.v1", defaultCompletionRule: "none",
     defaultConfiguration: () => ({ title: "New Resource", description: "", url: "", caption: "", alt: "", linkLabel: "Open Resource" }), validateConfiguration: (input) => validateMediaConfiguration(input, "external_link"),
     supportsResponse: false, supportsCompletion: false, supportsResources: true, duplicable: true, availability: "available",
   },

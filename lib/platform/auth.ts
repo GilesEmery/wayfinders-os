@@ -4,6 +4,8 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 const PARTICIPANT_COLUMNS = "id,auth_user_id,first_name,full_name,email,email_normalized,created_at,updated_at";
+const ACCOUNT_LINK_AMBIGUOUS = "We found more than one existing Wayfinders record associated with this email. Please contact us so we can connect your account correctly.";
+const ACCOUNT_LINK_CONFLICT = "This email is already connected to another PurposeOS account. Please contact support if you believe this is incorrect.";
 
 export type PlatformAccount = { email: string; fullName: string; displayName: string; isAdmin: boolean };
 
@@ -16,6 +18,18 @@ function accountFromUser(user: User, profileName?: string | null, isAdmin = fals
     displayName: fullName || user.email?.split("@")[0] || "Account",
     isAdmin,
   };
+}
+
+async function recordAccountLinked(participantId: string, user: User, normalizedEmail: string) {
+  const result = await createAdminSupabaseClient().from("admin_audit_log").insert({
+    admin_user_id: user.id,
+    admin_email: normalizedEmail,
+    action: "participant.account_linked",
+    entity_type: "participant",
+    entity_id: participantId,
+    metadata: { matching_method: "normalized_email" },
+  });
+  if (result.error) console.error("Participant account link audit failed", { participantId, authUserId: user.id, message: result.error.message });
 }
 
 export async function getPlatformUser() {
@@ -62,7 +76,7 @@ export async function ensurePlatformProfile(user: User, requestedFullName?: stri
   if (!user.email) return { error: "Your account does not have an email address." } as const;
 
   const admin = createAdminSupabaseClient();
-  const email = user.email.toLowerCase();
+  const email = user.email.trim().toLowerCase();
   const metadataName = typeof user.user_metadata.full_name === "string" ? user.user_metadata.full_name.trim() : "";
   const fullName = requestedFullName?.trim() || metadataName;
   const byIdentity = await admin
@@ -74,29 +88,51 @@ export async function ensurePlatformProfile(user: User, requestedFullName?: stri
   if (byIdentity.error) return { error: "Unable to load your Wayfinders profile." } as const;
   let participant = byIdentity.data;
 
-  // Claim a legacy, unlinked profile before creating a new one. This preserves prior
-  // LMU progress and prevents a second participant record for the same person.
+  // Claim a legacy, unlinked profile before creating a new one. The conditional
+  // update is the atomic claim: a losing concurrent request must re-read and stop,
+  // never fall through to participant creation.
   if (!participant) {
-    const legacy = await admin
+    const matches = await admin
       .from("participants")
       .select(PARTICIPANT_COLUMNS)
       .eq("email_normalized", email)
-      .is("auth_user_id", null)
       .order("created_at", { ascending: true })
-      .limit(2);
-    if (legacy.error) return { error: "Unable to load your Wayfinders profile." } as const;
-    // Only claim a clear one-to-one email match. Ambiguous duplicate records are
-    // left for the future Merge Wayfinders workflow instead of choosing arbitrarily.
-    if (legacy.data?.length === 1) {
+      .limit(3);
+    if (matches.error) return { error: "Unable to load your Wayfinders profile." } as const;
+    const linkedToAnotherUser = (matches.data ?? []).find((row) => row.auth_user_id && row.auth_user_id !== user.id);
+    const unlinked = (matches.data ?? []).filter((row) => !row.auth_user_id);
+    if (linkedToAnotherUser) {
+      console.error("Participant account linking conflict", { authUserId: user.id, normalizedEmail: email });
+      return { error: ACCOUNT_LINK_CONFLICT, code: "account_link_conflict" } as const;
+    }
+    if (unlinked.length > 1 || (matches.data?.length ?? 0) > 1) {
+      console.error("Participant account linking ambiguity", { authUserId: user.id, normalizedEmail: email, matchCount: matches.data?.length ?? 0 });
+      return { error: ACCOUNT_LINK_AMBIGUOUS, code: "account_link_ambiguous" } as const;
+    }
+    if (unlinked.length === 1) {
+      const candidate = unlinked[0];
       const linked = await admin
         .from("participants")
-        .update({ auth_user_id: user.id, email: user.email, email_normalized: email })
-        .eq("id", legacy.data[0].id)
+        .update({ auth_user_id: user.id })
+        .eq("id", candidate.id)
+        .eq("email_normalized", email)
         .is("auth_user_id", null)
         .select(PARTICIPANT_COLUMNS)
         .maybeSingle();
       if (linked.error) return { error: "Unable to connect your Wayfinders profile." } as const;
-      participant = linked.data;
+      if (linked.data) {
+        participant = linked.data;
+        await recordAccountLinked(participant.id, user, email);
+        console.info("Participant account linked", { participantId: participant.id, authUserId: user.id, matchingMethod: "normalized_email" });
+      } else {
+        const claimed = await admin.from("participants").select(PARTICIPANT_COLUMNS).eq("id", candidate.id).maybeSingle();
+        if (claimed.error) return { error: "Unable to connect your Wayfinders profile." } as const;
+        if (claimed.data?.auth_user_id === user.id) participant = claimed.data;
+        else {
+          console.error("Participant account linking claim lost", { authUserId: user.id, normalizedEmail: email });
+          return { error: ACCOUNT_LINK_CONFLICT, code: "account_link_conflict" } as const;
+        }
+      }
     }
   }
 

@@ -27,7 +27,7 @@ export type DeliveryPlanSharingScope = "private" | "organization" | "hub" | "glo
 export type DeliveryPlanStatus = "draft" | "active" | "archived";
 export type CohortPlanOccurrenceType = "canonical" | "repeat" | "moved";
 
-export type ThemeColorTokens = Readonly<{ primaryAccent?: string; secondaryAccent?: string; background?: string; surface?: string; elevatedSurface?: string; text?: string; mutedText?: string; borderColor?: string }>;
+export type ThemeColorTokens = Readonly<{ primaryAccent?: string; secondaryAccent?: string; background?: string; surface?: string; elevatedSurface?: string; text?: string; mutedText?: string; borderColor?: string; completion?: string }>;
 export type ThemeConfiguration = Readonly<{
   logoResourceId?: string;
   coverImageResourceId?: string;

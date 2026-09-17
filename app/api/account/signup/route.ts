@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ensurePlatformProfile } from "@/lib/platform/auth";
+import { passwordValidationError } from "@/lib/platform/password";
 import { LMU_SESSION_COOKIE } from "@/lib/experiences/lmu/server/constants";
 import { PayloadError, apiError, readJsonObject } from "@/lib/experiences/lmu/server/http";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -15,7 +16,8 @@ export async function POST(request: NextRequest) {
     const confirmPassword = typeof body.confirmPassword === "string" ? body.confirmPassword : "";
     if (!fullName || fullName.length > 160) return apiError("Enter your full name.", 400);
     if (!EMAIL_PATTERN.test(email) || email.length > 254) return apiError("Enter a valid email address.", 400);
-    if (password.length < 8) return apiError("Password must be at least 8 characters.", 400);
+    const passwordError = passwordValidationError(password);
+    if (passwordError) return apiError(passwordError, 400);
     if (password !== confirmPassword) return apiError("Passwords do not match.", 400);
 
     const supabase = await createServerSupabaseClient();
@@ -25,7 +27,10 @@ export async function POST(request: NextRequest) {
     if (error) return apiError("Unable to create your Wayfinders account.", 400);
     if (!data.user || !data.session) return apiError("Your account was created but requires email confirmation. Turn Confirm Email off for this alpha flow.", 409);
     const context = await ensurePlatformProfile(data.user, fullName);
-    if ("error" in context) return apiError(context.error ?? "Unable to create your Wayfinders profile.", 500);
+    if ("error" in context) return NextResponse.json(
+      { error: context.error ?? "Unable to create your Wayfinders profile.", code: "code" in context ? context.code : undefined },
+      { status: "code" in context && typeof context.code === "string" && ["account_link_ambiguous", "account_link_conflict"].includes(context.code) ? 409 : 500 },
+    );
     const response = NextResponse.json(context, { status: 201 });
     response.cookies.delete(LMU_SESSION_COOKIE);
     return response;

@@ -118,6 +118,18 @@ export async function updateModule(experienceId: string, versionId: string, modu
   await audit(admin, "module.updated", "experience_module", moduleId, { experienceId, versionId });
 }
 
+export async function renameCurriculumItem(experienceId: string, versionId: string, kind: Kind, itemId: string, form: FormData) {
+  const { admin, db } = await context(experienceId, versionId);
+  const title = field(form, "title", 200, true);
+  const result = kind === "module"
+    ? await db.from("experience_modules").update({ title }).eq("id", itemId).eq("experience_version_id", versionId).select("id").maybeSingle()
+    : kind === "lesson"
+      ? await db.from("experience_lessons").update({ title }).eq("id", itemId).eq("experience_version_id", versionId).select("id").maybeSingle()
+      : await db.from("experience_sections").update({ title }).eq("id", itemId).eq("experience_version_id", versionId).select("id").maybeSingle();
+  if (result.error || !result.data) throw new Error(`Unable to rename this ${kind}.`);
+  await audit(admin, `${kind}.renamed`, `experience_${kind}`, itemId, { experienceId, versionId, title });
+}
+
 export async function createLesson(experienceId: string, versionId: string, moduleId: string, form: FormData) {
   const { admin, db } = await context(experienceId, versionId);
   const parent = await db.from("experience_modules").select("id").eq("id", moduleId).eq("experience_version_id", versionId).maybeSingle();
@@ -214,7 +226,10 @@ export async function reorderItem(experienceId: string, versionId: string, kind:
   const targetOrder = refreshed.data.sort_order + (direction === "up" ? -1 : 1);
   const sibling = kind === "module" ? await db.from("experience_modules").select("id,sort_order").eq("experience_version_id", parentId).eq("sort_order", targetOrder).maybeSingle() : kind === "lesson" ? await db.from("experience_lessons").select("id,sort_order").eq("module_id", parentId).eq("sort_order", targetOrder).maybeSingle() : await db.from("experience_sections").select("id,sort_order").eq("lesson_id", parentId).eq("sort_order", targetOrder).maybeSingle();
   if (!sibling.data) return;
-  const temporary = -1 - refreshed.data.sort_order;
+  // All curriculum tables reject negative sort_order values. Modules and Lessons
+  // also enforce an immediate parent/order uniqueness constraint, so park the
+  // moving row in the next unused positive slot while the sibling swap occurs.
+  const temporary = await parentMax(table, parent, parentId);
   for (const [id, order] of [[itemId, temporary], [sibling.data.id, refreshed.data.sort_order], [itemId, targetOrder]] as const) {
     const result = kind === "module" ? await db.from("experience_modules").update({ sort_order: order }).eq("id", id) : kind === "lesson" ? await db.from("experience_lessons").update({ sort_order: order }).eq("id", id) : await db.from("experience_sections").update({ sort_order: order }).eq("id", id);
     if (result.error) throw new Error(`Unable to reorder ${kind}: ${result.error.message}`);
@@ -222,20 +237,43 @@ export async function reorderItem(experienceId: string, versionId: string, kind:
   await audit(admin, `${kind}.reordered`, `experience_${kind}`, itemId, { experienceId, versionId, direction });
 }
 
-export async function moveSection(experienceId: string, versionId: string, sectionId: string, targetLessonId: string) {
+async function placeSection(sectionId: string, lessonId: string, position: number) {
+  const db = createAdminSupabaseClient();
+  const rows = await db.from("experience_sections").select("id,sort_order").eq("lesson_id", lessonId).order("sort_order").order("created_at");
+  if (rows.error) throw new Error(`Unable to load destination order: ${rows.error.message}`);
+  const ids = (rows.data ?? []).map((row) => row.id).filter((id) => id !== sectionId);
+  ids.splice(Math.min(Math.max(position, 0), ids.length), 0, sectionId);
+  const base = (rows.data ?? []).reduce((max, row) => Math.max(max, row.sort_order), -1) + ids.length + 10;
+  for (const [index, id] of ids.entries()) {
+    const parked = await db.from("experience_sections").update({ sort_order: base + index }).eq("id", id);
+    if (parked.error) throw new Error(`Unable to prepare Page order: ${parked.error.message}`);
+  }
+  for (const [index, id] of ids.entries()) {
+    const update = await db.from("experience_sections").update({ sort_order: index }).eq("id", id);
+    if (update.error) throw new Error(`Unable to save Page order: ${update.error.message}`);
+  }
+}
+
+export async function moveSection(experienceId: string, versionId: string, sectionId: string, targetLessonId: string, position: number) {
   const { admin, db } = await context(experienceId, versionId);
   const [section, lesson] = await Promise.all([
     db.from("experience_sections").select("id,lesson_id,module_id").eq("id", sectionId).eq("experience_version_id", versionId).maybeSingle(),
     db.from("experience_lessons").select("id,module_id").eq("id", targetLessonId).eq("experience_version_id", versionId).maybeSingle(),
   ]);
   if (!section.data || !lesson.data) throw new Error("Source Section or target Lesson is outside this Version.");
-  if (section.data.lesson_id === targetLessonId) return;
   const sourceLessonId = section.data.lesson_id;
   const result = await db.from("experience_sections").update({ lesson_id: targetLessonId, module_id: lesson.data.module_id, sort_order: await parentMax("experience_sections", "lesson_id", targetLessonId) }).eq("id", sectionId).eq("experience_version_id", versionId);
   if (result.error) throw new Error(`Unable to move Section: ${result.error.message}`);
-  await normalize("experience_sections", "lesson_id", sourceLessonId);
-  await normalize("experience_sections", "lesson_id", targetLessonId);
+  if (sourceLessonId !== targetLessonId) await normalize("experience_sections", "lesson_id", sourceLessonId);
+  await placeSection(sectionId, targetLessonId, Number.isInteger(position) ? position : Number.MAX_SAFE_INTEGER);
   await audit(admin, "section.moved", "experience_section", sectionId, { experienceId, versionId, sourceLessonId, targetLessonId, targetModuleId: lesson.data.module_id });
+}
+
+export async function moveLesson(experienceId: string, versionId: string, lessonId: string, targetModuleId: string, position: number) {
+  const { admin, db } = await context(experienceId, versionId);
+  const result = await db.rpc("move_draft_experience_lesson", { p_experience_id: experienceId, p_experience_version_id: versionId, p_lesson_id: lessonId, p_target_module_id: targetModuleId, p_position: Number.isInteger(position) ? Math.max(position, 0) : 0 });
+  if (result.error) throw new Error(`Unable to move Lesson: ${result.error.message}`);
+  await audit(admin, "lesson.moved", "experience_lesson", lessonId, { experienceId, versionId, targetModuleId, position });
 }
 
 export async function deleteItem(experienceId: string, versionId: string, kind: Kind, itemId: string, confirmed: boolean) {

@@ -16,10 +16,13 @@ export async function POST(request: NextRequest) {
     if (error || !data.user) return apiError("Email or password is incorrect.", 401);
     const context = await ensurePlatformProfile(data.user, fullName);
     if ("error" in context) {
-      if (context.code === "full_name_required") {
+      if ("code" in context && context.code === "full_name_required") {
         return NextResponse.json({ error: context.error, code: context.code, email: data.user.email }, { status: 409 });
       }
-      return apiError(context.error ?? "Unable to load your Wayfinders profile.", 500);
+      return NextResponse.json(
+        { error: context.error ?? "Unable to load your Wayfinders profile.", code: "code" in context ? context.code : undefined },
+        { status: "code" in context && typeof context.code === "string" && ["account_link_ambiguous", "account_link_conflict"].includes(context.code) ? 409 : 500 },
+      );
     }
     const response = NextResponse.json(context);
     response.cookies.delete(LMU_SESSION_COOKIE);

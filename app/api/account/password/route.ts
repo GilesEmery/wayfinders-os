@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { PayloadError, apiError, readJsonObject } from "@/lib/experiences/lmu/server/http";
+import { passwordValidationError } from "@/lib/platform/password";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
@@ -7,7 +8,8 @@ export async function POST(request: NextRequest) {
     const body = await readJsonObject(request);
     const newPassword = typeof body.newPassword === "string" ? body.newPassword : "";
     const confirmPassword = typeof body.confirmPassword === "string" ? body.confirmPassword : "";
-    if (newPassword.length < 8) return apiError("New password must be at least 8 characters.", 400);
+    const passwordError = passwordValidationError(newPassword, "New password");
+    if (passwordError) return apiError(passwordError, 400);
     if (newPassword !== confirmPassword) return apiError("Passwords do not match.", 400);
 
     const supabase = await createServerSupabaseClient();
