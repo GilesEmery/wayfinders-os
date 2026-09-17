@@ -22,7 +22,7 @@ export async function enrollParticipantInVersion(experienceId: string, versionId
   const duplicate = existing.data?.find((item) => item.experience_version_id === versionId);
   if (duplicate) return { id: duplicate.id, reused: true };
   if (existing.data?.length) throw new Error("This participant already has an active individual enrollment for another Version of this Experience.");
-  const created = await db.from("experience_enrollments").insert({ participant_id: participantId, experience_id: experienceId, experience_version_id: versionId, status: "enrolled" }).select("id").single();
+  const created = await db.from("experience_enrollments").insert({ participant_id: participantId, experience_id: experienceId, experience_version_id: versionId, status: "enrolled", source_type: "admin", source_id: admin.id }).select("id").single();
   if (created.error) throw new Error(`Unable to enroll participant: ${created.error.message}`);
   await audit(admin, "participant.enrolled", "experience_enrollment", created.data.id, { experienceId, versionId, participantId });
   return { id: created.data.id, reused: false };

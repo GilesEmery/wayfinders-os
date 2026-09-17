@@ -38,6 +38,8 @@ export async function publishVersion(experienceId: string, versionId: string): P
     throw new Error("Publication could not be completed. No Version state was changed.");
   }
   if (result.data !== versionId) throw new Error("Publication returned an unexpected Version ID.");
+  const activated = await db.from("experiences").update({ status: "active" }).eq("id", experienceId).in("status", ["draft", "active"]).select("id").maybeSingle();
+  if (activated.error || !activated.data) throw new Error("The Version was Published, but the Experience could not be activated. Review its lifecycle status before sharing it.");
   return versionId;
 }
 

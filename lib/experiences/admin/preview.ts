@@ -8,8 +8,9 @@ import { summarizeParticipantProgress } from "../builder/progress";
 import { resolveCourseTemplate } from "../builder/course-templates";
 import type { ExperienceDeliveryMode } from "../builder/types";
 import type { ParticipantResponseContext } from "../builder/participant-runtime";
-import { resolveCourseCoverUrl, resolveCourseLogoUrl } from "../builder/course-cover";
+import { resolveCourseCoverUrl, resolveCourseHeaderLogoUrl, resolveCourseLogoUrl } from "../builder/course-cover";
 import { resolveCourseAssets } from "../builder/resource-assets";
+import { loadCompanionRuntime } from "../builder/companion-data";
 
 export async function getAdminCoursePreview(experienceId: string, versionId: string) {
   const admin = await requireAdmin();
@@ -27,10 +28,10 @@ export async function getAdminCoursePreview(experienceId: string, versionId: str
   const responses: Readonly<Record<string, ParticipantResponseContext>> = Object.fromEntries((definitions.data ?? []).filter((definition) => definition.block_id).map((definition) => [definition.block_id!, { definition, response: null }]));
   const progress = { enrollmentId: null, currentSectionId: null, ...summarizeParticipantProgress(structure, {}) };
   const themeConfiguration = theme.data?.configuration ?? null;
-  const [coverUrl, logoUrl] = await Promise.all([resolveCourseCoverUrl(structure.version.course_configuration, themeConfiguration, db), resolveCourseLogoUrl(structure.version.course_configuration, themeConfiguration, db)]);
+  const [coverUrl, logoUrl, headerLogoUrl] = await Promise.all([resolveCourseCoverUrl(structure.version.course_configuration, themeConfiguration, db), resolveCourseLogoUrl(structure.version.course_configuration, themeConfiguration, db), resolveCourseHeaderLogoUrl(structure.version.course_configuration, themeConfiguration, db)]);
   const sections = structure.modules.flatMap((module) => module.lessons.flatMap((lesson) => lesson.sections));
-  const assets = await resolveCourseAssets(db, blockIds, sections);
-  return { structure, themeConfiguration, coverUrl, logoUrl, assets, courseTemplate: resolveCourseTemplate(structure.experience.delivery_mode as ExperienceDeliveryMode, structure.version.shell_mode), progress, responses };
+  const [assets, companion] = await Promise.all([resolveCourseAssets(db, blockIds, sections), loadCompanionRuntime({ versionId, offering: null, preview: true, db })]);
+  return { structure, themeConfiguration, coverUrl, logoUrl, headerLogoUrl, assets, companion, courseTemplate: resolveCourseTemplate(structure.experience.delivery_mode as ExperienceDeliveryMode, structure.version.shell_mode), progress, responses };
 }
 
 export function adminPreviewHref(experienceId: string, versionId: string, moduleKey: string, lessonKey: string, sectionKey: string) {

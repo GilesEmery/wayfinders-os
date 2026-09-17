@@ -18,7 +18,7 @@ export async function getWayfinderDashboard() {
   const assessmentIds = (lmu.data ?? []).map((assessment) => assessment.id);
   const [sectionProgress, enrollments, progress, organizations, hubs, cohorts, tags, roles] = await Promise.all([
     assessmentIds.length ? db.from("lmu_section_progress").select("assessment_id,section_key,status,updated_at").in("assessment_id", assessmentIds).order("updated_at", { ascending: false }) : Promise.resolve({ data: [] }),
-    db.from("experience_enrollments").select("id,experience_id,experience_version_id,cohort_id,status,enrolled_at,started_at,completed_at,updated_at").eq("participant_id", participant.id).order("updated_at", { ascending: false }),
+    db.from("experience_enrollments").select("id,experience_id,experience_version_id,cohort_id,status,enrolled_at,started_at,completed_at,updated_at").eq("participant_id", participant.id).in("status", ["enrolled", "in_progress", "completed"]).order("updated_at", { ascending: false }),
     db.from("experience_progress").select("enrollment_id,status,current_module_id,current_lesson_id,started_at,completed_at,updated_at").eq("participant_id", participant.id),
     db.from("organization_memberships").select("organization_id,membership_role,status,joined_at").eq("participant_id", participant.id).eq("status", "active"),
     db.from("hub_memberships").select("hub_id,membership_role,status,joined_at").eq("participant_id", participant.id).eq("status", "active"),

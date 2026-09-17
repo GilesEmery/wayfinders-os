@@ -27,3 +27,15 @@ export async function resolveCourseLogoUrl(courseConfiguration: unknown, themeCo
   if (!result.data) return null;
   return result.data.storage_path ? signedAssetUrl(db, result.data) : safeExternalUrl(result.data.external_url ?? "");
 }
+
+export async function resolveCourseHeaderLogoUrl(courseConfiguration: unknown, themeConfiguration: unknown, db: ReturnType<typeof createAdminSupabaseClient>): Promise<string | null> {
+  const course = normalizeCourseConfiguration(courseConfiguration);
+  if (course.appearance.header_logo_mode === "purposeos") return null;
+  if (course.appearance.header_logo_mode === "course_logo") return resolveCourseLogoUrl(courseConfiguration, themeConfiguration, db);
+  const resourceId = course.appearance.header_logo_resource_id;
+  if (!resourceId) return null;
+  const result = await db.from("resources").select("external_url,storage_bucket,storage_path").eq("id", resourceId).eq("resource_type", "image").eq("status", "active").maybeSingle();
+  if (result.error) throw new Error(`Unable to load course header logo: ${result.error.message}`);
+  if (!result.data) return null;
+  return result.data.storage_path ? signedAssetUrl(db, result.data) : safeExternalUrl(result.data.external_url ?? "");
+}

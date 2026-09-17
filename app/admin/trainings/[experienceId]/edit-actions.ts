@@ -109,7 +109,11 @@ export async function setCourseLogoAction(experienceId: string, versionId: strin
   return setCourseImage(experienceId, versionId, form, "logo");
 }
 
-async function setCourseImage(experienceId: string, versionId: string, form: FormData, kind: "cover" | "logo") {
+export async function setCourseHeaderLogoAction(experienceId: string, versionId: string, form: FormData) {
+  return setCourseImage(experienceId, versionId, form, "header_logo");
+}
+
+async function setCourseImage(experienceId: string, versionId: string, form: FormData, kind: "cover" | "logo" | "header_logo") {
   const admin = await requireAdmin();
   const authorization = await getAuthorizationContext(admin.id, admin.email);
   if (!await canBuildExperienceById(authorization, experienceId)) throw new Error("You are not authorized to change this Course.");
@@ -118,6 +122,7 @@ async function setCourseImage(experienceId: string, versionId: string, form: For
   if (current.error || !current.data || current.data.status !== "draft") throw new Error(`Only a Draft Course ${kind} can be changed.`);
   const operation = String(form.get("asset_operation") ?? "select");
   let resourceId: string | null = String(form.get("resource_id") ?? "") || null;
+  if (kind === "header_logo" && operation === "use_course_logo") resourceId = null;
   if (operation === "upload") {
     const file = form.get("file");
     if (!(file instanceof File) || !file.type.startsWith("image/")) throw new Error("Choose a supported image.");
@@ -128,7 +133,8 @@ async function setCourseImage(experienceId: string, versionId: string, form: For
     if (resource.error || !resource.data) throw new Error("Choose an available uploaded image.");
   }
   const configuration = normalizeCourseConfiguration(current.data.course_configuration);
-  const updated = { ...configuration, appearance: { ...configuration.appearance, ...(kind === "cover" ? { cover_resource_id: resourceId } : { logo_resource_id: resourceId }) } };
+  const imageUpdate = kind === "cover" ? { cover_resource_id: resourceId } : kind === "logo" ? { logo_resource_id: resourceId } : { header_logo_mode: operation === "use_course_logo" ? "course_logo" as const : operation === "remove" ? "purposeos" as const : "custom" as const, header_logo_resource_id: resourceId };
+  const updated = { ...configuration, appearance: { ...configuration.appearance, ...imageUpdate } };
   const result = await db.from("experience_versions").update({ course_configuration: updated }).eq("id", versionId).eq("experience_id", experienceId).eq("status", "draft").select("id").maybeSingle();
   if (result.error || !result.data) throw new Error(`Course ${kind} could not be saved.`);
   await audit(admin, `course.${kind}.updated`, "experience_version", versionId, { experienceId, resourceId });

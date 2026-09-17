@@ -2,7 +2,8 @@ export const GROUP_LABELS = ["module", "week", "section", "unit", "stage", "sess
 export type GroupLabel = typeof GROUP_LABELS[number];
 export type CourseConfiguration = Readonly<{
   terminology: Readonly<{ group_label: GroupLabel }>;
-  appearance: Readonly<{ header_treatment: "minimal" | "image" | "color"; reading_width: "focused" | "standard" | "wide"; accent_color: string | null; cover_resource_id: string | null; logo_resource_id: string | null; colors: Readonly<Record<"primaryAccent" | "secondaryAccent" | "background" | "surface" | "text" | "mutedText" | "borderColor" | "completion", string | null>> }>;
+  companion_mode: "individual" | "group";
+  appearance: Readonly<{ header_treatment: "minimal" | "image" | "color"; reading_width: "focused" | "standard" | "wide"; accent_color: string | null; cover_resource_id: string | null; logo_resource_id: string | null; header_logo_mode: "purposeos" | "course_logo" | "custom"; header_logo_resource_id: string | null; colors: Readonly<Record<"primaryAccent" | "secondaryAccent" | "background" | "surface" | "text" | "mutedText" | "borderColor" | "completion", string | null>> }>;
 }>;
 
 export const COURSE_COLOR_FIELDS = [["primaryAccent", "Primary"], ["secondaryAccent", "Accent"], ["background", "Background"], ["surface", "Surface"], ["text", "Text"], ["mutedText", "Muted Text"], ["borderColor", "Border"], ["completion", "Completion / Success"]] as const;
@@ -21,9 +22,12 @@ export function normalizeCourseConfiguration(value: unknown): CourseConfiguratio
   const accent_color = typeof appearance.accent_color === "string" && /^#[0-9a-f]{6}$/i.test(appearance.accent_color) ? appearance.accent_color : null;
   const cover_resource_id = typeof appearance.cover_resource_id === "string" && /^[0-9a-f-]{36}$/i.test(appearance.cover_resource_id) ? appearance.cover_resource_id : null;
   const logo_resource_id = typeof appearance.logo_resource_id === "string" && /^[0-9a-f-]{36}$/i.test(appearance.logo_resource_id) ? appearance.logo_resource_id : null;
+  const header_logo_mode = ["course_logo", "custom"].includes(String(appearance.header_logo_mode)) ? appearance.header_logo_mode as CourseConfiguration["appearance"]["header_logo_mode"] : "purposeos";
+  const header_logo_resource_id = typeof appearance.header_logo_resource_id === "string" && /^[0-9a-f-]{36}$/i.test(appearance.header_logo_resource_id) ? appearance.header_logo_resource_id : null;
   const inputColors = object(appearance.colors);
   const colors = Object.fromEntries(COURSE_COLOR_FIELDS.map(([key]) => [key, typeof inputColors[key] === "string" && /^#[0-9a-f]{6}$/i.test(inputColors[key] as string) ? inputColors[key] as string : null])) as CourseConfiguration["appearance"]["colors"];
-  return { terminology: { group_label }, appearance: { header_treatment, reading_width, accent_color, cover_resource_id, logo_resource_id, colors } };
+  const companion_mode = root.companion_mode === "group" ? "group" : "individual";
+  return { terminology: { group_label }, companion_mode, appearance: { header_treatment, reading_width, accent_color, cover_resource_id, logo_resource_id, header_logo_mode, header_logo_resource_id, colors } };
 }
 
 export function contrastRatio(foreground: string, background: string) {

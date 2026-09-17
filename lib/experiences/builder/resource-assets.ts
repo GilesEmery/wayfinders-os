@@ -101,7 +101,7 @@ export async function listCourseAssets(db: Db, type?: "image" | "document" | "pd
 
 export type ResolvedAsset = Readonly<{ id: string; url: string; downloadUrl: string; title: string; description: string | null; originalFilename: string | null; mimeType: string | null; sizeBytes: number | null }>;
 
-async function resolveResources(db: Db, ids: readonly string[]) {
+export async function resolveResourceIds(db: Db, ids: readonly string[]) {
   if (!ids.length) return new Map<string, ResolvedAsset>();
   const result = await db.from("resources").select("*").in("id", [...new Set(ids)]).eq("status", "active");
   if (result.error) throw new Error(`Unable to load course assets: ${result.error.message}`);
@@ -121,7 +121,7 @@ export async function resolveCourseAssets(db: Db, blockIds: readonly string[], s
     return [section.id, typeof settings.hero_resource_id === "string" ? settings.hero_resource_id : null] as const;
   });
   const ids = [...(links.data ?? []).map((link) => link.resource_id), ...heroPairs.map((pair) => pair[1]).filter((id): id is string => Boolean(id))];
-  const resources = await resolveResources(db, ids);
+  const resources = await resolveResourceIds(db, ids);
   return {
     blocks: Object.fromEntries((links.data ?? []).map((link) => [link.content_block_id, resources.get(link.resource_id)]).filter((entry) => Boolean(entry[1]))) as Record<string, ResolvedAsset>,
     heroes: Object.fromEntries(heroPairs.map(([sectionId, resourceId]) => [sectionId, resourceId ? resources.get(resourceId) : undefined]).filter((entry) => Boolean(entry[1]))) as Record<string, ResolvedAsset>,

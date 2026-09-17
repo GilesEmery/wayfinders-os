@@ -9,8 +9,9 @@ import { loadParticipantProgress, type ParticipantProgressSnapshot } from "./pro
 import { resolveExperienceRuntime } from "./runtime";
 import type { BuilderCourseStructure, ExperienceDeliveryMode } from "./types";
 import { resolveCourseTemplate, type CourseTemplate } from "./course-templates";
-import { resolveCourseCoverUrl, resolveCourseLogoUrl } from "./course-cover";
+import { resolveCourseCoverUrl, resolveCourseHeaderLogoUrl, resolveCourseLogoUrl } from "./course-cover";
 import { resolveCourseAssets, type ResolvedAsset } from "./resource-assets";
+import { loadCompanionRuntime, type CompanionRuntimeData } from "./companion-data";
 
 type Db = ReturnType<typeof createAdminSupabaseClient>;
 type Enrollment = Tables<"experience_enrollments">;
@@ -31,9 +32,10 @@ export type ParticipantCourseResolution =
   | { status: "not_found" }
   | { status: "signed_out"; experience: Tables<"experiences"> }
   | { status: "custom"; route: string }
+  | { status: "enrollment_available"; experience: Tables<"experiences"> }
   | { status: "denied"; experience: Tables<"experiences"> }
   | { status: "unavailable"; experience: Tables<"experiences">; reason: "runtime" | "version" | "curriculum" }
-  | { status: "ready"; structure: BuilderCourseStructure; courseTemplate: CourseTemplate; themeConfiguration: unknown; coverUrl: string | null; logoUrl: string | null; assets: { blocks: Record<string, ResolvedAsset>; heroes: Record<string, ResolvedAsset> }; accessSource: ParticipantExperienceAccess["source"]; participantId: string; enrollmentId: string | null; progress: ParticipantProgressSnapshot; responses: Readonly<Record<string, ParticipantResponseContext>> };
+  | { status: "ready"; structure: BuilderCourseStructure; courseTemplate: CourseTemplate; themeConfiguration: unknown; coverUrl: string | null; logoUrl: string | null; headerLogoUrl: string | null; assets: { blocks: Record<string, ResolvedAsset>; heroes: Record<string, ResolvedAsset> }; companion: CompanionRuntimeData; accessSource: ParticipantExperienceAccess["source"]; participantId: string; enrollmentId: string | null; progress: ParticipantProgressSnapshot; responses: Readonly<Record<string, ParticipantResponseContext>> };
 
 const ENROLLMENT_ACCESS = new Set(["enrolled", "in_progress", "completed"]);
 
@@ -96,7 +98,8 @@ export async function resolveParticipantExperienceAccess({ participantId, experi
     if (item.access_mode === "open") return (!item.hub_id && !item.cohort_id) || inHub || inCohort;
     return false;
   });
-  const offering = assignedOffering ?? preferredOffering(accessibleOfferings);
+  const enrollmentOffering = enrollment ? offerings.find((item) => item.id === enrollment.offering_id) ?? offerings.find((item) => Boolean(enrollment.cohort_id) && item.cohort_id === enrollment.cohort_id) ?? null : null;
+  const offering = enrollmentOffering ?? assignedOffering ?? preferredOffering(accessibleOfferings);
 
   if (enrollment) return { allowed: true, source: "enrollment", enrollment, entitlement, offering, versionId: enrollment.experience_version_id ?? offering?.experience_version_id ?? null };
   if (assignedOffering) return { allowed: true, source: "offering_assignment", enrollment: null, entitlement, offering: assignedOffering, versionId: assignedOffering.experience_version_id };
@@ -127,7 +130,7 @@ export async function resolveParticipantCourse(slug: string): Promise<Participan
   // Experience can still serve an explicitly pinned, Published enrollment;
   // inactive/archived Experiences remain unavailable to the participant route.
   if (experience.status === "inactive" || experience.status === "archived") return { status: "not_found" };
-  if (experience.status === "draft" && !user) return { status: "not_found" };
+  if (experience.status === "draft" && !experience.current_published_version_id && !user) return { status: "not_found" };
   const runtime = resolveExperienceRuntime(experience.slug, experience.delivery_mode as ExperienceDeliveryMode);
   if (runtime.kind === "custom") return experience.status === "active" ? { status: "custom", route: runtime.route } : { status: "not_found" };
   if (runtime.kind === "unavailable") return { status: "unavailable", experience, reason: "runtime" };
@@ -135,7 +138,10 @@ export async function resolveParticipantCourse(slug: string): Promise<Participan
   const participant = await participantFor(user, db);
   if (!participant) return { status: "denied", experience };
   const access = await resolveParticipantExperienceAccess({ participantId: participant.id, experienceId: experience.id, db });
-  if (!access.allowed) return experience.status === "draft" ? { status: "not_found" } : { status: "denied", experience };
+  if (!access.allowed) {
+    if ((experience.status === "active" || experience.status === "draft") && experience.admission_policy === "open_enrollment" && experience.current_published_version_id) return { status: "enrollment_available", experience };
+    return experience.status === "draft" && !experience.current_published_version_id ? { status: "not_found" } : { status: "denied", experience };
+  }
   if (experience.status === "draft" && (!access.enrollment?.experience_version_id || access.source !== "enrollment")) {
     return { status: "not_found" };
   }
@@ -165,10 +171,10 @@ export async function resolveParticipantCourse(slug: string): Promise<Participan
   const participantResponses = new Map((participantResponseResult.data ?? []).map((response) => [response.response_definition_id, response]));
   const responses = Object.fromEntries((definitionResult.data ?? []).filter((definition) => definition.block_id).map((definition) => [definition.block_id!, { definition, response: participantResponses.get(definition.id) ?? null }]));
   const themeConfiguration = themeResult.data?.configuration ?? null;
-  const [coverUrl, logoUrl] = await Promise.all([resolveCourseCoverUrl(structure.version.course_configuration, themeConfiguration, db), resolveCourseLogoUrl(structure.version.course_configuration, themeConfiguration, db)]);
+  const [coverUrl, logoUrl, headerLogoUrl] = await Promise.all([resolveCourseCoverUrl(structure.version.course_configuration, themeConfiguration, db), resolveCourseLogoUrl(structure.version.course_configuration, themeConfiguration, db), resolveCourseHeaderLogoUrl(structure.version.course_configuration, themeConfiguration, db)]);
   const sections = structure.modules.flatMap((module) => module.lessons.flatMap((lesson) => lesson.sections));
-  const assets = await resolveCourseAssets(db, blockIds, sections);
-  return { status: "ready", structure, courseTemplate: resolveCourseTemplate(experience.delivery_mode as ExperienceDeliveryMode, structure.version.shell_mode), themeConfiguration, coverUrl, logoUrl, assets, accessSource: access.source, participantId: participant.id, enrollmentId, progress, responses };
+  const [assets, companion] = await Promise.all([resolveCourseAssets(db, blockIds, sections), loadCompanionRuntime({ versionId: structure.version.id, offering: access.offering, participantId: participant.id, enrollmentId, db })]);
+  return { status: "ready", structure, courseTemplate: resolveCourseTemplate(experience.delivery_mode as ExperienceDeliveryMode, structure.version.shell_mode), themeConfiguration, coverUrl, logoUrl, headerLogoUrl, assets, companion, accessSource: access.source, participantId: participant.id, enrollmentId, progress, responses };
 }
 
 export function participantSectionHref(slug: string, moduleKey: string, lessonKey: string, sectionKey: string) {

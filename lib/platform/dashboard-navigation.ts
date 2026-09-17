@@ -15,7 +15,7 @@ const operationalGroups: DashboardNavigationGroup[] = [
   { label: "Network", items: [{ label: "Wayfinders", href: "/admin/users", icon: "wayfinders" }, { label: "Hubs", href: "/admin/hubs", icon: "hub" }, { label: "Partners", href: "/admin/partners", icon: "partners" }] },
   { label: "Work", items: [{ label: "My Tasks", href: "/admin/tasks", icon: "tasks" }, { label: "Projects", href: "/admin/projects", icon: "projects" }, { label: "Boards", href: "/admin/boards", icon: "boards" }, { label: "Timeline", href: "/admin/timeline", icon: "timeline" }] },
   { label: "Communication", items: [{ label: "Channels", href: "/admin/channels", icon: "channels" }, { label: "Messages", href: "/admin/messages", icon: "messages" }, { label: "Notifications", href: "/admin/notifications", icon: "notifications" }] },
-  { label: "Experiences", items: [{ label: "Assessments", href: "/admin/assessments", icon: "assessments" }, { label: "Trainings", href: "/admin/trainings", icon: "trainings" }, { label: "Cohorts", href: "/admin/cohorts", icon: "cohorts" }, { label: "Resources", href: "/admin/resources", icon: "resources" }] },
+  { label: "Experiences", items: [{ label: "Assessments", href: "/admin/assessments", icon: "assessments" }, { label: "Manage Trainings", href: "/admin/trainings", icon: "trainings" }, { label: "Cohorts", href: "/admin/cohorts", icon: "cohorts" }, { label: "Resources", href: "/admin/resources", icon: "resources" }] },
   { label: "Engagement", items: [{ label: "Events", href: "/admin/events", icon: "events" }, { label: "Forms", href: "/admin/forms", icon: "forms" }, { label: "Communications", href: "/admin/communications", icon: "communications" }] },
   { label: "Insights", items: [{ label: "Analytics", href: "/admin/analytics", icon: "analytics" }] },
   { label: "System", items: [{ label: "Access & Billing", href: "/admin/access", icon: "access" }, { label: "Automations", href: "/admin/automations", icon: "automations" }, { label: "Settings", href: "/admin/settings", icon: "settings" }] },
@@ -30,7 +30,7 @@ export function buildOperationalNavigation(role: "admin" | "super_admin") {
 
 export function buildDashboardNavigation(context: DashboardNavigationContext): DashboardNavigationGroup[] {
   const personalJourney: DashboardNavigationItem[] = [{ label: "Overview", href: "#overview", icon: "overview" }];
-  if (context.hasTrainings) personalJourney.push({ label: "Trainings", href: "#trainings", icon: "trainings" });
+  if (context.hasTrainings) personalJourney.push({ label: "My Trainings", href: "#trainings", icon: "trainings" });
   if (context.hasAssessments) personalJourney.push({ label: "Assessments", href: "#assessments", icon: "assessments" });
   if (context.hasCohorts) personalJourney.push({ label: "Cohorts", href: "#community", icon: "cohorts" });
 

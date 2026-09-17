@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardCheck, LayoutDashboard, UserRound } from "lucide-react";
+import { BookOpen, ClipboardCheck, LayoutDashboard, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -8,6 +8,7 @@ export function DashboardSwitcher() {
   const pathname = usePathname();
   return <><nav className="dashboard-switcher" aria-label="Dashboard view">
     <Link className={pathname === "/dashboard" ? "is-active" : undefined} href="/dashboard"><UserRound aria-hidden="true" size={17}/><span>My Dashboard</span></Link>
+    <Link className={pathname === "/trainings" ? "is-active" : undefined} href="/trainings"><BookOpen aria-hidden="true" size={17}/><span>Trainings</span></Link>
   </nav>{pathname.startsWith("/admin") ? <PersistentPersonalNavigation/> : null}</>;
 }
 
