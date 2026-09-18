@@ -11,7 +11,7 @@ export function flattenCourseSections(structure: BuilderCourseStructure): Course
 }
 function ProgressState({ status }: { status: string }) { return <span className={`participant-progress-state is-${status}`}><span aria-hidden="true"/>{status.replaceAll("_", " ")}</span>; }
 
-export function CourseNavigator({ structure, current, progress, hrefFor, completeOnForward = false }: { structure: BuilderCourseStructure; current: CourseSectionLocation; progress: ParticipantProgressSnapshot; hrefFor?: (location: CourseSectionLocation) => string; completeOnForward?: boolean }) {
+export function CourseNavigator({ structure, current, progress, hrefFor, completeOnForward = false, cohortId = null }: { structure: BuilderCourseStructure; current: CourseSectionLocation; progress: ParticipantProgressSnapshot; hrefFor?: (location: CourseSectionLocation) => string; completeOnForward?: boolean; cohortId?: string | null }) {
   const group = normalizeCourseConfiguration(structure.version.course_configuration).terminology.group_label;
   const locations = flattenCourseSections(structure);
   const locationIndexes = new Map(locations.map((location, index) => [location.section.id, index]));
@@ -27,7 +27,7 @@ export function CourseNavigator({ structure, current, progress, hrefFor, complet
         const href = hrefFor?.(location) ?? participantSectionHref(structure.experience.slug, module.module_key, lesson.lesson_key, section.section_key);
         const targetIndex = locationIndexes.get(section.id) ?? -1;
         const content = <><span>{section.title}{section.requirement_level !== "required" && <small>{section.requirement_level}</small>}</span><ProgressState status={status}/></>;
-        return <li key={section.id}>{completeOnForward && targetIndex > currentIndex ? <form action={navigateForwardAction.bind(null, structure.experience.slug, current.moduleKey, current.lessonKey, current.section.section_key, location.moduleKey, location.lessonKey, location.section.section_key)}><button aria-current={active ? "page" : undefined} className={active ? "is-active" : undefined} type="submit">{content}</button></form> : <Link aria-current={active ? "page" : undefined} className={active ? "is-active" : undefined} href={href}>{content}</Link>}</li>;
+        return <li key={section.id}>{completeOnForward && targetIndex > currentIndex ? <form action={navigateForwardAction.bind(null, structure.experience.slug, current.moduleKey, current.lessonKey, current.section.section_key, location.moduleKey, location.lessonKey, location.section.section_key, cohortId)}><button aria-current={active ? "page" : undefined} className={active ? "is-active" : undefined} type="submit">{content}</button></form> : <Link aria-current={active ? "page" : undefined} className={active ? "is-active" : undefined} href={href}>{content}</Link>}</li>;
       })}</ol></details>;
     })}</div></details>;
   })}</nav>;

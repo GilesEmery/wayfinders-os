@@ -6,10 +6,11 @@ import { flattenCourseSections } from "@/components/experiences/builder/CourseNa
 import { participantSectionHref, resolveParticipantCourse } from "@/lib/experiences/builder/participant-runtime";
 import { selfEnrollAction } from "./actions";
 
-export default async function ExperienceEntryPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ enrollmentError?: string }> }) {
+export default async function ExperienceEntryPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ enrollmentError?: string; cohort?: string }> }) {
   const { slug } = await params;
-  const { enrollmentError } = await searchParams;
-  const result = await resolveParticipantCourse(slug);
+  const { enrollmentError, cohort } = await searchParams;
+  const cohortId = typeof cohort === "string" ? cohort : null;
+  const result = await resolveParticipantCourse(slug, cohortId);
   if (result.status === "not_found") notFound();
   if (result.status === "custom") redirect(result.route);
 
@@ -21,6 +22,10 @@ export default async function ExperienceEntryPage({ params, searchParams }: { pa
       return <PlatformShell><ParticipantCourseState title={result.experience.name}><p>{result.experience.description ?? "A PurposeOS training."}</p><p>Enrollment in this training is assigned by Wayfinders staff.</p></ParticipantCourseState></PlatformShell>;
     }
     return <PlatformShell><ParticipantCourseState title="Experience access required"><p>This Experience is not currently available to your Wayfinder account.</p></ParticipantCourseState></PlatformShell>;
+  }
+  if (result.status === "invalid_context") {
+    const message = result.reason === "version_mismatch" ? "This Cohort uses a different Course Version from your active Course journey." : result.reason === "ambiguous_delivery" ? "This Cohort has more than one active delivery and cannot be opened safely." : "This Cohort is unavailable or you no longer have access to it.";
+    return <PlatformShell><ParticipantCourseState title="Cohort unavailable"><p>{message}</p><a href={`/experiences/${encodeURIComponent(slug)}`}>Open your personal Course journey →</a></ParticipantCourseState></PlatformShell>;
   }
   if (result.status === "enrollment_available") {
     return <PlatformShell><ParticipantCourseState title={result.experience.name}><p>{result.experience.description ?? "This training is open for enrollment."}</p>{enrollmentError && <p role="alert">{enrollmentError}</p>}<form action={selfEnrollAction.bind(null, result.experience.slug)}><button className="button button-primary" type="submit">Enroll</button></form></ParticipantCourseState></PlatformShell>;
@@ -35,5 +40,5 @@ export default async function ExperienceEntryPage({ params, searchParams }: { pa
   }
   const resume = result.progress.currentSectionId ? flattenCourseSections(result.structure).find((item) => item.section.id === result.progress.currentSectionId) : null;
   const target = resume ?? first;
-  redirect(participantSectionHref(slug, target.moduleKey, target.lessonKey, target.section.section_key));
+  redirect(participantSectionHref(slug, target.moduleKey, target.lessonKey, target.section.section_key, result.cohortId));
 }

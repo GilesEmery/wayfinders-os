@@ -32,8 +32,9 @@ export async function saveCompanionDeliveryOverrideAction(experienceId: string, 
   const db = createAdminSupabaseClient();
   const offering = await db.from("experience_offerings").select("id,name,experience_id,experience_version_id,cohort_id").eq("id", offeringId).eq("experience_id", experienceId).maybeSingle();
   if (!offering.data?.experience_version_id) throw new Error("Pin this offering to a Course Version first.");
-  const companionModule = await db.from("companion_modules").select("id,display_title,module_type,experience_version_id").eq("id", companionModuleId).eq("experience_version_id", offering.data.experience_version_id).maybeSingle();
+  const companionModule = await db.from("companion_modules").select("id,display_title,module_type,experience_version_id,availability_context").eq("id", companionModuleId).eq("experience_version_id", offering.data.experience_version_id).maybeSingle();
   if (!companionModule.data) throw new Error("This Companion module does not belong to the Offering's Course Version.");
+  if (companionModule.data.availability_context === "individual") throw new Error("Individual Companion modules do not accept delivery overrides.");
   const plan = offering.data.cohort_id ? await db.from("cohort_course_plans").select("id").eq("cohort_id", offering.data.cohort_id).eq("experience_version_id", offering.data.experience_version_id).eq("status", "active").maybeSingle() : { data: null, error: null };
   if (plan.error) throw new Error(`The cohort delivery could not be resolved: ${plan.error.message}`);
   const values: Record<string, string> = {};
@@ -60,9 +61,9 @@ export async function setAdminCompanionCallStateAction(experienceId: string, off
   const admin = await requireAdmin();
   const db = createAdminSupabaseClient();
   const offering = await db.from("experience_offerings").select("id,experience_version_id,cohort_id").eq("id", offeringId).eq("experience_id", experienceId).maybeSingle();
-  if (!offering.data?.experience_version_id) throw new Error("The Group delivery is not version-pinned.");
-  const companionModule = await db.from("companion_modules").select("id,module_type,audience").eq("id", companionModuleId).eq("experience_version_id", offering.data.experience_version_id).maybeSingle();
-  if (companionModule.data?.module_type !== "video_call" || companionModule.data.audience !== "group") throw new Error("This is not a Group Video Call module.");
+  if (!offering.data?.experience_version_id || !offering.data.cohort_id) throw new Error("The Cohort delivery is not version-pinned.");
+  const companionModule = await db.from("companion_modules").select("id,module_type,availability_context").eq("id", companionModuleId).eq("experience_version_id", offering.data.experience_version_id).maybeSingle();
+  if (companionModule.data?.module_type !== "video_call" || companionModule.data.availability_context !== "cohort") throw new Error("This is not a Cohort Video Call module.");
   const plan = offering.data.cohort_id ? await db.from("cohort_course_plans").select("id").eq("cohort_id", offering.data.cohort_id).eq("experience_version_id", offering.data.experience_version_id).eq("status", "active").maybeSingle() : { data: null, error: null };
   const override = plan.data ? await db.from("companion_delivery_overrides").select("id").eq("companion_module_id", companionModuleId).eq("cohort_course_plan_id", plan.data.id).maybeSingle() : await db.from("companion_delivery_overrides").select("id").eq("companion_module_id", companionModuleId).eq("offering_id", offeringId).maybeSingle();
   if (!override.data) throw new Error("Save the delivery meeting details before starting the call.");

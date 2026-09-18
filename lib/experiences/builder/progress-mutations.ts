@@ -11,9 +11,9 @@ type ProgressTarget = Readonly<{ moduleKey: string; lessonKey: string; section: 
 type AuthorizedTarget = Readonly<{ participantId: string; enrollmentId: string; versionId: string; experienceId: string; target: ProgressTarget; structure: ReadyCourse["structure"] }>;
 const KEY = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-async function authorizeTarget(slug: string, moduleKey: string, lessonKey: string, sectionKey: string): Promise<AuthorizedTarget | null> {
+async function authorizeTarget(slug: string, moduleKey: string, lessonKey: string, sectionKey: string, cohortId?: string | null): Promise<AuthorizedTarget | null> {
   if (![slug, moduleKey, lessonKey, sectionKey].every((value) => value.length <= 120 && KEY.test(value))) return null;
-  const resolution = await resolveParticipantCourse(slug);
+  const resolution = await resolveParticipantCourse(slug, cohortId ?? null);
   if (resolution.status !== "ready" || !resolution.enrollmentId) return null;
   const target = resolution.structure.modules.flatMap((module) => module.lessons.flatMap((lesson) => lesson.sections.map((section) => ({ moduleKey: module.module_key, lessonKey: lesson.lesson_key, section })))).find((item) => item.moduleKey === moduleKey && item.lessonKey === lessonKey && item.section.section_key === sectionKey);
   const genericSection = target && !target.section.legacy && (target.section.renderer_mode === "builder" || (target.section.renderer_mode === "hybrid" && !target.section.custom_renderer_key));
@@ -70,8 +70,8 @@ async function persistSectionCompletion(context: AuthorizedTarget, now: string) 
   return reconcileExperienceProgress(context, now);
 }
 
-export async function recordParticipantSectionVisit(slug: string, moduleKey: string, lessonKey: string, sectionKey: string) {
-  const context = await authorizeTarget(slug, moduleKey, lessonKey, sectionKey);
+export async function recordParticipantSectionVisit(slug: string, moduleKey: string, lessonKey: string, sectionKey: string, cohortId?: string | null) {
+  const context = await authorizeTarget(slug, moduleKey, lessonKey, sectionKey, cohortId);
   if (!context) return { ok: false, progressAvailable: false } as const;
   const db = createAdminSupabaseClient();
   const now = new Date().toISOString();
@@ -94,8 +94,8 @@ export async function recordParticipantSectionVisit(slug: string, moduleKey: str
   return { ok: true, progressAvailable: true, status: summary.status } as const;
 }
 
-export async function completeParticipantSectionForForwardNavigation(slug: string, moduleKey: string, lessonKey: string, sectionKey: string, target?: { moduleKey: string; lessonKey: string; sectionKey: string }) {
-  const context = await authorizeTarget(slug, moduleKey, lessonKey, sectionKey);
+export async function completeParticipantSectionForForwardNavigation(slug: string, moduleKey: string, lessonKey: string, sectionKey: string, target?: { moduleKey: string; lessonKey: string; sectionKey: string }, cohortId?: string | null) {
+  const context = await authorizeTarget(slug, moduleKey, lessonKey, sectionKey, cohortId);
   if (!context) return { ok: false, reason: "Progress is unavailable for this Page." } as const;
   const sections = context.structure.modules.flatMap((module) => module.lessons.flatMap((lesson) => lesson.sections.map((section) => ({ moduleKey: module.module_key, lessonKey: lesson.lesson_key, section }))));
   const currentIndex = sections.findIndex((item) => item.section.id === context.target.section.id);
@@ -109,10 +109,10 @@ export async function completeParticipantSectionForForwardNavigation(slug: strin
   return { ok: true, courseCompleted: summary.status === "completed" } as const;
 }
 
-export async function completeParticipantSection(slug: string, moduleKey: string, lessonKey: string, sectionKey: string) {
-  const visit = await recordParticipantSectionVisit(slug, moduleKey, lessonKey, sectionKey);
+export async function completeParticipantSection(slug: string, moduleKey: string, lessonKey: string, sectionKey: string, cohortId?: string | null) {
+  const visit = await recordParticipantSectionVisit(slug, moduleKey, lessonKey, sectionKey, cohortId);
   if (!visit.ok) return { ok: false } as const;
-  const context = await authorizeTarget(slug, moduleKey, lessonKey, sectionKey);
+  const context = await authorizeTarget(slug, moduleKey, lessonKey, sectionKey, cohortId);
   if (!context || context.target.section.completion_rule !== "manual") return { ok: false } as const;
   const summary = await persistSectionCompletion(context, new Date().toISOString());
   return { ok: true, status: summary.status } as const;

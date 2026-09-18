@@ -2,6 +2,7 @@ export const GROUP_LABELS = ["module", "week", "section", "unit", "stage", "sess
 export type GroupLabel = typeof GROUP_LABELS[number];
 export type CourseConfiguration = Readonly<{
   terminology: Readonly<{ group_label: GroupLabel }>;
+  /** @deprecated Module-level availability_context is the runtime authority. */
   companion_mode: "individual" | "group";
   appearance: Readonly<{ header_treatment: "minimal" | "image" | "color"; reading_width: "focused" | "standard" | "wide"; accent_color: string | null; cover_resource_id: string | null; logo_resource_id: string | null; header_logo_mode: "purposeos" | "course_logo" | "custom"; header_logo_resource_id: string | null; colors: Readonly<Record<"primaryAccent" | "secondaryAccent" | "background" | "surface" | "text" | "mutedText" | "borderColor" | "completion", string | null>> }>;
 }>;

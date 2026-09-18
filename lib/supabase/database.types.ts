@@ -73,13 +73,16 @@ export type Database = {
         id: string; lesson_id: string; section_id: string | null; column_id: string | null; block_key: string; block_type: string; sort_order: number; content: Json; settings: Json; requirement_level: string; status: string; visibility: string; completion_rule: string; custom_renderer_key: string | null; metadata: Json; created_at: string; updated_at: string
       }, "lesson_id" | "block_key" | "block_type" | "sort_order">
       resources: FoundationTable<{
-        id: string; title: string; description: string | null; resource_type: string; status: string; external_url: string | null; storage_bucket: string | null; storage_path: string | null; original_filename: string | null; mime_type: string | null; file_size_bytes: number | null; metadata: Json; created_by: string | null; created_at: string; updated_at: string
+        id: string; title: string; description: string | null; resource_type: string; resource_category: string; status: string; external_url: string | null; storage_bucket: string | null; storage_path: string | null; original_filename: string | null; mime_type: string | null; file_size_bytes: number | null; metadata: Json; created_by: string | null; created_at: string; updated_at: string
       }, "title" | "resource_type">
       content_block_resources: FoundationTable<{
         content_block_id: string; resource_id: string; sort_order: number; created_at: string
       }, "content_block_id" | "resource_id">
+      resource_experience_associations: FoundationTable<{
+        resource_id: string; experience_id: string; created_by: string | null; created_at: string
+      }, "resource_id" | "experience_id">
       companion_modules: FoundationTable<{
-        id: string; experience_version_id: string; module_key: string; module_type: string; scope: string; audience: string; target_module_id: string | null; target_lesson_id: string | null; target_section_id: string | null; display_title: string; sort_order: number; visibility: string; configuration: Json; created_by: string | null; created_at: string; updated_at: string
+        id: string; experience_version_id: string; module_key: string; module_type: string; scope: string; audience: string; availability_context: "individual" | "cohort" | "both"; target_module_id: string | null; target_lesson_id: string | null; target_section_id: string | null; display_title: string; sort_order: number; visibility: string; configuration: Json; created_by: string | null; created_at: string; updated_at: string
       }, "experience_version_id" | "module_type" | "scope" | "audience" | "display_title">
       companion_draft_identity_decisions: FoundationTable<{
         draft_version_id: string; source_companion_module_id: string; decision: string; decided_by: string; decided_at: string
@@ -91,7 +94,7 @@ export type Database = {
         id: string; delivery_override_id: string; companion_module_id: string; experience_version_id: string; status: string; started_by_participant_id: string | null; started_by_enrollment_id: string | null; started_by_auth_user_id: string | null; started_at: string; ended_at: string | null; created_at: string; updated_at: string
       }, "delivery_override_id" | "companion_module_id" | "experience_version_id">
       companion_chat_messages: FoundationTable<{
-        id: string; delivery_override_id: string; companion_module_id: string; experience_version_id: string; author_participant_id: string; author_enrollment_id: string; body: string; created_at: string
+        id: string; delivery_override_id: string; companion_module_id: string; experience_version_id: string; author_participant_id: string; author_enrollment_id: string; body: string; curriculum_context: Json; created_at: string
       }, "delivery_override_id" | "companion_module_id" | "experience_version_id" | "author_participant_id" | "author_enrollment_id" | "body">
       companion_module_resources: FoundationTable<{
         companion_module_id: string; resource_id: string; delivery_override_id: string | null; sort_order: number; created_at: string

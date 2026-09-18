@@ -6,8 +6,7 @@ import { audit, requireAdmin } from "@/lib/admin/auth";
 import { canBuildExperienceById, getAuthorizationContext } from "@/lib/platform/authorization";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
-import { COMPANION_LIBRARY, companionType, type CompanionAudience, type CompanionScope } from "@/lib/experiences/builder/companion";
-import { normalizeCourseConfiguration } from "@/lib/experiences/builder/course-configuration";
+import { COMPANION_LIBRARY, companionAvailability, companionType, type CompanionAudience, type CompanionScope } from "@/lib/experiences/builder/companion";
 
 const route = (experienceId: string, versionId: string, selectedId?: string, saved?: string) => {
   const query = new URLSearchParams();
@@ -26,18 +25,6 @@ async function editable(experienceId: string, versionId: string) {
   return { admin, db, version: version.data };
 }
 
-export async function updateCompanionModeAction(experienceId: string, versionId: string, selectedId: string | undefined, form: FormData) {
-  const { admin, db, version } = await editable(experienceId, versionId);
-  const mode = String(form.get("companion_mode") ?? "");
-  if (mode !== "individual" && mode !== "group") throw new Error("Choose Individual or Group Companion mode.");
-  const current = normalizeCourseConfiguration(version.course_configuration);
-  const result = await db.from("experience_versions").update({ course_configuration: { ...current, companion_mode: mode } }).eq("id", versionId).eq("status", "draft");
-  if (result.error) throw new Error(`Companion mode could not be saved: ${result.error.message}`);
-  await audit(admin, "course.companion.mode_updated", "experience_version", versionId, { experienceId, mode });
-  revalidatePath(route(experienceId, versionId));
-  redirect(route(experienceId, versionId, selectedId, "Companion mode saved."));
-}
-
 export async function addCompanionModuleAction(experienceId: string, versionId: string, selectedId: string | undefined, form: FormData) {
   const { admin, db } = await editable(experienceId, versionId);
   const type = companionType(form.get("module_type"));
@@ -51,7 +38,7 @@ export async function addCompanionModuleAction(experienceId: string, versionId: 
   const targetSectionId = scope === "page" ? selected.data?.id ?? null : null;
   const latest = await db.from("companion_modules").select("sort_order").eq("experience_version_id", versionId).order("sort_order", { ascending: false }).limit(1);
   if (latest.error) throw new Error("Companion ordering could not be loaded.");
-  const inserted = await db.from("companion_modules").insert({ experience_version_id: versionId, module_type: type, scope, audience: definition.defaultAudience, target_module_id: targetModuleId, target_lesson_id: targetLessonId, target_section_id: targetSectionId, display_title: definition.label, sort_order: (latest.data?.[0]?.sort_order ?? -1) + 1, configuration: {}, created_by: admin.id }).select("id").single();
+  const inserted = await db.from("companion_modules").insert({ experience_version_id: versionId, module_type: type, scope, audience: definition.defaultAudience, availability_context: definition.defaultAvailability, target_module_id: targetModuleId, target_lesson_id: targetLessonId, target_section_id: targetSectionId, display_title: definition.label, sort_order: (latest.data?.[0]?.sort_order ?? -1) + 1, configuration: {}, created_by: admin.id }).select("id").single();
   if (inserted.error) throw new Error(`Companion module could not be added: ${inserted.error.message}`);
   await audit(admin, "course.companion.module_added", "companion_module", inserted.data.id, { experienceId, versionId, type });
   revalidatePath(route(experienceId, versionId));
@@ -78,15 +65,17 @@ export async function updateCompanionModuleAction(experienceId: string, versionI
   const type = companionType(existing.data.module_type); if (!type) throw new Error("Unsupported Companion module type.");
   const scope = String(form.get("scope") ?? "") as CompanionScope;
   const audience = String(form.get("audience") ?? "") as CompanionAudience;
+  const availability = companionAvailability(form.get("availability_context"));
   const definition = COMPANION_LIBRARY[type];
   if (!(["course", "module", "lesson", "page"] as string[]).includes(scope)) throw new Error("Choose where this module should appear.");
   if (!definition.audiences.includes(audience)) throw new Error(`${definition.label} does not support that audience.`);
+  if (!availability || !definition.availabilities.includes(availability)) throw new Error(`${definition.label} does not support that availability.`);
   const targetModuleId = scope === "course" ? null : String(form.get("target_module_id") ?? "") || null;
   const targetLessonId = scope === "lesson" || scope === "page" ? String(form.get("target_lesson_id") ?? "") || null : null;
   const targetSectionId = scope === "page" ? String(form.get("target_section_id") ?? "") || null : null;
   if (scope !== "course" && !targetModuleId || (scope === "lesson" || scope === "page") && !targetLessonId || scope === "page" && !targetSectionId) throw new Error("Choose the curriculum target for this scope.");
   const title = String(form.get("display_title") ?? "").trim(); if (!title || title.length > 200) throw new Error("Enter a module title of 200 characters or fewer.");
-  const result = await db.from("companion_modules").update({ display_title: title, scope, audience, target_module_id: targetModuleId, target_lesson_id: targetLessonId, target_section_id: targetSectionId, configuration: configuration(form, type) }).eq("id", moduleId).eq("experience_version_id", versionId);
+  const result = await db.from("companion_modules").update({ display_title: title, scope, audience, availability_context: availability, target_module_id: targetModuleId, target_lesson_id: targetLessonId, target_section_id: targetSectionId, configuration: configuration(form, type) }).eq("id", moduleId).eq("experience_version_id", versionId);
   if (result.error) throw new Error(`Companion module could not be saved: ${result.error.message}`);
   if (type === "resources" || type === "shared_resources") {
     const resourceIds = [...new Set(form.getAll("resource_id").map(String).filter(Boolean))];
@@ -94,7 +83,7 @@ export async function updateCompanionModuleAction(experienceId: string, versionI
     if (removed.error) throw new Error("Existing Companion resources could not be updated.");
     if (resourceIds.length) { const linked = await db.from("companion_module_resources").insert(resourceIds.map((resourceId, sortOrder) => ({ companion_module_id: moduleId, resource_id: resourceId, sort_order: sortOrder }))); if (linked.error) throw new Error(`Companion resources could not be linked: ${linked.error.message}`); }
   }
-  await audit(admin, "course.companion.module_updated", "companion_module", moduleId, { experienceId, versionId, scope, audience });
+  await audit(admin, "course.companion.module_updated", "companion_module", moduleId, { experienceId, versionId, scope, audience, availability });
   revalidatePath(route(experienceId, versionId));
   redirect(route(experienceId, versionId, selectedId, `${title} saved.`));
 }

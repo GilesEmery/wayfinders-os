@@ -33,11 +33,12 @@ export async function getWayfinderDashboard() {
   const hubIds = [...new Set([...(hubs.data ?? []).map((row) => row.hub_id), ...(roles.data ?? []).filter((role) => role.role === "hub_leader" && role.scope_type === "hub" && role.scope_id).map((role) => role.scope_id!)])];
   const cohortIds = (cohorts.data ?? []).map((row) => row.cohort_id);
   const tagIds = (tags.data ?? []).map((row) => row.tag_id);
-  const [experienceCatalog, organizationCatalog, hubCatalog, cohortCatalog, tagCatalog, networkOverview] = await Promise.all([
+  const [experienceCatalog, organizationCatalog, hubCatalog, cohortCatalog, cohortOfferingCatalog, tagCatalog, networkOverview] = await Promise.all([
     experienceIds.length ? db.from("experiences").select("id,slug,name,experience_type,accent_color").in("id", experienceIds) : Promise.resolve({ data: [] }),
     organizationIds.length ? db.from("organizations").select("id,name").in("id", organizationIds) : Promise.resolve({ data: [] }),
     hubIds.length ? db.from("hubs").select("id,name,slug").in("id", hubIds) : Promise.resolve({ data: [] }),
     cohortIds.length ? db.from("cohorts").select("id,name,experience_id").in("id", cohortIds) : Promise.resolve({ data: [] }),
+    cohortIds.length ? db.from("experience_offerings").select("id,cohort_id,experience_id,experience_version_id,status,is_default").in("cohort_id", cohortIds).eq("status", "active") : Promise.resolve({ data: [] }),
     tagIds.length ? db.from("tags").select("id,name,category").in("id", tagIds) : Promise.resolve({ data: [] }),
     capabilities.isAdmin ? Promise.all([
       db.from("participants").select("id", { count: "exact", head: true }),
@@ -57,7 +58,7 @@ export async function getWayfinderDashboard() {
     experiences: experienceCatalog.data ?? [],
     organizationMemberships: organizations.data ?? [], organizations: organizationCatalog.data ?? [],
     hubMemberships: hubs.data ?? [], hubs: hubCatalog.data ?? [],
-    cohortMemberships: cohorts.data ?? [], cohorts: cohortCatalog.data ?? [],
+    cohortMemberships: cohorts.data ?? [], cohorts: cohortCatalog.data ?? [], cohortOfferings: cohortOfferingCatalog.data ?? [],
     participantTags: tags.data ?? [], tags: tagCatalog.data ?? [],
     roles: roles.data ?? [],
     capabilities,

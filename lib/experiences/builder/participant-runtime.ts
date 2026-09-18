@@ -12,6 +12,8 @@ import { resolveCourseTemplate, type CourseTemplate } from "./course-templates";
 import { resolveCourseCoverUrl, resolveCourseHeaderLogoUrl, resolveCourseLogoUrl } from "./course-cover";
 import { resolveCourseAssets, type ResolvedAsset } from "./resource-assets";
 import { loadCompanionRuntime, type CompanionRuntimeData } from "./companion-data";
+import { canAccessCohortContext, getAuthorizationContext } from "@/lib/platform/authorization";
+import { cohortVersionMatchesCanonicalEnrollment, selectExplicitCohortOffering } from "./cohort-context";
 
 type Db = ReturnType<typeof createAdminSupabaseClient>;
 type Enrollment = Tables<"experience_enrollments">;
@@ -26,6 +28,8 @@ export type ParticipantExperienceAccess = Readonly<{
   entitlement: Entitlement | null;
   offering: Offering | null;
   versionId: string | null;
+  cohortId: string | null;
+  contextError: "invalid" | "ambiguous_delivery" | "version_mismatch" | null;
 }>;
 
 export type ParticipantCourseResolution =
@@ -34,8 +38,9 @@ export type ParticipantCourseResolution =
   | { status: "custom"; route: string }
   | { status: "enrollment_available"; experience: Tables<"experiences"> }
   | { status: "denied"; experience: Tables<"experiences"> }
+  | { status: "invalid_context"; experience: Tables<"experiences">; reason: "invalid" | "ambiguous_delivery" | "version_mismatch" }
   | { status: "unavailable"; experience: Tables<"experiences">; reason: "runtime" | "version" | "curriculum" }
-  | { status: "ready"; structure: BuilderCourseStructure; courseTemplate: CourseTemplate; themeConfiguration: unknown; coverUrl: string | null; logoUrl: string | null; headerLogoUrl: string | null; assets: { blocks: Record<string, ResolvedAsset>; heroes: Record<string, ResolvedAsset> }; companion: CompanionRuntimeData; accessSource: ParticipantExperienceAccess["source"]; participantId: string; enrollmentId: string | null; progress: ParticipantProgressSnapshot; responses: Readonly<Record<string, ParticipantResponseContext>> };
+  | { status: "ready"; structure: BuilderCourseStructure; courseTemplate: CourseTemplate; themeConfiguration: unknown; coverUrl: string | null; logoUrl: string | null; headerLogoUrl: string | null; assets: { blocks: Record<string, ResolvedAsset>; heroes: Record<string, ResolvedAsset> }; companion: CompanionRuntimeData; accessSource: ParticipantExperienceAccess["source"]; participantId: string; enrollmentId: string | null; cohortId: string | null; progress: ParticipantProgressSnapshot; responses: Readonly<Record<string, ParticipantResponseContext>> };
 
 const ENROLLMENT_ACCESS = new Set(["enrolled", "in_progress", "completed"]);
 
@@ -67,13 +72,13 @@ async function effectiveDeliveryStructure(structure: BuilderCourseStructure, off
   const [template, modules, sections] = await Promise.all([db.from("delivery_plan_templates").select("settings").eq("id", offering.default_delivery_plan_template_id).eq("status", "active").maybeSingle(), db.from("delivery_plan_template_modules").select("source_module_id,sort_order,visibility").eq("template_id", offering.default_delivery_plan_template_id), db.from("delivery_plan_template_sections").select("source_section_id,sort_order,visibility").eq("template_id", offering.default_delivery_plan_template_id)]); const error = template.error || modules.error || sections.error; if (error) throw new Error(`Unable to load offering Journey: ${error.message}`); if (!template.data) return structure; return filterDeliveryStructure(structure, modules.data ?? [], sections.data ?? [], hiddenLessonIds(template.data.settings));
 }
 
-export async function resolveParticipantExperienceAccess({ participantId, experienceId, db = createAdminSupabaseClient() }: { participantId: string; experienceId: string; db?: Db }): Promise<ParticipantExperienceAccess> {
+export async function resolveParticipantExperienceAccess({ participantId, experienceId, cohortId = null, cohortAuthority = false, db = createAdminSupabaseClient() }: { participantId: string; experienceId: string; cohortId?: string | null; cohortAuthority?: boolean; db?: Db }): Promise<ParticipantExperienceAccess> {
   const [enrollmentResult, entitlementResult, assignmentResult, hubResult, cohortResult, offeringResult] = await Promise.all([
     db.from("experience_enrollments").select("*").eq("participant_id", participantId).eq("experience_id", experienceId).in("status", [...ENROLLMENT_ACCESS]),
     db.from("experience_entitlements").select("*").eq("participant_id", participantId).eq("experience_id", experienceId).eq("status", "active"),
     db.from("participant_offering_assignments").select("*").eq("participant_id", participantId).eq("status", "active"),
     db.from("hub_memberships").select("hub_id").eq("participant_id", participantId).eq("status", "active"),
-    db.from("cohort_memberships").select("cohort_id").eq("participant_id", participantId).eq("status", "active"),
+    db.from("cohort_memberships").select("cohort_id,membership_role").eq("participant_id", participantId).eq("status", "active"),
     db.from("experience_offerings").select("*").eq("experience_id", experienceId).eq("status", "active"),
   ]);
   const error = enrollmentResult.error || entitlementResult.error || assignmentResult.error || hubResult.error || cohortResult.error || offeringResult.error;
@@ -87,6 +92,12 @@ export async function resolveParticipantExperienceAccess({ participantId, experi
   const hubs = new Set((hubResult.data ?? []).map((item) => item.hub_id));
   const cohorts = new Set((cohortResult.data ?? []).map((item) => item.cohort_id));
   const offerings = (offeringResult.data ?? []).filter((item) => current(item.starts_at, item.ends_at, now));
+  const requestedMembership = cohortId ? (cohortResult.data ?? []).find((item) => item.cohort_id === cohortId) : null;
+  const requestedSelection = cohortId ? selectExplicitCohortOffering(offerings, cohortId) : null;
+  if (cohortId && !requestedMembership && !cohortAuthority) return { allowed: false, source: "none", enrollment, entitlement, offering: null, versionId: null, cohortId, contextError: "invalid" };
+  if (requestedSelection && !requestedSelection.ok) return { allowed: false, source: "none", enrollment, entitlement, offering: null, versionId: null, cohortId, contextError: requestedSelection.reason };
+  const requestedOffering = requestedSelection?.ok ? requestedSelection.offering : null;
+  if (cohortId && enrollment && requestedOffering && !cohortVersionMatchesCanonicalEnrollment(enrollment.experience_version_id, requestedOffering)) return { allowed: false, source: "none", enrollment, entitlement, offering: requestedOffering, versionId: enrollment.experience_version_id, cohortId, contextError: "version_mismatch" };
   const assignedOffering = preferredOffering(offerings.filter((item) => assignmentIds.has(item.id)));
   const accessibleOfferings = offerings.filter((item) => {
     const inHub = Boolean(item.hub_id && hubs.has(item.hub_id));
@@ -98,17 +109,18 @@ export async function resolveParticipantExperienceAccess({ participantId, experi
     if (item.access_mode === "open") return (!item.hub_id && !item.cohort_id) || inHub || inCohort;
     return false;
   });
-  const enrollmentOffering = enrollment ? offerings.find((item) => item.id === enrollment.offering_id) ?? offerings.find((item) => Boolean(enrollment.cohort_id) && item.cohort_id === enrollment.cohort_id) ?? null : null;
-  const offering = enrollmentOffering ?? assignedOffering ?? preferredOffering(accessibleOfferings);
+  const nonCohortOfferings = accessibleOfferings.filter((item) => !item.cohort_id);
+  const offering = requestedOffering ?? (assignedOffering && !assignedOffering.cohort_id ? assignedOffering : preferredOffering(nonCohortOfferings));
 
-  if (enrollment) return { allowed: true, source: "enrollment", enrollment, entitlement, offering, versionId: enrollment.experience_version_id ?? offering?.experience_version_id ?? null };
-  if (assignedOffering) return { allowed: true, source: "offering_assignment", enrollment: null, entitlement, offering: assignedOffering, versionId: assignedOffering.experience_version_id };
-  if (entitlement) return { allowed: true, source: "entitlement", enrollment: null, entitlement, offering, versionId: offering?.experience_version_id ?? null };
+  if (enrollment) return { allowed: true, source: "enrollment", enrollment, entitlement, offering, versionId: enrollment.experience_version_id ?? offering?.experience_version_id ?? null, cohortId, contextError: null };
+  if (requestedOffering) return { allowed: true, source: "cohort_membership", enrollment: null, entitlement, offering: requestedOffering, versionId: requestedOffering.experience_version_id, cohortId, contextError: null };
+  if (assignedOffering) return { allowed: true, source: "offering_assignment", enrollment: null, entitlement, offering: assignedOffering, versionId: assignedOffering.experience_version_id, cohortId: null, contextError: null };
+  if (entitlement) return { allowed: true, source: "entitlement", enrollment: null, entitlement, offering, versionId: offering?.experience_version_id ?? null, cohortId: null, contextError: null };
   if (offering) {
     const source = offering.access_mode === "hub_membership" ? "hub_membership" : offering.access_mode === "cohort_membership" ? "cohort_membership" : "open_offering";
-    return { allowed: true, source, enrollment: null, entitlement: null, offering, versionId: offering.experience_version_id };
+    return { allowed: true, source, enrollment: null, entitlement: null, offering, versionId: offering.experience_version_id, cohortId: null, contextError: null };
   }
-  return { allowed: false, source: "none", enrollment: null, entitlement: null, offering: null, versionId: null };
+  return { allowed: false, source: "none", enrollment: null, entitlement: null, offering: null, versionId: null, cohortId: null, contextError: null };
 }
 
 async function participantFor(user: User, db: Db) {
@@ -117,7 +129,7 @@ async function participantFor(user: User, db: Db) {
   return result.data;
 }
 
-export async function resolveParticipantCourse(slug: string): Promise<ParticipantCourseResolution> {
+export async function resolveParticipantCourse(slug: string, requestedCohortId: string | null = null): Promise<ParticipantCourseResolution> {
   const db = createAdminSupabaseClient();
   const [user, experienceResult] = await Promise.all([
     getPlatformUser(),
@@ -137,7 +149,9 @@ export async function resolveParticipantCourse(slug: string): Promise<Participan
   if (!user) return { status: "signed_out", experience };
   const participant = await participantFor(user, db);
   if (!participant) return { status: "denied", experience };
-  const access = await resolveParticipantExperienceAccess({ participantId: participant.id, experienceId: experience.id, db });
+  const authorization = requestedCohortId ? await getAuthorizationContext(user.id, user.email) : null;
+  const access = await resolveParticipantExperienceAccess({ participantId: participant.id, experienceId: experience.id, cohortId: requestedCohortId, cohortAuthority: Boolean(requestedCohortId && canAccessCohortContext(authorization, requestedCohortId)), db });
+  if (access.contextError) return { status: "invalid_context", experience, reason: access.contextError };
   if (!access.allowed) {
     if ((experience.status === "active" || experience.status === "draft") && experience.admission_policy === "open_enrollment" && experience.current_published_version_id) return { status: "enrollment_available", experience };
     return experience.status === "draft" && !experience.current_published_version_id ? { status: "not_found" } : { status: "denied", experience };
@@ -174,11 +188,16 @@ export async function resolveParticipantCourse(slug: string): Promise<Participan
   const [coverUrl, logoUrl, headerLogoUrl] = await Promise.all([resolveCourseCoverUrl(structure.version.course_configuration, themeConfiguration, db), resolveCourseLogoUrl(structure.version.course_configuration, themeConfiguration, db), resolveCourseHeaderLogoUrl(structure.version.course_configuration, themeConfiguration, db)]);
   const sections = structure.modules.flatMap((module) => module.lessons.flatMap((lesson) => lesson.sections));
   const [assets, companion] = await Promise.all([resolveCourseAssets(db, blockIds, sections), loadCompanionRuntime({ versionId: structure.version.id, offering: access.offering, participantId: participant.id, enrollmentId, db })]);
-  return { status: "ready", structure, courseTemplate: resolveCourseTemplate(experience.delivery_mode as ExperienceDeliveryMode, structure.version.shell_mode), themeConfiguration, coverUrl, logoUrl, headerLogoUrl, assets, companion, accessSource: access.source, participantId: participant.id, enrollmentId, progress, responses };
+  return { status: "ready", structure, courseTemplate: resolveCourseTemplate(experience.delivery_mode as ExperienceDeliveryMode, structure.version.shell_mode), themeConfiguration, coverUrl, logoUrl, headerLogoUrl, assets, companion, accessSource: access.source, participantId: participant.id, enrollmentId, cohortId: access.cohortId, progress, responses };
 }
 
-export function participantSectionHref(slug: string, moduleKey: string, lessonKey: string, sectionKey: string) {
-  return `/experiences/${encodeURIComponent(slug)}/course/${encodeURIComponent(moduleKey)}/${encodeURIComponent(lessonKey)}/${encodeURIComponent(sectionKey)}`;
+export function participantSectionHref(slug: string, moduleKey: string, lessonKey: string, sectionKey: string, cohortId?: string | null) {
+  const path = `/experiences/${encodeURIComponent(slug)}/course/${encodeURIComponent(moduleKey)}/${encodeURIComponent(lessonKey)}/${encodeURIComponent(sectionKey)}`;
+  return cohortId ? `${path}?cohort=${encodeURIComponent(cohortId)}` : path;
+}
+
+export function appendParticipantQuery(href: string, name: string, value: string) {
+  return `${href}${href.includes("?") ? "&" : "?"}${encodeURIComponent(name)}=${encodeURIComponent(value)}`;
 }
 
 type SectionRoute = { moduleKey: string; lessonKey: string; sectionKey: string };
@@ -194,7 +213,7 @@ function sectionRoutes(structure: BuilderCourseStructure): SectionRoute[] {
 export async function participantMissingSectionFallback(result: Extract<ParticipantCourseResolution, { status: "ready" }>, requested: SectionRoute) {
   const current = sectionRoutes(result.structure);
   const sameLesson = current.find((item) => item.moduleKey === requested.moduleKey && item.lessonKey === requested.lessonKey);
-  if (sameLesson) return participantSectionHref(result.structure.experience.slug, sameLesson.moduleKey, sameLesson.lessonKey, sameLesson.sectionKey);
+  if (sameLesson) return participantSectionHref(result.structure.experience.slug, sameLesson.moduleKey, sameLesson.lessonKey, sameLesson.sectionKey, result.cohortId);
 
   if (result.enrollmentId) {
     const db = createAdminSupabaseClient();
@@ -211,7 +230,7 @@ export async function participantMissingSectionFallback(result: Extract<Particip
         const requestedIndex = previous.findIndex((item) => item.moduleKey === requested.moduleKey && item.lessonKey === requested.lessonKey && item.sectionKey === requested.sectionKey);
         const currentKeys = new Set(current.map((item) => JSON.stringify(item)));
         const next = requestedIndex >= 0 ? previous.slice(requestedIndex + 1).find((item) => currentKeys.has(JSON.stringify(item))) : null;
-        if (next) return participantSectionHref(result.structure.experience.slug, next.moduleKey, next.lessonKey, next.sectionKey);
+        if (next) return participantSectionHref(result.structure.experience.slug, next.moduleKey, next.lessonKey, next.sectionKey, result.cohortId);
       } catch {
         // Historical structure may have been retired; the first current Page remains safe.
       }
@@ -219,5 +238,5 @@ export async function participantMissingSectionFallback(result: Extract<Particip
   }
 
   const first = current[0];
-  return first ? participantSectionHref(result.structure.experience.slug, first.moduleKey, first.lessonKey, first.sectionKey) : null;
+  return first ? participantSectionHref(result.structure.experience.slug, first.moduleKey, first.lessonKey, first.sectionKey, result.cohortId) : null;
 }

@@ -44,14 +44,14 @@ async function validateSignature(file: File) {
   if (!valid) throw new Error("The file contents do not match the declared file type.");
 }
 
-export async function uploadCourseAsset(db: Db, file: File, experienceId: string, actorId: string, title?: string) {
+async function uploadNativeAsset(db: Db, file: File, objectPrefix: string, actorId: string, title?: string, description?: string | null, category?: string) {
   if (!file.name || file.name.length > 255) throw new Error("Choose a file with a valid name of 255 characters or fewer.");
   if (!COURSE_ASSET_MIME_TYPES.has(file.type)) throw new Error("That file type is not supported. Upload an image, PDF, or common office document.");
   if (file.size < 1) throw new Error("Choose a non-empty file.");
   if (file.size > NATIVE_ASSET_MAX_BYTES) throw new Error("This file is too large. Files may be up to 25 MB.");
   await validateSignature(file);
   const resourceId = randomUUID();
-  const objectPath = `courses/${experienceId}/${resourceId}/asset${extension(file.name)}`;
+  const objectPath = `${objectPrefix}/${resourceId}/asset${extension(file.name)}`;
   const upload = await db.storage.from(COURSE_ASSET_BUCKET).upload(objectPath, file, { contentType: file.type, upsert: false, cacheControl: "3600" });
   if (upload.error) {
     console.error("Course asset Storage upload failed", { bucket: COURSE_ASSET_BUCKET, message: upload.error.message });
@@ -61,8 +61,9 @@ export async function uploadCourseAsset(db: Db, file: File, experienceId: string
   const created = await db.from("resources").insert({
     id: resourceId,
     title: title?.trim() || file.name.replace(/\.[^.]+$/, ""),
-    description: null,
+    description: description?.trim() || null,
     resource_type: resourceType(file.type),
+    resource_category: category ?? (file.type.startsWith("image/") ? "image" : file.type === "application/pdf" ? "pdf_reading" : "document"),
     status: "active",
     external_url: null,
     storage_bucket: COURSE_ASSET_BUCKET,
@@ -84,6 +85,14 @@ export async function uploadCourseAsset(db: Db, file: File, experienceId: string
   return created.data;
 }
 
+export async function uploadCourseAsset(db: Db, file: File, experienceId: string, actorId: string, title?: string) {
+  return uploadNativeAsset(db, file, `courses/${experienceId}`, actorId, title);
+}
+
+export async function uploadLibraryAsset(db: Db, file: File, actorId: string, title: string, description: string | null, category: string) {
+  return uploadNativeAsset(db, file, "library", actorId, title, description, category);
+}
+
 export async function signedAssetUrl(db: Db, resource: Pick<CourseAsset, "storage_bucket" | "storage_path"> & { original_filename?: string | null }, download = false) {
   if (!resource.storage_bucket || !resource.storage_path) return null;
   const signed = await db.storage.from(resource.storage_bucket).createSignedUrl(resource.storage_path, 15 * 60, download ? { download: resource.original_filename || true } : undefined);
@@ -103,7 +112,7 @@ export type ResolvedAsset = Readonly<{ id: string; url: string; downloadUrl: str
 
 export async function resolveResourceIds(db: Db, ids: readonly string[]) {
   if (!ids.length) return new Map<string, ResolvedAsset>();
-  const result = await db.from("resources").select("*").in("id", [...new Set(ids)]).eq("status", "active");
+  const result = await db.from("resources").select("*").in("id", [...new Set(ids)]).in("status", ["active", "archived"]);
   if (result.error) throw new Error(`Unable to load course assets: ${result.error.message}`);
   const entries = await Promise.all((result.data ?? []).map(async (resource) => {
     const url = resource.storage_path ? await signedAssetUrl(db, resource) : resource.external_url;

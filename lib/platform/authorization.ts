@@ -110,6 +110,14 @@ export function canManageHub(context: PlatformAuthorizationContext | null, hubId
   return canManagePlatform(context) || Boolean(context?.assignments.some((assignment) => assignment.role === "hub_leader" && assignment.scope_type === "hub" && assignment.scope_id === hubId));
 }
 
+export function canAccessCohortContext(context: PlatformAuthorizationContext | null, cohortId: string) {
+  return canManagePlatform(context) || Boolean(context?.assignments.some((assignment) =>
+    assignment.scope_type === "cohort"
+    && assignment.scope_id === cohortId
+    && assignment.role === "facilitator"
+  ));
+}
+
 export async function canViewHub(context: PlatformAuthorizationContext | null, hubId: string) {
   if (!context) return false;
   if (canManageHub(context, hubId)) return true;

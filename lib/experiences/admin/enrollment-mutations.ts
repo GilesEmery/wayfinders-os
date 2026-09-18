@@ -15,15 +15,21 @@ export async function enrollParticipantInVersion(experienceId: string, versionId
     db.from("experiences").select("current_published_version_id").eq("id", experienceId).maybeSingle(),
     db.from("experience_versions").select("id,status,experience_id").eq("id", versionId).eq("experience_id", experienceId).maybeSingle(),
     db.from("participants").select("id").eq("id", participantId).maybeSingle(),
-    db.from("experience_enrollments").select("id,status,experience_version_id").eq("participant_id", participantId).eq("experience_id", experienceId).is("cohort_id", null).in("status", ACTIVE),
+    db.from("experience_enrollments").select("id,status,experience_version_id").eq("participant_id", participantId).eq("experience_id", experienceId).maybeSingle(),
   ]);
   if (experience.error || !experience.data || version.error || !version.data || version.data.status !== "published") throw new Error("Select a Published Version belonging to this Experience.");
   if (participant.error || !participant.data) throw new Error("Participant not found.");
   if (existing.error) throw new Error(`Unable to verify existing enrollment: ${existing.error.message}`);
-  const duplicate = existing.data?.find((item) => item.experience_version_id === versionId);
-  if (duplicate) return { id: duplicate.id, reused: true };
-  if (existing.data?.length) throw new Error("This participant already has an active individual enrollment for another Version of this Experience.");
+  const duplicate = existing.data?.experience_version_id === versionId ? existing.data : null;
+  if (duplicate && ACTIVE.includes(duplicate.status)) return { id: duplicate.id, reused: true };
+  if (existing.data && !duplicate) throw new Error("This participant's canonical Course journey uses another Version and must be reconciled before enrollment.");
   const versionPolicy = experience.data.current_published_version_id === versionId ? "follow_current" : "locked";
+  if (duplicate) {
+    const reactivated = await db.from("experience_enrollments").update({ status: "enrolled", version_policy: versionPolicy, updated_at: new Date().toISOString() }).eq("id", duplicate.id);
+    if (reactivated.error) throw new Error(`Unable to reactivate enrollment: ${reactivated.error.message}`);
+    await audit(admin, "participant.enrollment_reactivated", "experience_enrollment", duplicate.id, { experienceId, versionId, participantId, versionPolicy });
+    return { id: duplicate.id, reused: true };
+  }
   const created = await db.from("experience_enrollments").insert({ participant_id: participantId, experience_id: experienceId, experience_version_id: versionId, version_policy: versionPolicy, status: "enrolled", source_type: "admin", source_id: admin.id }).select("id").single();
   if (created.error) throw new Error(`Unable to enroll participant: ${created.error.message}`);
   await audit(admin, "participant.enrolled", "experience_enrollment", created.data.id, { experienceId, versionId, participantId, versionPolicy });
