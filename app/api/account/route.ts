@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
-import { ensurePlatformProfile, hasPlatformAdminAccess, platformAccountFromProfile } from "@/lib/platform/auth";
+import { ensurePlatformProfile, getPlatformAdminRole, platformAccountFromProfile } from "@/lib/platform/auth";
 import { PayloadError, apiError, readJsonObject } from "@/lib/experiences/lmu/server/http";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -19,8 +19,8 @@ export async function GET() {
       { error: profile.error ?? "Unable to load your profile.", code: "code" in profile ? profile.code : undefined },
       { status: "code" in profile && typeof profile.code === "string" && ["full_name_required", "account_link_ambiguous", "account_link_conflict"].includes(profile.code) ? 409 : 500 },
     );
-    const isAdmin = await hasPlatformAdminAccess(identity.user.id);
-    return NextResponse.json(platformAccountFromProfile(identity.user, profile.participant.full_name, isAdmin));
+    const adminRole = await getPlatformAdminRole(identity.user.id);
+    return NextResponse.json(platformAccountFromProfile(identity.user, profile.participant.full_name, adminRole));
   } catch {
     return apiError("Unable to load your account.", 500);
   }
@@ -48,8 +48,8 @@ export async function PATCH(request: NextRequest) {
 
     const { data, error: metadataError } = await identity.supabase.auth.updateUser({ data: { full_name: fullName } });
     if (metadataError || !data.user) return apiError("Your profile was updated, but account metadata could not be synchronized.", 500);
-    const isAdmin = await hasPlatformAdminAccess(data.user.id);
-    return NextResponse.json(platformAccountFromProfile(data.user, participant.full_name, isAdmin));
+    const adminRole = await getPlatformAdminRole(data.user.id);
+    return NextResponse.json(platformAccountFromProfile(data.user, participant.full_name, adminRole));
   } catch (error) {
     if (error instanceof PayloadError) return apiError(error.message, error.status);
     return apiError("Unable to update your account.", 500);

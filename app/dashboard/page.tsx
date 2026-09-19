@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PlatformAuthGate } from "@/components/platform/PlatformAuthGate";
-import { DashboardNavigation } from "@/components/platform/DashboardNavigation";
 import { PlatformShell } from "@/components/platform/PlatformShell";
 import { assessmentProgress, completedSectionCount } from "@/lib/experiences/lmu/completion";
 import { SECTION_TO_MODULE } from "@/lib/experiences/lmu/persistence";
 import { getWayfinderDashboard } from "@/lib/platform/dashboard";
-import { buildDashboardNavigation } from "@/lib/platform/dashboard-navigation";
 
 export const metadata: Metadata = { title: "My Dashboard" };
 
@@ -52,19 +50,9 @@ export default async function DashboardPage() {
   ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
   const currentLmuModule = latestLmu?.current_module ? SECTION_TO_MODULE[latestLmu.current_module] : undefined;
   const continueLmuHref = latestLmu?.status === "completed" ? "/experiences/life-mapping-u/module/your-life-map" : currentLmuModule ? `/experiences/life-mapping-u/module/${currentLmuModule}` : "/experiences/life-mapping-u/original/modules";
-  const hubById = new Map(data.hubs.map((hub) => [hub.id, hub]));
-  const ledHubs = data.roles.filter((role) => role.role === "hub_leader" && role.scope_type === "hub" && role.scope_id).flatMap((role) => { const hub = hubById.get(role.scope_id!); return hub ? [hub] : []; });
   const adminRole = data.capabilities.globalRole;
-  const navigation = buildDashboardNavigation({
-    hasAssessments: Boolean(latestLmu),
-    hasTrainings: trainings.length > 0,
-    hasCohorts: data.cohortMemberships.length > 0,
-    hasHubs: data.hubMemberships.length > 0,
-    adminRole,
-    ledHubs,
-  });
 
-  return <PlatformShell><div className="purpose-dashboard-layout"><DashboardNavigation groups={navigation}/><div className="wayfinder-dashboard" id="overview">
+  return <PlatformShell><div className="purpose-dashboard-layout"><div className="wayfinder-dashboard" id="overview">
     <header className="dashboard-welcome"><p className="platform-eyebrow">My Journey</p><h1>Welcome back, {name}</h1><p>Your Purpose OS journey home—what is active, what you have completed, and where you can continue.</p></header>
     <section className="dashboard-summary" aria-label="Journey summary">
       <div><span>Active experiences</span><strong>{activeJourney.length + (latestLmu?.status === "in_progress" ? 1 : 0)}</strong></div>

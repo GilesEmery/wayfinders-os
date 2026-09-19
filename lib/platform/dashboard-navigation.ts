@@ -21,6 +21,23 @@ const operationalGroups: DashboardNavigationGroup[] = [
   { label: "System", items: [{ label: "Access & Billing", href: "/admin/access", icon: "access" }, { label: "Automations", href: "/admin/automations", icon: "automations" }, { label: "Settings", href: "/admin/settings", icon: "settings" }] },
 ];
 
+export function buildPersonalNavigation(): DashboardNavigationGroup[] {
+  return [
+    { label: "My Journey", items: [
+      { label: "My Dashboard", href: "/dashboard", icon: "overview" },
+      { label: "My Trainings", href: "/dashboard#trainings", icon: "trainings" },
+      { label: "My Assessments", href: "/dashboard#assessments", icon: "assessments" },
+      { label: "My Cohorts", href: "/dashboard#community", icon: "cohorts" },
+    ] },
+    { label: "My Community", items: [
+      { label: "Hubs & Communities", href: "/dashboard#community", icon: "hub" },
+    ] },
+    { label: "My Account", items: [
+      { label: "Account Settings", href: "/account", icon: "settings" },
+    ] },
+  ];
+}
+
 export function buildOperationalNavigation(role: "admin" | "super_admin") {
   const groups = operationalGroups.map((group) => ({ ...group, items: [...group.items] }));
   groups[0].context = { label: "Admin Dashboard", href: "/admin" };

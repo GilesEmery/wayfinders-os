@@ -110,7 +110,7 @@ export function WayfindersAuthProvider({ children, initialAccount }: { children:
       const name = payload.participant?.full_name?.trim() || payload.participant?.first_name || email.split("@")[0];
       const accountResponse = await fetch("/api/account", { credentials: "same-origin", cache: "no-store" });
       const refreshedAccount = accountResponse.ok ? await accountResponse.json() as PlatformAccount : null;
-      setAccount(refreshedAccount ?? { email: payload.participant?.email || email, fullName: payload.participant?.full_name || fullName, displayName: name, isAdmin: false });
+      setAccount(refreshedAccount ?? { email: payload.participant?.email || email, fullName: payload.participant?.full_name || fullName, displayName: name, isAdmin: false, adminRole: null });
       setRequired(false);
       setOpen(false);
       setPassword("");

@@ -34,8 +34,11 @@ export async function publishVersion(experienceId: string, versionId: string): P
   if (result.error) {
     console.error("publish_experience_version failed", { experienceId, versionId, code: result.error.code, message: result.error.message });
     if (result.error.message === "Publish requires a Draft Version") throw new Error("This Version is no longer Draft. Reload before publishing.");
+    if (result.error.message.includes("companion_chat_messages_author_enrollment_fk") || result.error.message.includes("companion_call_sessions_starter_enrollment_fk")) {
+      throw new Error("Publishing is waiting for the canonical Companion enrollment migration. Apply 20260919123000_live_companion_canonical_enrollment_fk.sql, then publish again.");
+    }
     if (result.error.message.includes("Draft Companion modules require stable-key reconciliation before publishing.")) {
-      throw new Error("Review Companion continuity before publishing. Confirm inherited modules or acknowledge intentionally removed modules in the Companion reconciliation panel.");
+      throw new Error("A Companion module containing saved learner notes was removed from this Draft. Restore that module before publishing so the notes remain available.");
     }
     if (result.error.message.startsWith("Cannot publish:")) throw new Error(result.error.message);
     throw new Error("Publication could not be completed. No Version state was changed.");

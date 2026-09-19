@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { endCompanionCallAction, sendCompanionChatMessageAction, startCompanionCallAction } from "@/lib/experiences/builder/companion-actions";
+import { sendCompanionChatMessageAction } from "@/lib/experiences/builder/companion-actions";
 import type { CompanionChatMessage, ResolvedCompanionModule } from "@/lib/experiences/builder/companion-data";
 import { curriculumLocationKey, curriculumLocationLabel } from "@/lib/experiences/builder/companion-live";
 
@@ -18,18 +18,13 @@ export function CompanionPolling({ enabled }: { enabled: boolean }) {
   return null;
 }
 
-export function VideoCallExperience({ module, route, canStart, canEnd }: { module: ResolvedCompanionModule; route: Route; canStart: boolean; canEnd: boolean }) {
-  const [expanded, setExpanded] = useState(false);
+export function VideoCallExperience({ module }: { module: ResolvedCompanionModule }) {
   const config = module.effective_configuration;
   const text = (key: string) => typeof config[key] === "string" ? config[key] as string : "";
   const provider = text("provider").replaceAll("_", " ") || "Meeting provider";
   const url = text("url");
-  const live = Boolean(module.call_session);
-  return <div className={`companion-call${expanded ? " is-expanded" : ""}`} role={expanded ? "dialog" : undefined} aria-modal={expanded || undefined} aria-label={expanded ? `${module.display_title} expanded call` : undefined}>
-    <div className="companion-call-frame"><div className="companion-call-status"><span>{provider}</span><strong>{live ? "Cohort Call is Live" : module.display_title}</strong>{text("recurring_time") && <small>{text("recurring_time")}</small>}<p>{text("instructions")}</p></div></div>
-    <div className="companion-call-controls">{!live && canStart && <form action={startCompanionCallAction.bind(null, route.slug, route.moduleKey, route.lessonKey, route.sectionKey, module.id, route.cohortId)}><button aria-label={`Start ${module.display_title}`}>Start Call</button></form>}{!live && !canStart && <span>Your group call has not started yet.</span>}{live && url && <a href={url} target="_blank" rel="noreferrer" aria-label={`Join ${module.display_title} with ${provider}`}>{text("button_label") || "Join Call"}</a>}{live && url && <a className="is-secondary" href={url} target="_blank" rel="noreferrer">Open Externally</a>}{live && canEnd && <form action={endCompanionCallAction.bind(null, route.slug, route.moduleKey, route.lessonKey, route.sectionKey, module.id, route.cohortId)}><button className="is-secondary" aria-label={`End ${module.display_title} live state`}>End Call</button></form>}<button className="is-secondary" type="button" onClick={() => setExpanded((value) => !value)} aria-expanded={expanded}>{expanded ? "Collapse Call" : "Expand Call"}</button></div>
-    {expanded && <button className="companion-call-backdrop" type="button" aria-label="Collapse call and return to Course" onClick={() => setExpanded(false)}/>} 
-  </div>;
+  if (!url) return null;
+  return <div className="companion-call"><a className="companion-call-card" href={url} target="_blank" rel="noreferrer" aria-label={`Join ${module.display_title} with ${provider}`}><div className="companion-call-mark" aria-hidden="true"><span/></div><div className="companion-call-status"><span>{provider}</span><strong>{module.display_title}</strong>{text("recurring_time") && <small>{text("recurring_time")}</small>}{text("instructions") && <p>{text("instructions")}</p>}</div><span className="companion-call-join">Join Call</span></a></div>;
 }
 
 export function GroupChatExperience({ module, route, messages }: { module: ResolvedCompanionModule; route: Route; messages: CompanionChatMessage[] }) {

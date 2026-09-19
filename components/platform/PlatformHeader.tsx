@@ -1,15 +1,14 @@
 import { PlatformAccountControl } from "./PlatformAccountControl";
 import { PlatformBrand } from "./PlatformBrand";
-import { PlatformExperiencesMenu } from "./PlatformExperiencesMenu";
 
-export function PlatformHeader() {
+export function PlatformHeader({ contextTitle }: { contextTitle?: string }) {
   return (
     <header className="platform-header">
-      <PlatformBrand />
+      <div className="platform-header-identity">
+        <PlatformBrand />
+        {contextTitle ? <span className="platform-header-context">{contextTitle}</span> : null}
+      </div>
       <div className="platform-header-actions">
-        <nav aria-label="Primary navigation">
-          <PlatformExperiencesMenu />
-        </nav>
         <PlatformAccountControl />
       </div>
     </header>

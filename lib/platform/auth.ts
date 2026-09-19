@@ -7,16 +7,18 @@ const PARTICIPANT_COLUMNS = "id,auth_user_id,first_name,full_name,email,email_no
 const ACCOUNT_LINK_AMBIGUOUS = "We found more than one existing Wayfinders record associated with this email. Please contact us so we can connect your account correctly.";
 const ACCOUNT_LINK_CONFLICT = "This email is already connected to another PurposeOS account. Please contact support if you believe this is incorrect.";
 
-export type PlatformAccount = { email: string; fullName: string; displayName: string; isAdmin: boolean };
+export type PlatformAdminRole = "admin" | "super_admin";
+export type PlatformAccount = { email: string; fullName: string; displayName: string; isAdmin: boolean; adminRole: PlatformAdminRole | null };
 
-function accountFromUser(user: User, profileName?: string | null, isAdmin = false): PlatformAccount {
+function accountFromUser(user: User, profileName?: string | null, adminRole: PlatformAdminRole | null = null): PlatformAccount {
   const metadataName = typeof user.user_metadata.full_name === "string" ? user.user_metadata.full_name.trim() : "";
   const fullName = profileName?.trim() || metadataName;
   return {
     email: user.email ?? "",
     fullName,
     displayName: fullName || user.email?.split("@")[0] || "Account",
-    isAdmin,
+    isAdmin: Boolean(adminRole),
+    adminRole,
   };
 }
 
@@ -49,9 +51,10 @@ export async function getPlatformAccount() {
     const admin = createAdminSupabaseClient();
     const [{ data: profile }, { data: member }] = await Promise.all([
       admin.from("participants").select("full_name").eq("auth_user_id", user.id).maybeSingle(),
-      admin.from("admin_members").select("id").eq("auth_user_id", user.id).eq("status", "active").in("role", ["admin", "super_admin"]).maybeSingle(),
+      admin.from("admin_members").select("role").eq("auth_user_id", user.id).eq("status", "active").in("role", ["admin", "super_admin"]).maybeSingle(),
     ]);
-    return accountFromUser(user, profile?.full_name, Boolean(member));
+    const adminRole = member?.role === "admin" || member?.role === "super_admin" ? member.role : null;
+    return accountFromUser(user, profile?.full_name, adminRole);
   } catch {
     return accountFromUser(user);
   }
@@ -68,8 +71,19 @@ export async function hasPlatformAdminAccess(authUserId: string) {
   return Boolean(data);
 }
 
-export function platformAccountFromProfile(user: User, fullName?: string | null, isAdmin = false) {
-  return accountFromUser(user, fullName, isAdmin);
+export async function getPlatformAdminRole(authUserId: string): Promise<PlatformAdminRole | null> {
+  const { data } = await createAdminSupabaseClient()
+    .from("admin_members")
+    .select("role")
+    .eq("auth_user_id", authUserId)
+    .eq("status", "active")
+    .in("role", ["admin", "super_admin"])
+    .maybeSingle();
+  return data?.role === "admin" || data?.role === "super_admin" ? data.role : null;
+}
+
+export function platformAccountFromProfile(user: User, fullName?: string | null, adminRole: PlatformAdminRole | null = null) {
+  return accountFromUser(user, fullName, adminRole);
 }
 
 export async function ensurePlatformProfile(user: User, requestedFullName?: string) {
