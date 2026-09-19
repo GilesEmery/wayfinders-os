@@ -102,6 +102,9 @@ export type Database = {
       participant_companion_entries: FoundationTable<{
         id: string; companion_module_id: string; participant_id: string; enrollment_id: string; experience_version_id: string; entry_data: Json; created_at: string; updated_at: string
       }, "companion_module_id" | "participant_id" | "enrollment_id" | "experience_version_id">
+      participant_personal_notes: FoundationTable<{
+        id: string; enrollment_id: string; participant_id: string; experience_id: string; companion_module_key: string; source_experience_version_id: string | null; source_companion_module_id: string | null; content: string; curriculum_context: Json; created_at: string; updated_at: string
+      }, "enrollment_id" | "participant_id" | "experience_id" | "companion_module_key" | "content">
       cohorts: FoundationTable<{
         id: string; experience_id: string; experience_version_id: string | null; organization_id: string | null; hub_id: string | null; name: string; slug: string; status: string; start_date: string | null; end_date: string | null; capacity: number | null; created_at: string; updated_at: string
       }, "experience_id" | "name" | "slug">

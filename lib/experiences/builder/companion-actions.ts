@@ -10,17 +10,61 @@ import { appendParticipantQuery, participantSectionHref, resolveParticipantCours
 export async function savePersonalCompanionEntryAction(slug: string, moduleKey: string, lessonKey: string, sectionKey: string, companionModuleId: string, cohortId: string | null | undefined, form: FormData) {
   const href = participantSectionHref(slug, moduleKey, lessonKey, sectionKey, cohortId);
   const result = await resolveParticipantCourse(slug, cohortId ?? null);
-  if (result.status !== "ready" || !result.enrollmentId) redirect(appendParticipantQuery(href, "companionError", "Notes require an active version-pinned enrollment."));
+  if (result.status !== "ready" || !result.enrollmentId) redirect(appendParticipantQuery(href, "companionError", "Notes require an active Course enrollment."));
   const location = result.structure.modules.flatMap((module) => module.lessons.flatMap((lesson) => lesson.sections.map((section) => ({ module, lesson, section })))).find((item) => item.module.module_key === moduleKey && item.lesson.lesson_key === lessonKey && item.section.section_key === sectionKey);
   const companionModule = result.companion.modules.find((item) => item.id === companionModuleId);
-  if (!location || !companionModule || companionModule.module_type !== "personal_notes" || companionModule.availability_context !== "individual" || companionModule.audience !== "personal" || !moduleApplies(companionModule, { moduleId: location.module.id, lessonId: location.lesson.id, sectionId: location.section.id })) redirect(appendParticipantQuery(href, "companionError", "This private notebook is unavailable here."));
+  if (!location || !companionModule || companionModule.module_type !== "personal_notes" || companionModule.availability_context !== "individual" || companionModule.scope !== "course" || companionModule.audience !== "personal" || !moduleApplies(companionModule, { moduleId: location.module.id, lessonId: location.lesson.id, sectionId: location.section.id })) redirect(appendParticipantQuery(href, "companionError", "This private notebook is unavailable here."));
   const text = String(form.get("notes") ?? "").trim();
-  if (text.length > 30000) redirect(appendParticipantQuery(href, "companionError", "Notes must be 30,000 characters or fewer."));
+  if (!text || text.length > 30000) redirect(appendParticipantQuery(href, "companionError", "Notes must contain 1 to 30,000 characters."));
   const db = createAdminSupabaseClient();
-  const saved = await db.from("participant_companion_entries").upsert({ companion_module_id: companionModule.id, participant_id: result.participantId, enrollment_id: result.enrollmentId, experience_version_id: result.structure.version.id, entry_data: { text } }, { onConflict: "enrollment_id,companion_module_id" });
+  const saved = await db.from("participant_personal_notes").insert({
+    enrollment_id: result.enrollmentId,
+    participant_id: result.participantId,
+    experience_id: result.structure.experience.id,
+    companion_module_key: companionModule.module_key,
+    source_experience_version_id: result.structure.version.id,
+    source_companion_module_id: companionModule.id,
+    content: text,
+    curriculum_context: { module_key: location.module.module_key, module_title: location.module.title, lesson_key: location.lesson.lesson_key, lesson_title: location.lesson.title, section_key: location.section.section_key, section_title: location.section.title },
+  });
   if (saved.error) redirect(appendParticipantQuery(href, "companionError", "Your notes could not be saved."));
   revalidatePath(href);
+  revalidatePath(`/experiences/${encodeURIComponent(slug)}/notes`);
   redirect(appendParticipantQuery(href, "companionSaved", "1"));
+}
+
+function notesHref(slug: string, cohortId?: string | null, values?: Record<string, string>) {
+  const query = new URLSearchParams();
+  if (cohortId) query.set("cohort", cohortId);
+  for (const [key, value] of Object.entries(values ?? {})) if (value) query.set(key, value);
+  const path = `/experiences/${encodeURIComponent(slug)}/notes`;
+  return query.size ? `${path}?${query}` : path;
+}
+
+async function personalNoteMutationContext(slug: string, companionModuleKey: string, cohortId?: string | null) {
+  const result = await resolveParticipantCourse(slug, cohortId ?? null);
+  if (result.status !== "ready" || !result.enrollmentId) redirect(`/experiences/${encodeURIComponent(slug)}`);
+  const companionModule = result.companion.modules.find((item) => item.module_type === "personal_notes" && item.module_key === companionModuleKey && item.availability_context === "individual" && item.scope === "course" && item.audience === "personal");
+  if (!companionModule) redirect(notesHref(slug, cohortId, { notesError: "This private notebook is unavailable." }));
+  return { result, companionModule };
+}
+
+export async function editPersonalNoteAction(slug: string, companionModuleKey: string, noteId: string, cohortId: string | null | undefined, form: FormData) {
+  const { result } = await personalNoteMutationContext(slug, companionModuleKey, cohortId);
+  const content = String(form.get("content") ?? "").trim();
+  if (!content || content.length > 30000) redirect(notesHref(slug, cohortId, { note: noteId, notesError: "Notes must contain 1 to 30,000 characters." }));
+  const updated = await createAdminSupabaseClient().from("participant_personal_notes").update({ content }).eq("id", noteId).eq("enrollment_id", result.enrollmentId!).eq("participant_id", result.participantId).eq("experience_id", result.structure.experience.id).eq("companion_module_key", companionModuleKey).select("id").maybeSingle();
+  if (updated.error || !updated.data) redirect(notesHref(slug, cohortId, { note: noteId, notesError: "This note could not be updated." }));
+  revalidatePath(notesHref(slug, cohortId));
+  redirect(notesHref(slug, cohortId, { note: noteId, notesSaved: "Note updated" }));
+}
+
+export async function deletePersonalNoteAction(slug: string, companionModuleKey: string, noteId: string, cohortId?: string | null) {
+  const { result } = await personalNoteMutationContext(slug, companionModuleKey, cohortId);
+  const deleted = await createAdminSupabaseClient().from("participant_personal_notes").delete().eq("id", noteId).eq("enrollment_id", result.enrollmentId!).eq("participant_id", result.participantId).eq("experience_id", result.structure.experience.id).eq("companion_module_key", companionModuleKey).select("id").maybeSingle();
+  if (deleted.error || !deleted.data) redirect(notesHref(slug, cohortId, { notesError: "This note could not be deleted." }));
+  revalidatePath(notesHref(slug, cohortId));
+  redirect(notesHref(slug, cohortId, { notesSaved: "Note deleted" }));
 }
 
 async function liveContext(slug: string, moduleKey: string, lessonKey: string, sectionKey: string, companionModuleId: string, cohortId: string | null | undefined, expectedType: "video_call" | "chat") {

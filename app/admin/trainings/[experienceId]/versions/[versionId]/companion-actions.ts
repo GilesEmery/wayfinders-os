@@ -27,22 +27,32 @@ async function editable(experienceId: string, versionId: string) {
 
 export async function addCompanionModuleAction(experienceId: string, versionId: string, selectedId: string | undefined, form: FormData) {
   const { admin, db } = await editable(experienceId, versionId);
-  const type = companionType(form.get("module_type"));
-  if (!type) throw new Error("Choose a supported Companion module.");
-  const definition = COMPANION_LIBRARY[type];
+  const types = [...new Set(form.getAll("module_type").map(companionType).filter((type): type is NonNullable<typeof type> => Boolean(type)))];
+  const existing = await db.from("companion_modules").select("id,module_type,display_title,sort_order").eq("experience_version_id", versionId).order("sort_order");
+  if (existing.error) throw new Error("Existing Companion items could not be checked.");
+  const existingTypes = new Set((existing.data ?? []).map((item) => item.module_type));
+  const selectedTypes = new Set(types);
+  const removedItems = (existing.data ?? []).filter((item) => !selectedTypes.has(item.module_type as never));
+  const addedTypes = types.filter((type) => !existingTypes.has(type));
   const selected = selectedId ? await db.from("experience_sections").select("id,module_id,lesson_id").eq("id", selectedId).eq("experience_version_id", versionId).maybeSingle() : { data: null, error: null };
   if (selected.error) throw new Error("The current curriculum location could not be resolved.");
-  const scope = definition.defaultScope === "course" || selected.data ? definition.defaultScope : "course";
-  const targetModuleId = scope === "course" ? null : selected.data?.module_id ?? null;
-  const targetLessonId = scope === "lesson" || scope === "page" ? selected.data?.lesson_id ?? null : null;
-  const targetSectionId = scope === "page" ? selected.data?.id ?? null : null;
-  const latest = await db.from("companion_modules").select("sort_order").eq("experience_version_id", versionId).order("sort_order", { ascending: false }).limit(1);
-  if (latest.error) throw new Error("Companion ordering could not be loaded.");
-  const inserted = await db.from("companion_modules").insert({ experience_version_id: versionId, module_type: type, scope, audience: definition.defaultAudience, availability_context: definition.defaultAvailability, target_module_id: targetModuleId, target_lesson_id: targetLessonId, target_section_id: targetSectionId, display_title: definition.label, sort_order: (latest.data?.[0]?.sort_order ?? -1) + 1, configuration: {}, created_by: admin.id }).select("id").single();
-  if (inserted.error) throw new Error(`Companion module could not be added: ${inserted.error.message}`);
-  await audit(admin, "course.companion.module_added", "companion_module", inserted.data.id, { experienceId, versionId, type });
+  if (removedItems.length) {
+    const removed = await db.from("companion_modules").delete().in("id", removedItems.map((item) => item.id)).eq("experience_version_id", versionId);
+    if (removed.error) throw new Error(`Companion selection could not be saved: ${removed.error.message}`);
+  }
+  const remaining = (existing.data ?? []).filter((item) => !removedItems.some((removed) => removed.id === item.id));
+  const firstSortOrder = Math.max(-1, ...remaining.map((item) => item.sort_order)) + 1;
+  const rows = addedTypes.map((type, index) => {
+    const definition = COMPANION_LIBRARY[type];
+    const scope = definition.defaultScope === "course" || selected.data ? definition.defaultScope : "course";
+    return { experience_version_id: versionId, module_type: type, scope, audience: definition.defaultAudience, availability_context: definition.defaultAvailability, target_module_id: scope === "course" ? null : selected.data?.module_id ?? null, target_lesson_id: scope === "lesson" || scope === "page" ? selected.data?.lesson_id ?? null : null, target_section_id: scope === "page" ? selected.data?.id ?? null : null, display_title: definition.label, sort_order: firstSortOrder + index, configuration: {}, created_by: admin.id };
+  });
+  const inserted = rows.length ? await db.from("companion_modules").insert(rows).select("id,module_type") : { data: [], error: null };
+  if (inserted.error) throw new Error(`Companion selection could not be saved: ${inserted.error.message}`);
+  for (const item of removedItems) await audit(admin, "course.companion.module_removed", "companion_module", item.id, { experienceId, versionId, type: item.module_type });
+  for (const item of inserted.data ?? []) await audit(admin, "course.companion.module_added", "companion_module", item.id, { experienceId, versionId, type: item.module_type });
   revalidatePath(route(experienceId, versionId));
-  redirect(route(experienceId, versionId, selectedId, `${definition.label} added.`));
+  redirect(route(experienceId, versionId, selectedId, "Companion selection saved."));
 }
 
 function configuration(form: FormData, type: string): Json {
@@ -63,10 +73,11 @@ export async function updateCompanionModuleAction(experienceId: string, versionI
   const existing = await db.from("companion_modules").select("*").eq("id", moduleId).eq("experience_version_id", versionId).maybeSingle();
   if (existing.error || !existing.data) throw new Error("Companion module was not found.");
   const type = companionType(existing.data.module_type); if (!type) throw new Error("Unsupported Companion module type.");
-  const scope = String(form.get("scope") ?? "") as CompanionScope;
+  const requestedScope = String(form.get("scope") ?? "") as CompanionScope;
   const audience = String(form.get("audience") ?? "") as CompanionAudience;
   const availability = companionAvailability(form.get("availability_context"));
   const definition = COMPANION_LIBRARY[type];
+  const scope: CompanionScope = type === "personal_notes" ? "course" : requestedScope;
   if (!(["course", "module", "lesson", "page"] as string[]).includes(scope)) throw new Error("Choose where this module should appear.");
   if (!definition.audiences.includes(audience)) throw new Error(`${definition.label} does not support that audience.`);
   if (!availability || !definition.availabilities.includes(availability)) throw new Error(`${definition.label} does not support that availability.`);

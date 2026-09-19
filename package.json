@@ -10,6 +10,7 @@
     "test:cohort-context": "node --test lib/experiences/builder/cohort-context.test.ts",
     "test:companion-availability": "node --test lib/experiences/builder/companion.test.ts",
     "test:companion-live": "node --test lib/experiences/builder/companion-live.test.ts",
+    "test:personal-notes": "node --test lib/experiences/builder/personal-notes.test.ts",
     "test:resource-library": "node --test lib/resources/resource-library-policy.test.ts",
     "import:hub-leader-cohort:dry-run": "node --env-file=.env.local scripts/imports/import-hub-leader-cohort-1753.mjs",
     "import:hub-leader-cohort": "node --env-file=.env.local scripts/imports/import-hub-leader-cohort-1753.mjs --apply"

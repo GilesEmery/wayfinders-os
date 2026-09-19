@@ -9,25 +9,26 @@ import { resolveResourceIds, type ResolvedAsset } from "./resource-assets";
 type Db = ReturnType<typeof createAdminSupabaseClient>;
 type Offering = Tables<"experience_offerings">;
 export type CompanionChatMessage = Tables<"companion_chat_messages"> & { author_name: string };
-export type ResolvedCompanionModule = Tables<"companion_modules"> & { effective_configuration: Record<string, Json | undefined>; resources: ResolvedAsset[]; entry: Tables<"participant_companion_entries"> | null; delivery_override_id: string | null; call_session: Tables<"companion_call_sessions"> | null; chat_messages: CompanionChatMessage[] };
-export type CompanionRuntimeData = Readonly<{ modules: ResolvedCompanionModule[]; cohortMembers: Array<{ id: string; name: string; role: string }>; hasCohortContext: boolean; contextLabel: string; currentMemberRole: string | null }>;
+export type ResolvedCompanionModule = Tables<"companion_modules"> & { effective_configuration: Record<string, Json | undefined>; resources: ResolvedAsset[]; personal_notes: Tables<"participant_personal_notes">[]; delivery_override_id: string | null; call_session: Tables<"companion_call_sessions"> | null; chat_messages: CompanionChatMessage[] };
+export type CompanionRuntimeData = Readonly<{ modules: ResolvedCompanionModule[]; cohortMembers: Array<{ id: string; name: string; role: string }>; hasCohortContext: boolean; contextLabel: string; currentMemberRole: string | null; currentParticipantId: string | null }>;
 
 export async function loadCompanionRuntime({ versionId, offering, participantId, enrollmentId, preview = false, db = createAdminSupabaseClient() }: { versionId: string; offering: Offering | null; participantId?: string | null; enrollmentId?: string | null; preview?: boolean; db?: Db }): Promise<CompanionRuntimeData> {
   const moduleResult = await db.from("companion_modules").select("*").eq("experience_version_id", versionId).order("sort_order");
   if (moduleResult.error) throw new Error(`Unable to load Companion modules: ${moduleResult.error.message}`);
   const modules = moduleResult.data ?? [];
-  if (!modules.length) return { modules: [], cohortMembers: [], hasCohortContext: Boolean(offering?.cohort_id), contextLabel: offering?.cohort_id ? offering.name : "Personal", currentMemberRole: null };
+  if (!modules.length) return { modules: [], cohortMembers: [], hasCohortContext: Boolean(offering?.cohort_id), contextLabel: offering?.cohort_id ? offering.name : "Personal", currentMemberRole: null, currentParticipantId: participantId ?? null };
   const moduleIds = modules.map((module) => module.id);
   const planResult = offering?.cohort_id ? await db.from("cohort_course_plans").select("id").eq("cohort_id", offering.cohort_id).eq("experience_version_id", versionId).eq("status", "active").maybeSingle() : { data: null, error: null };
   if (planResult.error) throw new Error(`Unable to resolve Companion cohort context: ${planResult.error.message}`);
   let overrideQuery = db.from("companion_delivery_overrides").select("*").eq("experience_version_id", versionId).in("companion_module_id", moduleIds);
   if (!offering && !planResult.data) overrideQuery = overrideQuery.is("offering_id", null).is("cohort_course_plan_id", null);
-  const [overrideResult, linksResult, entriesResult] = await Promise.all([
+  const personalNoteKeys = modules.filter((module) => module.module_type === "personal_notes").map((module) => module.module_key);
+  const [overrideResult, linksResult, notesResult] = await Promise.all([
     preview || !offering && !planResult.data ? Promise.resolve({ data: [], error: null }) : overrideQuery,
     db.from("companion_module_resources").select("companion_module_id,resource_id,delivery_override_id,sort_order").in("companion_module_id", moduleIds).order("sort_order"),
-    participantId && enrollmentId ? db.from("participant_companion_entries").select("*").eq("participant_id", participantId).eq("enrollment_id", enrollmentId).eq("experience_version_id", versionId).in("companion_module_id", moduleIds) : Promise.resolve({ data: [], error: null }),
+    !preview && participantId && enrollmentId && personalNoteKeys.length ? db.from("participant_personal_notes").select("*").eq("participant_id", participantId).eq("enrollment_id", enrollmentId).in("companion_module_key", personalNoteKeys).order("created_at", { ascending: false }) : Promise.resolve({ data: [], error: null }),
   ]);
-  const error = overrideResult.error || linksResult.error || entriesResult.error; if (error) throw new Error(`Unable to load Companion context: ${error.message}`);
+  const error = overrideResult.error || linksResult.error || notesResult.error; if (error) throw new Error(`Unable to load Companion context: ${error.message}`);
   let overrides = overrideResult.data ?? [];
   let currentMemberRole: string | null = null;
   if (!preview && offering?.cohort_id && participantId) {
@@ -59,7 +60,6 @@ export async function loadCompanionRuntime({ versionId, offering, participantId,
   }).filter(({ module, override }) => module.visibility === "visible" && override?.visibility !== "hidden" && (module.module_type !== "video_call" || override !== null && videoConferenceEnabled({ ...companionObject(module.configuration), ...companionObject(override.configuration) })));
   const resourceIds = effective.flatMap((item) => item.links.map((link) => link.resource_id));
   const resourceMap = await resolveResourceIds(db, resourceIds);
-  const entryMap = new Map((entriesResult.data ?? []).map((entry) => [entry.companion_module_id, entry]));
   const overrideIds = hasCohortContext ? effective.flatMap(({ override }) => override ? [override.id] : []) : [];
   let chatOverrideIds = overrideIds;
   const historicalModuleKey = new Map<string, string>();
@@ -87,7 +87,7 @@ export async function loadCompanionRuntime({ versionId, offering, participantId,
   const messagePeople = messageAuthorIds.length ? await db.from("participants").select("id,full_name,first_name").in("id", messageAuthorIds) : { data: [], error: null };
   if (messagePeople.error) throw new Error(`Unable to load Chat authors: ${messagePeople.error.message}`);
   const authorNames = new Map((messagePeople.data ?? []).map((person) => [person.id, person.full_name || person.first_name || "Cohort member"]));
-  const resolved = effective.map(({ module, override, links }) => ({ ...module, effective_configuration: { ...companionObject(module.configuration), ...companionObject(override?.configuration) }, resources: links.map((link) => resourceMap.get(link.resource_id)).filter((asset): asset is ResolvedAsset => Boolean(asset)), entry: entryMap.get(module.id) ?? null, delivery_override_id: override?.id ?? null, call_session: (callResult.data ?? []).find((session) => session.companion_module_id === module.id) ?? null, chat_messages: (messageResult.data ?? []).filter((message) => module.module_type === "chat" && (message.companion_module_id === module.id || historicalModuleKey.get(message.companion_module_id) === module.module_key)).map((message) => ({ ...message, author_name: authorNames.get(message.author_participant_id) ?? "Cohort member" })) }));
+  const resolved = effective.map(({ module, override, links }) => ({ ...module, effective_configuration: { ...companionObject(module.configuration), ...companionObject(override?.configuration) }, resources: links.map((link) => resourceMap.get(link.resource_id)).filter((asset): asset is ResolvedAsset => Boolean(asset)), personal_notes: (notesResult.data ?? []).filter((note) => note.companion_module_key === module.module_key), delivery_override_id: override?.id ?? null, call_session: (callResult.data ?? []).find((session) => session.companion_module_id === module.id) ?? null, chat_messages: (messageResult.data ?? []).filter((message) => module.module_type === "chat" && (message.companion_module_id === module.id || historicalModuleKey.get(message.companion_module_id) === module.module_key)).map((message) => ({ ...message, author_name: authorNames.get(message.author_participant_id) ?? "Cohort member" })) }));
   let cohortMembers: CompanionRuntimeData["cohortMembers"] = [];
   if (!preview && offering?.cohort_id && resolved.some((module) => module.module_type === "group_members")) {
     const memberships = await db.from("cohort_memberships").select("participant_id,membership_role").eq("cohort_id", offering.cohort_id).eq("status", "active");
@@ -98,5 +98,5 @@ export async function loadCompanionRuntime({ versionId, offering, participantId,
     const names = new Map((people.data ?? []).map((person) => [person.id, person.full_name || person.first_name || "Cohort member"]));
     cohortMembers = (memberships.data ?? []).map((membership) => ({ id: membership.participant_id, name: names.get(membership.participant_id) ?? "Cohort member", role: membership.membership_role }));
   }
-  return { modules: resolved, cohortMembers, hasCohortContext, contextLabel: hasCohortContext ? offering?.name || "Cohort" : "Personal", currentMemberRole };
+  return { modules: resolved, cohortMembers, hasCohortContext, contextLabel: hasCohortContext ? offering?.name || "Cohort" : "Personal", currentMemberRole, currentParticipantId: participantId ?? null };
 }

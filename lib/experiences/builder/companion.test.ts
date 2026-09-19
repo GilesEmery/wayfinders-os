@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { COMPANION_LIBRARY, companionModuleAvailable } from "./companion.ts";
+import { COMPANION_LIBRARY, COMPANION_TYPES, companionCreatorGroups, companionModuleAvailable } from "./companion.ts";
 import { resolveCourseTemplate } from "./course-templates.ts";
 
 const modules = [
@@ -61,6 +61,9 @@ test("Standard Course shell never includes Companion", () => {
 
 test("module registry supplies the approved defaults", () => {
   assert.equal(COMPANION_LIBRARY.personal_notes.defaultAvailability, "individual");
+  assert.equal(COMPANION_LIBRARY.personal_notes.defaultScope, "course");
+  assert.equal(COMPANION_LIBRARY.personal_notes.singleInstance, true);
+  assert.equal(COMPANION_LIBRARY.reflection_prompt.defaultScope, "module");
   assert.equal(COMPANION_LIBRARY.reflection_prompt.defaultAvailability, "individual");
   assert.equal(COMPANION_LIBRARY.action_steps.defaultAvailability, "individual");
   assert.equal(COMPANION_LIBRARY.resources.defaultAvailability, "both");
@@ -76,4 +79,31 @@ test("privacy-sensitive and live module restrictions reject unsafe contexts", ()
   assert.deepEqual(COMPANION_LIBRARY.chat.availabilities, ["cohort"]);
   assert.deepEqual(COMPANION_LIBRARY.video_call.availabilities, ["cohort"]);
   assert.deepEqual(COMPANION_LIBRARY.group_members.availabilities, ["cohort"]);
+});
+
+test("creator chooser groups Personal + Cohort separately from Cohort Only", () => {
+  const groups = companionCreatorGroups();
+  assert.deepEqual(groups.map((group) => group.label), ["Personal + Cohort", "Cohort Only"]);
+  assert.deepEqual(groups[0].items.map((item) => item.type), ["personal_notes", "resources", "action_steps", "reflection_prompt", "custom_text", "custom_link"]);
+  assert.deepEqual(groups[1].items.map((item) => item.type), ["facilitator", "next_gathering", "chat", "video_call", "group_members", "prayer", "announcements", "shared_resources", "group_discussion_prompt", "group_notes"]);
+});
+
+test("creator chooser marks existing items without mutating registry order", () => {
+  const originalOrder = [...COMPANION_TYPES];
+  const groups = companionCreatorGroups(["personal_notes", "chat"]);
+  const items = groups.flatMap((group) => group.items);
+  assert.equal(items.find((item) => item.type === "personal_notes")?.added, true);
+  assert.equal(items.find((item) => item.type === "personal_notes")?.disabled, true);
+  assert.equal(items.find((item) => item.type === "chat")?.added, true);
+  assert.equal(items.find((item) => item.type === "chat")?.disabled, true);
+  assert.equal(items.find((item) => item.type === "resources")?.added, false);
+  assert.equal(items.find((item) => item.type === "resources")?.disabled, false);
+  assert.deepEqual(COMPANION_TYPES, originalOrder);
+});
+
+test("creator chooser uses Cohort terminology", () => {
+  const labels = companionCreatorGroups().flatMap((group) => group.items.map((item) => item.definition.creatorLabel ?? item.definition.label));
+  assert.ok(labels.includes("Cohort Members"));
+  assert.ok(labels.includes("Cohort Notes"));
+  assert.equal(labels.includes("Group Members"), false);
 });
