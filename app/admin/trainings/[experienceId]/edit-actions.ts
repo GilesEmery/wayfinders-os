@@ -101,6 +101,28 @@ export async function updateCourseConfigurationAction(experienceId: string, vers
   redirect(`/admin/trainings/${experienceId}/versions/${versionId}?saved=${encodeURIComponent("Course appearance saved for this Draft.")}`);
 }
 
+export async function updateCourseCardAction(experienceId: string, versionId: string, form: FormData) {
+  const admin = await requireAdmin();
+  const authorization = await getAuthorizationContext(admin.id, admin.email);
+  if (!await canBuildExperienceById(authorization, experienceId)) throw new Error("You are not authorized to change this Course.");
+  const headline = String(form.get("card_headline") ?? "").trim();
+  const supportingText = String(form.get("card_supporting_text") ?? "").trim();
+  const eyebrow = String(form.get("card_eyebrow") ?? "").trim();
+  if (headline.length > 200 || supportingText.length > 600 || eyebrow.length > 80) throw new Error("Course Card text exceeds the supported length.");
+  const db = createAdminSupabaseClient();
+  const current = await db.from("experience_versions").select("id,status,course_configuration").eq("id", versionId).eq("experience_id", experienceId).maybeSingle();
+  if (current.error || !current.data || current.data.status !== "draft") throw new Error("Only a Draft Course Card can be configured.");
+  const existing = normalizeCourseConfiguration(current.data.course_configuration);
+  const configuration = { ...existing, card: { ...existing.card, headline: headline || null, supporting_text: supportingText || null, eyebrow: eyebrow || null } };
+  const result = await db.from("experience_versions").update({ course_configuration: configuration }).eq("id", versionId).eq("experience_id", experienceId).eq("status", "draft").select("id").maybeSingle();
+  if (result.error || !result.data) throw new Error("Course Card could not be saved.");
+  await audit(admin, "course.card.updated", "experience_version", versionId, { experienceId });
+  revalidatePath(`/admin/trainings/${experienceId}/versions/${versionId}`);
+  revalidatePath("/trainings");
+  revalidatePath("/dashboard");
+  redirect(`/admin/trainings/${experienceId}/versions/${versionId}?saved=${encodeURIComponent("Course Card saved for this Draft.")}`);
+}
+
 export async function setCourseCoverAction(experienceId: string, versionId: string, form: FormData) {
   return setCourseImage(experienceId, versionId, form, "cover");
 }
@@ -113,7 +135,51 @@ export async function setCourseHeaderLogoAction(experienceId: string, versionId:
   return setCourseImage(experienceId, versionId, form, "header_logo");
 }
 
-async function setCourseImage(experienceId: string, versionId: string, form: FormData, kind: "cover" | "logo" | "header_logo") {
+export async function setCourseCardImageAction(experienceId: string, versionId: string, form: FormData) {
+  return setCourseImage(experienceId, versionId, form, "card");
+}
+
+export async function updateCustomCodeCardAction(experienceId: string, form: FormData) {
+  const admin = await requireAdmin();
+  const authorization = await getAuthorizationContext(admin.id, admin.email);
+  if (!await canBuildExperienceById(authorization, experienceId)) throw new Error("You are not authorized to change this Experience.");
+  const db = createAdminSupabaseClient();
+  const current = await db.from("experiences").select("delivery_mode,card_configuration").eq("id", experienceId).maybeSingle();
+  if (current.error || current.data?.delivery_mode !== "custom_code") throw new Error("Only a custom-code Experience can use these settings.");
+  const existing = normalizeCourseConfiguration(current.data.card_configuration);
+  const headline = String(form.get("card_headline") ?? "").trim();
+  const supportingText = String(form.get("card_supporting_text") ?? "").trim();
+  const eyebrow = String(form.get("card_eyebrow") ?? "").trim();
+  if (headline.length > 200 || supportingText.length > 600 || eyebrow.length > 80) throw new Error("Course Card text exceeds the supported length.");
+  const configuration = { ...existing, card: { ...existing.card, headline: headline || null, supporting_text: supportingText || null, eyebrow: eyebrow || null } };
+  const result = await db.from("experiences").update({ card_configuration: configuration }).eq("id", experienceId).eq("delivery_mode", "custom_code").select("id").maybeSingle();
+  if (result.error || !result.data) throw new Error("Course Card could not be saved.");
+  await audit(admin, "custom_code.card.updated", "experience", experienceId, { experienceId });
+  revalidatePath(`/admin/trainings/${experienceId}`); revalidatePath("/trainings"); revalidatePath("/dashboard");
+  redirect(`/admin/trainings/${experienceId}?updated=1&advanced=1`);
+}
+
+export async function setCustomCodeCardImageAction(experienceId: string, form: FormData) {
+  const admin = await requireAdmin();
+  const authorization = await getAuthorizationContext(admin.id, admin.email);
+  if (!await canBuildExperienceById(authorization, experienceId)) throw new Error("You are not authorized to change this Experience.");
+  const db = createAdminSupabaseClient();
+  const current = await db.from("experiences").select("delivery_mode,card_configuration").eq("id", experienceId).maybeSingle();
+  if (current.error || current.data?.delivery_mode !== "custom_code") throw new Error("Only a custom-code Experience can use these settings.");
+  const operation = String(form.get("asset_operation") ?? "select");
+  let resourceId: string | null = String(form.get("resource_id") ?? "") || null;
+  if (operation === "upload") { const file = form.get("file"); if (!(file instanceof File) || !file.type.startsWith("image/")) throw new Error("Choose a supported image."); resourceId = (await uploadCourseAsset(db, file, experienceId, admin.id, String(form.get("asset_title") ?? ""))).id; }
+  else if (operation === "remove") resourceId = null;
+  if (resourceId) { const resource = await db.from("resources").select("id").eq("id", resourceId).eq("resource_type", "image").eq("status", "active").not("storage_path", "is", null).maybeSingle(); if (resource.error || !resource.data) throw new Error("Choose an available uploaded image."); }
+  const existing = normalizeCourseConfiguration(current.data.card_configuration);
+  const result = await db.from("experiences").update({ card_configuration: { ...existing, card: { ...existing.card, image_resource_id: resourceId } } }).eq("id", experienceId).eq("delivery_mode", "custom_code").select("id").maybeSingle();
+  if (result.error || !result.data) throw new Error("Course Card image could not be saved.");
+  await audit(admin, "custom_code.card.image.updated", "experience", experienceId, { resourceId });
+  revalidatePath(`/admin/trainings/${experienceId}`); revalidatePath("/trainings"); revalidatePath("/dashboard");
+  redirect(`/admin/trainings/${experienceId}?updated=1&advanced=1`);
+}
+
+async function setCourseImage(experienceId: string, versionId: string, form: FormData, kind: "cover" | "logo" | "header_logo" | "card") {
   const admin = await requireAdmin();
   const authorization = await getAuthorizationContext(admin.id, admin.email);
   if (!await canBuildExperienceById(authorization, experienceId)) throw new Error("You are not authorized to change this Course.");
@@ -134,11 +200,13 @@ async function setCourseImage(experienceId: string, versionId: string, form: For
   }
   const configuration = normalizeCourseConfiguration(current.data.course_configuration);
   const imageUpdate = kind === "cover" ? { cover_resource_id: resourceId } : kind === "logo" ? { logo_resource_id: resourceId } : { header_logo_mode: operation === "use_course_logo" ? "course_logo" as const : operation === "remove" ? "purposeos" as const : "custom" as const, header_logo_resource_id: resourceId };
-  const updated = { ...configuration, appearance: { ...configuration.appearance, ...imageUpdate } };
+  const updated = kind === "card" ? { ...configuration, card: { ...configuration.card, image_resource_id: resourceId } } : { ...configuration, appearance: { ...configuration.appearance, ...imageUpdate } };
   const result = await db.from("experience_versions").update({ course_configuration: updated }).eq("id", versionId).eq("experience_id", experienceId).eq("status", "draft").select("id").maybeSingle();
   if (result.error || !result.data) throw new Error(`Course ${kind} could not be saved.`);
   await audit(admin, `course.${kind}.updated`, "experience_version", versionId, { experienceId, resourceId });
   revalidatePath(`/admin/trainings/${experienceId}/versions/${versionId}`);
+  revalidatePath("/trainings");
+  revalidatePath("/dashboard");
   redirect(`/admin/trainings/${experienceId}/versions/${versionId}?saved=${encodeURIComponent(`Course ${kind} saved for this Draft.`)}`);
 }
 

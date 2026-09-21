@@ -49,7 +49,7 @@ export type Database = {
         id: string; auth_user_id: string; role: string; scope_type: string; scope_id: string | null; status: string; granted_by: string | null; created_at: string; updated_at: string
       }, "auth_user_id" | "role" | "scope_type">
       experiences: FoundationTable<{
-        id: string; slug: string; name: string; description: string | null; experience_type: string; delivery_mode: string; status: string; accent_color: string | null; visibility: string; admission_policy: string; created_by: string | null; current_published_version_id: string | null; owner_organization_id: string | null; default_theme_id: string | null; created_at: string; updated_at: string
+        id: string; slug: string; name: string; description: string | null; experience_type: string; delivery_mode: string; status: string; accent_color: string | null; visibility: string; admission_policy: string; created_by: string | null; current_published_version_id: string | null; owner_organization_id: string | null; default_theme_id: string | null; card_configuration: Json; created_at: string; updated_at: string
       }, "slug" | "name" | "experience_type">
       experience_versions: FoundationTable<{
         id: string; experience_id: string; version_label: string; status: string; title: string; description: string | null; published_at: string | null; created_by: string | null; based_on_version_id: string | null; published_by: string | null; release_type: string | null; theme_id: string | null; shell_mode: string; course_configuration: Json; created_at: string; updated_at: string

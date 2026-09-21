@@ -4,6 +4,7 @@ export type CourseConfiguration = Readonly<{
   terminology: Readonly<{ group_label: GroupLabel }>;
   /** @deprecated Module-level availability_context is the runtime authority. */
   companion_mode: "individual" | "group";
+  card: Readonly<{ image_resource_id: string | null; headline: string | null; supporting_text: string | null; eyebrow: string | null }>;
   appearance: Readonly<{ header_treatment: "minimal" | "image" | "color"; reading_width: "focused" | "standard" | "wide"; accent_color: string | null; cover_resource_id: string | null; logo_resource_id: string | null; header_logo_mode: "purposeos" | "course_logo" | "custom"; header_logo_resource_id: string | null; colors: Readonly<Record<"primaryAccent" | "secondaryAccent" | "background" | "surface" | "text" | "mutedText" | "borderColor" | "completion", string | null>> }>;
 }>;
 
@@ -13,9 +14,16 @@ function object(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
 
+function optionalText(value: unknown, maximum: number) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed && trimmed.length <= maximum ? trimmed : null;
+}
+
 export function normalizeCourseConfiguration(value: unknown): CourseConfiguration {
   const root = object(value);
   const terminology = object(root.terminology);
+  const card = object(root.card);
   const appearance = object(root.appearance);
   const group_label = GROUP_LABELS.includes(terminology.group_label as GroupLabel) ? terminology.group_label as GroupLabel : "module";
   const header_treatment = ["minimal", "image", "color"].includes(String(appearance.header_treatment)) ? appearance.header_treatment as CourseConfiguration["appearance"]["header_treatment"] : "minimal";
@@ -28,7 +36,8 @@ export function normalizeCourseConfiguration(value: unknown): CourseConfiguratio
   const inputColors = object(appearance.colors);
   const colors = Object.fromEntries(COURSE_COLOR_FIELDS.map(([key]) => [key, typeof inputColors[key] === "string" && /^#[0-9a-f]{6}$/i.test(inputColors[key] as string) ? inputColors[key] as string : null])) as CourseConfiguration["appearance"]["colors"];
   const companion_mode = root.companion_mode === "group" ? "group" : "individual";
-  return { terminology: { group_label }, companion_mode, appearance: { header_treatment, reading_width, accent_color, cover_resource_id, logo_resource_id, header_logo_mode, header_logo_resource_id, colors } };
+  const image_resource_id = typeof card.image_resource_id === "string" && /^[0-9a-f-]{36}$/i.test(card.image_resource_id) ? card.image_resource_id : null;
+  return { terminology: { group_label }, companion_mode, card: { image_resource_id, headline: optionalText(card.headline, 200), supporting_text: optionalText(card.supporting_text, 600), eyebrow: optionalText(card.eyebrow, 80) }, appearance: { header_treatment, reading_width, accent_color, cover_resource_id, logo_resource_id, header_logo_mode, header_logo_resource_id, colors } };
 }
 
 export function contrastRatio(foreground: string, background: string) {

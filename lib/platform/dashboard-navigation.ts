@@ -29,6 +29,9 @@ export function buildPersonalNavigation(): DashboardNavigationGroup[] {
       { label: "My Assessments", href: "/dashboard#assessments", icon: "assessments" },
       { label: "My Cohorts", href: "/dashboard#community", icon: "cohorts" },
     ] },
+    { label: "Explore", items: [
+      { label: "Trainings", href: "/trainings", icon: "trainings" },
+    ] },
     { label: "My Community", items: [
       { label: "Hubs & Communities", href: "/dashboard#community", icon: "hub" },
     ] },
@@ -36,6 +39,13 @@ export function buildPersonalNavigation(): DashboardNavigationGroup[] {
       { label: "Account Settings", href: "/account", icon: "settings" },
     ] },
   ];
+}
+
+export function isPersonalNavigationItemActive(pathname: string, hash: string, href: string) {
+  const [targetPath, targetHash = ""] = href.split("#");
+  if (pathname !== targetPath) return false;
+  if (targetHash) return hash === `#${targetHash}`;
+  return !hash || hash === "#overview";
 }
 
 export function buildOperationalNavigation(role: "admin" | "super_admin") {

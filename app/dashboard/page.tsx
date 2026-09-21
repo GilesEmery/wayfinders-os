@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PlatformAuthGate } from "@/components/platform/PlatformAuthGate";
 import { PlatformShell } from "@/components/platform/PlatformShell";
+import { ParticipantCourseCard } from "@/components/platform/ParticipantCourseCard";
 import { assessmentProgress, completedSectionCount } from "@/lib/experiences/lmu/completion";
 import { SECTION_TO_MODULE } from "@/lib/experiences/lmu/persistence";
 import { getWayfinderDashboard } from "@/lib/platform/dashboard";
+import { featuredParticipantCourseEntry, resolveParticipantCourseEntries } from "@/lib/platform/participant-course-context";
 
 export const metadata: Metadata = { title: "My Dashboard" };
 
@@ -30,26 +32,15 @@ export default async function DashboardPage() {
   const organizations = new Map(data.organizations.map((item) => [item.id, item.name]));
   const hubs = new Map(data.hubs.map((item) => [item.id, item.name]));
   const cohorts = new Map(data.cohorts.map((item) => [item.id, item.name]));
-  const activeEnrollmentByExperience = new Map(data.enrollments.filter((item) => item.status === "enrolled" || item.status === "in_progress" || item.status === "completed").map((item) => [item.experience_id, item]));
-  const cohortOfferings = new Map<string, typeof data.cohortOfferings>();
-  for (const offering of data.cohortOfferings) {
-    if (!offering.cohort_id) continue;
-    cohortOfferings.set(offering.cohort_id, [...(cohortOfferings.get(offering.cohort_id) ?? []), offering]);
-  }
-  const cohortTrainingEntries = data.cohortMemberships.flatMap((membership) => {
-    if (membership.status !== "active") return [];
-    const cohort = data.cohorts.find((item) => item.id === membership.cohort_id);
-    const enrollment = cohort ? activeEnrollmentByExperience.get(cohort.experience_id) : null;
-    const experience = enrollment ? experienceById.get(enrollment.experience_id) : null;
-    const offerings = cohortOfferings.get(membership.cohort_id) ?? [];
-    return cohort && enrollment && experience?.slug && offerings.length === 1 && (offerings[0].experience_version_id === null || offerings[0].experience_version_id === enrollment.experience_version_id) ? [{ membership, cohort, enrollment, experience }] : [];
-  });
+  const courseEntriesByEnrollment = new Map(genericJourney.flatMap(({ enrollment, experience }) => experience?.slug ? [[enrollment.id, resolveParticipantCourseEntries({ enrollment, experience, memberships: data.cohortMemberships, cohorts: data.cohorts, offerings: data.cohortOfferings })] as const] : []));
+  const visibleTrainingEntries = trainings.flatMap(({ enrollment, experience }) => (courseEntriesByEnrollment.get(enrollment.id) ?? []).map((entry) => ({ entry, enrollment, experience })));
   const recent = [
     ...data.lmuAssessments.map((item) => ({ date: item.updated_at, label: `Life Mapping U · ${titleCase(item.status)}` })),
     ...genericJourney.map(({ enrollment, experience }) => ({ date: enrollment.updated_at, label: `${experience?.name ?? "Purpose OS experience"} · ${titleCase(enrollment.status)}` })),
   ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
   const currentLmuModule = latestLmu?.current_module ? SECTION_TO_MODULE[latestLmu.current_module] : undefined;
   const continueLmuHref = latestLmu?.status === "completed" ? "/experiences/life-mapping-u/module/your-life-map" : currentLmuModule ? `/experiences/life-mapping-u/module/${currentLmuModule}` : "/experiences/life-mapping-u/original/modules";
+  const lmuCard = { ...(data.lmuCard ?? { imageUrl: null, eyebrow: "Assessment", headline: "Life Mapping U", supportingText: "Understand your story, strengths, values, and direction." }), supportingText: latestLmu?.status === "completed" ? "Your completed Life Map is ready to revisit." : latestLmu ? `${completedSections} of 10 modules complete. Continue from ${titleCase(latestLmu.current_module)}.` : data.lmuCard?.supportingText ?? "Understand your story, strengths, values, and direction." };
   const adminRole = data.capabilities.globalRole;
 
   return <PlatformShell><div className="purpose-dashboard-layout"><div className="wayfinder-dashboard" id="overview">
@@ -60,15 +51,15 @@ export default async function DashboardPage() {
       <div><span>Communities</span><strong>{data.organizationMemberships.length + data.hubMemberships.length + data.cohortMemberships.length}</strong></div>
     </section>
 
-    <section className="dashboard-section dashboard-continue"><header><p>Journey first</p><h2>Continue Your Journey</h2></header>
-      {latestLmu && <article className="dashboard-journey-card is-lmu"><div><span>Assessment · {titleCase(latestLmu.status)}</span><h3>Life Mapping U</h3><p>{latestLmu.status === "completed" ? "Your completed Life Map is ready to revisit." : `${completedSections} of 10 modules complete. Continue from ${titleCase(latestLmu.current_module)}.`}</p></div><Link href={continueLmuHref}>{latestLmu.status === "completed" ? "View Results" : "Continue"} →</Link></article>}
-      {activeJourney.map(({ enrollment, experience }) => <article className="dashboard-journey-card" key={enrollment.id} style={{ "--journey-accent": experience?.accent_color ?? "#303534" } as React.CSSProperties}><div><span>{titleCase(experience?.experience_type)} · In Progress</span><h3>{experience?.name ?? "Purpose OS Experience"}</h3><p>Your enrollment and activity are saved.</p></div>{experience?.slug && <Link href={`/experiences/${experience.slug}`}>Continue →</Link>}</article>)}
+    <section className="dashboard-section dashboard-continue"><header><p>Journey first</p><h2>Continue Your Journey</h2></header><div className="dashboard-continue-cards">
+      {latestLmu && <ParticipantCourseCard card={lmuCard} href={continueLmuHref} actionLabel={latestLmu.status === "completed" ? "View Results" : "Continue"} meta={`Assessment · ${titleCase(latestLmu.status)}`} variant="horizontal"/>}
+      {activeJourney.map(({ enrollment, experience }) => { const entry = featuredParticipantCourseEntry(courseEntriesByEnrollment.get(enrollment.id) ?? []); return experience?.slug && entry && data.trainingCards[enrollment.id] ? <ParticipantCourseCard key={enrollment.id} card={data.trainingCards[enrollment.id]!} href={entry.href} actionLabel="Continue Course" meta={entry.type === "cohort" ? `${entry.cohortName} · ${titleCase(entry.role)}` : `${titleCase(experience.experience_type)} · In Progress`} variant="horizontal"/> : null; })}
       {!latestLmu && !activeJourney.length && <p className="dashboard-empty">Nothing is currently in progress. Experiences you begin will appear here.</p>}
-    </section>
+    </div></section>
 
     <div className="dashboard-columns">
-      <section className="dashboard-section" id="assessments"><header><h2>My Assessments</h2></header>{latestLmu ? <div className="dashboard-record"><div><strong>Life Mapping U</strong><span>{titleCase(latestLmu.status)} · {lmuProgress}% activity complete</span></div><Link href={continueLmuHref}>{latestLmu.status === "completed" ? "View Results" : "Continue"}</Link></div> : <p className="dashboard-empty">No assessments started yet.</p>}</section>
-      <section className="dashboard-section" id="trainings"><header><h2>My Trainings</h2></header>{trainings.length ? <>{trainings.map(({ enrollment, experience }) => <div className="dashboard-record" key={enrollment.id}><div><strong>{experience?.name ?? "Purpose OS Training"}</strong><span>{titleCase(enrollment.status)} · Personal journey</span></div>{experience?.slug && <Link href={`/experiences/${experience.slug}`}>{enrollment.status === "in_progress" ? "Continue Course" : "Open Course"} →</Link>}</div>)}{cohortTrainingEntries.map(({ membership, cohort, enrollment, experience }) => <div className="dashboard-record" key={`${enrollment.id}-${cohort.id}`}><div><strong>{experience.name}</strong><span>{cohort.name} · {titleCase(membership.membership_role)}</span></div><Link href={`/experiences/${experience.slug}?cohort=${encodeURIComponent(cohort.id)}`}>Open Cohort →</Link></div>)}</> : <p className="dashboard-empty">No trainings yet. Trainings appear here only after you enroll.</p>}</section>
+      <section className="dashboard-section dashboard-assessment-list" id="assessments"><header><h2>My Assessments</h2></header>{latestLmu ? <div className="participant-course-card-list"><ParticipantCourseCard card={lmuCard} href={continueLmuHref} actionLabel={latestLmu.status === "completed" ? "View Results" : "Continue Assessment"} meta={`${titleCase(latestLmu.status)} · ${lmuProgress}% activity complete`}/></div> : <p className="dashboard-empty">No assessments started yet.</p>}</section>
+      <section className="dashboard-section dashboard-training-list" id="trainings"><header><h2>My Trainings</h2></header>{visibleTrainingEntries.length ? <div className="participant-course-card-list">{visibleTrainingEntries.map(({ entry, enrollment }) => data.trainingCards[enrollment.id] ? <ParticipantCourseCard key={`${enrollment.id}-${entry.cohortId ?? "personal"}`} card={data.trainingCards[enrollment.id]!} href={entry.href} actionLabel={enrollment.status === "in_progress" ? "Continue Course" : "Open Course"} meta={entry.type === "cohort" ? `${entry.cohortName} · ${titleCase(entry.role)}` : `${titleCase(enrollment.status)} · Personal journey`}/> : null)}</div> : <p className="dashboard-empty">No trainings yet. Trainings appear here only after you enroll.</p>}</section>
       <section className="dashboard-section" id="certificates"><header><h2>My Certificates</h2></header><p className="dashboard-empty">No certificates yet. Certificates earned through eligible Purpose OS experiences will appear here.</p></section>
       <section className="dashboard-section" id="community"><header><h2>My Hubs &amp; Communities</h2></header>{data.organizationMemberships.map((item) => <div className="dashboard-record" key={`org-${item.organization_id}`}><div><strong>{organizations.get(item.organization_id) ?? "Organization"}</strong><span>Organization · {titleCase(item.membership_role)}</span></div></div>)}{data.hubMemberships.map((item) => <div className="dashboard-record" key={`hub-${item.hub_id}`}><div><strong>{hubs.get(item.hub_id) ?? "Hub"}</strong><span>Hub · {titleCase(item.membership_role)}</span></div></div>)}{data.cohortMemberships.map((item) => <div className="dashboard-record" key={`cohort-${item.cohort_id}`}><div><strong>{cohorts.get(item.cohort_id) ?? "Cohort"}</strong><span>Cohort · {titleCase(item.membership_role)}</span></div></div>)}{!data.organizationMemberships.length && !data.hubMemberships.length && !data.cohortMemberships.length && <p className="dashboard-empty">Your organizations, Hubs, and cohorts will appear here when you join them.</p>}</section>
       <section className="dashboard-section"><header><h2>My Events</h2></header><p className="dashboard-empty">No events yet. Registrations and attendance will appear here when Purpose OS events launch.</p></section>

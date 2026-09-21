@@ -6,21 +6,29 @@ import { Menu, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { DashboardNavIcon } from "./DashboardNavigation";
 import { useWayfindersAuth } from "./WayfindersAuthProvider";
-import { buildOperationalNavigation, buildPersonalNavigation, type DashboardNavigationGroup } from "@/lib/platform/dashboard-navigation";
+import { buildOperationalNavigation, buildPersonalNavigation, isPersonalNavigationItemActive, type DashboardNavigationGroup } from "@/lib/platform/dashboard-navigation";
 
-function DrawerGroups({ groups, close }: { groups: DashboardNavigationGroup[]; close: () => void }) {
-  const pathname = usePathname();
+function DrawerGroups({ groups, close, pathname, hash }: { groups: DashboardNavigationGroup[]; close: () => void; pathname: string; hash: string }) {
   return <>{groups.map((group) => <section className="platform-menu-group" key={group.label}>
     <h2>{group.label}</h2>
     {group.context ? <Link href={group.context.href} onClick={close}>{group.context.label}</Link> : null}
-    {group.items.map((item) => <Link className={!item.href.includes("#") && pathname === item.href ? "is-active" : undefined} href={item.href} key={`${group.label}-${item.href}`} onClick={close}><DashboardNavIcon icon={item.icon}/><span>{item.label}</span></Link>)}
+    {group.items.map((item) => { const active = isPersonalNavigationItemActive(pathname, hash, item.href); return <Link aria-current={active ? "page" : undefined} className={active ? "is-active" : undefined} href={item.href} key={`${group.label}-${item.href}`} onClick={close}><DashboardNavIcon icon={item.icon}/><span>{item.label}</span></Link>; })}
   </section>)}</>;
 }
 
 export function PlatformAccountControl() {
   const { account, openAuth } = useWayfindersAuth();
   const [open, setOpen] = useState(false);
+  const [hash, setHash] = useState("");
+  const pathname = usePathname();
   const closeButton = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const update = () => setHash(window.location.hash);
+    update();
+    window.addEventListener("hashchange", update);
+    return () => window.removeEventListener("hashchange", update);
+  }, [pathname]);
 
   useEffect(() => {
     if (!open) return;
@@ -46,7 +54,7 @@ export function PlatformAccountControl() {
     {open ? <div className="platform-menu-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}>
       <aside aria-label="Purpose OS navigation" aria-modal="true" className="platform-menu-drawer" role="dialog">
         <header><div><span>Purpose OS</span><strong>{account.displayName}</strong></div><button ref={closeButton} aria-label="Close navigation menu" onClick={() => setOpen(false)} type="button"><X aria-hidden="true" size={20}/></button></header>
-        <nav aria-label="Wayfinder navigation"><DrawerGroups groups={personalGroups} close={() => setOpen(false)}/>{adminGroups.length ? <div className="platform-menu-admin"><p>Administration</p><DrawerGroups groups={adminGroups} close={() => setOpen(false)}/></div> : null}</nav>
+        <nav aria-label="Wayfinder navigation"><DrawerGroups groups={personalGroups} close={() => setOpen(false)} pathname={pathname} hash={hash}/>{adminGroups.length ? <div className="platform-menu-admin"><p>Administration</p><DrawerGroups groups={adminGroups} close={() => setOpen(false)} pathname={pathname} hash={hash}/></div> : null}</nav>
         <form action="/api/account/logout" method="post"><button className="platform-menu-logout" type="submit">Log Out</button></form>
       </aside>
     </div> : null}
