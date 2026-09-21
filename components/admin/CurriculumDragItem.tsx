@@ -9,7 +9,7 @@ type DragPayload = { id: string; kind: Kind; parentId: string; index: number };
 const MIME = "application/x-wayfinders-curriculum-item";
 let activeDrag: DragPayload | null = null;
 
-export function CurriculumDragItem({ action, id, kind, parentId, index, label, className, childDrop, href, keepVisible = false, children }: {
+export function CurriculumDragItem({ action, id, kind, parentId, index, label, className, childDrop, href, keepVisible = false, positionControls, children }: {
   action: (form: FormData) => Promise<void>;
   id: string;
   kind: Kind;
@@ -21,6 +21,7 @@ export function CurriculumDragItem({ action, id, kind, parentId, index, label, c
   childDrop?: { kind: Kind; parentId: string; position: number };
   href?: string;
   keepVisible?: boolean;
+  positionControls?: ReactNode;
 }) {
   const router = useRouter();
   const itemRef = useRef<HTMLDivElement>(null);
@@ -113,5 +114,5 @@ export function CurriculumDragItem({ action, id, kind, parentId, index, label, c
       startTransition(() => action(form));
     }}
     aria-label={`${label}. Drag to reorder.`}
-  ><span className="course-builder-drag-handle" draggable={!pending} onDragStart={startDrag} onDragEnd={endDrag} aria-label={`Drag ${label}`} title={`Drag ${label}`}><i aria-hidden="true">⋮⋮</i></span>{children}</div>;
+  ><span className="course-builder-drag-handle" draggable={!pending} onDragStart={startDrag} onDragEnd={endDrag} aria-label={`Drag ${label}`} title={`Drag ${label}`}><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8M6 14v-2a2 2 0 0 0-4 0v2c0 4.42 3.58 8 8 8h2c4.42 0 8-3.58 8-8V8a2 2 0 0 0-4 0v3"/></svg></span>{positionControls}{children}</div>;
 }

@@ -70,7 +70,7 @@ function formConfiguration(blockType: string, form: FormData): unknown {
   if (blockType === "card_selection") return optionConfiguration(form, false);
   if (blockType === "checklist") return optionConfiguration(form, true);
   if (blockType === "check_in") return { affirmativeLabel: form.get("affirmative_label") };
-  if (blockType === "pdf_reader") return { title: form.get("title") ?? "", description: form.get("description") ?? "", readerMode: form.get("reader_mode") ?? "reader" };
+  if (blockType === "pdf_reader") return { title: form.get("title") ?? "", description: form.get("description") ?? "", readerMode: form.get("reader_mode") ?? "reader", showReader: form.has("show_reader"), allowDownload: form.has("allow_download"), allowOpenInNewTab: form.has("allow_open_in_new_tab") };
   if (["video", "image", "document", "download", "external_link"].includes(blockType)) return { title: form.get("title") ?? "", description: form.get("description") ?? "", url: form.get("url") ?? "", caption: form.get("caption") ?? "", alt: form.get("alt") ?? "", linkLabel: form.get("link_label") ?? "" };
   throw new Error(`Unavailable Block type: ${blockType}.`);
 }

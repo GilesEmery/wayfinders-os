@@ -5,10 +5,14 @@ import { useEffect, useRef, useState } from "react";
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from "pdfjs-dist";
 import type { ResolvedAsset } from "@/lib/experiences/builder/resource-assets";
 
-type ReaderMode = "reader" | "slides" | "fit_width";
+type ReaderMode = "reader" | "slides";
 
 function text(config: Record<string, unknown>, key: string) {
   return typeof config[key] === "string" ? config[key] as string : "";
+}
+
+function enabled(config: Record<string, unknown>, key: string) {
+  return config[key] !== false;
 }
 
 export function ParticipantPdfReader(props: { config: Record<string, unknown>; asset?: ResolvedAsset }) {
@@ -31,6 +35,9 @@ function PdfReaderInstance({ config, asset }: { config: Record<string, unknown>;
   const [refreshing, setRefreshing] = useState(false);
   const [popoutOpen, setPopoutOpen] = useState(false);
   const mode = (text(config, "readerMode") || "reader") as ReaderMode;
+  const showReader = enabled(config, "showReader");
+  const allowDownload = enabled(config, "allowDownload");
+  const allowOpenInNewTab = enabled(config, "allowOpenInNewTab");
   const title = text(config, "title") || asset?.title || asset?.originalFilename || "PDF Reader";
   const description = text(config, "description") || asset?.description;
 
@@ -50,7 +57,7 @@ function PdfReaderInstance({ config, asset }: { config: Record<string, unknown>;
     void loadingRef.current?.destroy();
     loadingRef.current = null;
     documentRef.current = null;
-    if (!asset?.url || asset.mimeType !== "application/pdf") return;
+    if (!showReader || !asset?.url || asset.mimeType !== "application/pdf") return;
     void import("pdfjs-dist").then(async (pdfjs) => {
       pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
       const loading = pdfjs.getDocument({ url: asset.url });
@@ -71,7 +78,7 @@ function PdfReaderInstance({ config, asset }: { config: Record<string, unknown>;
       loadingRef.current = null;
       documentRef.current = null;
     };
-  }, [asset?.mimeType, asset?.url]);
+  }, [asset?.mimeType, asset?.url, showReader]);
 
   useEffect(() => {
     const document = documentRef.current;
@@ -128,6 +135,14 @@ function PdfReaderInstance({ config, asset }: { config: Record<string, unknown>;
   if (!asset) return <div className="participant-block-unavailable" role="status">PDF unavailable</div>;
   const readerStatus = asset.mimeType === "application/pdf" ? status : "error";
 
+  const actions = (allowOpenInNewTab || allowDownload || showReader && !popoutOpen) && <div className="participant-pdf-actions">
+    {allowOpenInNewTab && <a href={asset.url} target="_blank" rel="noopener noreferrer">Open in new tab<span className="sr-only">: {asset.originalFilename || title}</span></a>}
+    {allowDownload && <a href={asset.downloadUrl}>Download<span className="sr-only"> {asset.originalFilename || title}</span></a>}
+    {showReader && !popoutOpen && <button className="participant-pdf-open" type="button" onClick={(event) => openPopout(event.currentTarget)} disabled={readerStatus !== "ready"} aria-label={`Open ${title} PDF`}>Open PDF</button>}
+  </div>;
+
+  if (!showReader) return <figure className="participant-pdf-reader is-resource-only"><figcaption>{title && <strong>{title}</strong>}{description && <span>{description}</span>}</figcaption>{actions}</figure>;
+
   const reader = <figure className={`participant-pdf-reader is-${mode}${popoutOpen ? " is-popout" : ""}`} onKeyDown={(event) => {
     if (mode !== "slides") return;
     if (event.key === "ArrowLeft") { event.preventDefault(); move(pageNumber - 1); }
@@ -146,11 +161,7 @@ function PdfReaderInstance({ config, asset }: { config: Record<string, unknown>;
       {readerStatus === "error" && <div className="participant-pdf-state" role="alert"><strong>Unable to load this PDF right now.</strong><button type="button" onClick={retry} disabled={refreshing}>{refreshing ? "Refreshing…" : "Retry"}</button></div>}
       <canvas ref={canvasRef} aria-label={`Page ${pageNumber} of ${pageCount || "unknown"}`} hidden={readerStatus !== "ready"}/>
     </div>
-    <div className="participant-pdf-actions">
-      <a href={asset.url} target="_blank" rel="noopener noreferrer">Open in new tab<span className="sr-only">: {asset.originalFilename || title}</span></a>
-      <a href={asset.downloadUrl}>Download<span className="sr-only"> {asset.originalFilename || title}</span></a>
-      {!popoutOpen && <button className="participant-pdf-open" type="button" onClick={(event) => openPopout(event.currentTarget)} disabled={readerStatus !== "ready"} aria-label={`Open ${title} PDF`}>Open PDF</button>}
-    </div>
+    {actions}
   </figure>;
 
   if (!popoutOpen) return reader;

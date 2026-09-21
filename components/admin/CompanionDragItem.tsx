@@ -6,15 +6,23 @@ type DragPayload = { id: string; index: number };
 const MIME = "application/x-wayfinders-companion-item";
 let activeDrag: DragPayload | null = null;
 
-export function CompanionDragItem({ action, id, index, label, children }: {
+export function CompanionDragItem({ action, id, index, count, label, children }: {
   action: (form: FormData) => Promise<void>;
   id: string;
   index: number;
+  count: number;
   label: string;
   children: ReactNode;
 }) {
   const [placement, setPlacement] = useState<"before" | "after" | null>(null);
   const [pending, startTransition] = useTransition();
+
+  function move(position: number) {
+    const form = new FormData();
+    form.set("module_id", id);
+    form.set("position", String(position));
+    startTransition(() => action(form));
+  }
 
   function payload(event: DragEvent<HTMLElement>) {
     try {
@@ -72,7 +80,11 @@ export function CompanionDragItem({ action, id, index, label, children }: {
       }}
       aria-label={`Drag ${label}`}
       title={`Drag ${label}`}
-    ><i aria-hidden="true">⋮⋮</i></span>
+    ><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8M6 14v-2a2 2 0 0 0-4 0v2c0 4.42 3.58 8 8 8h2c4.42 0 8-3.58 8-8V8a2 2 0 0 0-4 0v3"/></svg></span>
+    <div className="course-builder-position-controls" aria-label={`${label} position`}>
+      <button type="button" disabled={pending || index === 0} onClick={() => move(index - 1)} aria-label={`Move ${label} up`} title="Move up">↑</button>
+      <button type="button" disabled={pending || index === count - 1} onClick={() => move(index + 1)} aria-label={`Move ${label} down`} title="Move down">↓</button>
+    </div>
     {children}
   </div>;
 }

@@ -53,6 +53,10 @@ function oneOf<T extends string>(value: unknown, values: readonly T[], name: str
   return { value: values[0], error: `${name} must be one of: ${values.join(", ")}.` };
 }
 
+function boolean(value: unknown, fallback: boolean): boolean {
+  return typeof value === "boolean" ? value : fallback;
+}
+
 function result(value: BlockConfiguration, errors: Array<string | undefined>): ValidationResult<BlockConfiguration> {
   const compact = errors.filter((error): error is string => Boolean(error));
   return compact.length ? { ok: false, errors: compact } : { ok: true, value };
@@ -129,12 +133,17 @@ function activatePurposeAssessment(input: unknown): ValidationResult<BlockConfig
 }
 
 function pdfReader(input: unknown): ValidationResult<BlockConfiguration> {
-  const parsed = strict(input, ["title", "description", "readerMode"]);
+  const parsed = strict(input, ["title", "description", "readerMode", "showReader", "allowDownload", "allowOpenInNewTab"]);
   if (!parsed.value) return { ok: false, errors: parsed.errors };
   const title = text(parsed.value.title ?? "", "Title", 200);
   const description = text(parsed.value.description ?? "", "Description", 3000);
-  const readerMode = oneOf(parsed.value.readerMode, ["reader", "slides", "fit_width"] as const, "Reader mode");
-  return result({ title: title.value, description: description.value, readerMode: readerMode.value }, [...parsed.errors, title.error, description.error, readerMode.error]);
+  const requestedMode = parsed.value.readerMode === "fit_width" ? "reader" : parsed.value.readerMode;
+  const readerMode = oneOf(requestedMode, ["reader", "slides"] as const, "Reader style");
+  const showReader = boolean(parsed.value.showReader, true);
+  const allowDownload = boolean(parsed.value.allowDownload, true);
+  const allowOpenInNewTab = boolean(parsed.value.allowOpenInNewTab, true);
+  const capabilityError = !showReader && !allowDownload && !allowOpenInNewTab ? "Select at least one PDF option." : undefined;
+  return result({ title: title.value, description: description.value, readerMode: readerMode.value, showReader, allowDownload, allowOpenInNewTab }, [...parsed.errors, title.error, description.error, readerMode.error, capabilityError]);
 }
 
 const definitions = [
@@ -199,8 +208,8 @@ const definitions = [
     supportsResponse: false, supportsCompletion: false, supportsResources: true, duplicable: true, availability: "available",
   },
   {
-    blockType: "pdf_reader", label: "PDF Reader", description: "Display a PDF, slide deck, workbook, or guide directly inside the Lesson.", category: "media", iconKey: "document", editorKey: "pdf_reader", previewKey: "pdf_reader", participantRendererKey: "pdf-reader.v1", defaultCompletionRule: "none",
-    defaultConfiguration: () => ({ title: "", description: "", readerMode: "reader" }), validateConfiguration: pdfReader,
+    blockType: "pdf_reader", label: "PDF", description: "Offer a PDF as an embedded reader, download, new-tab resource, or any combination.", category: "media", iconKey: "document", editorKey: "pdf_reader", previewKey: "pdf_reader", participantRendererKey: "pdf-reader.v1", defaultCompletionRule: "none",
+    defaultConfiguration: () => ({ title: "", description: "", readerMode: "reader", showReader: true, allowDownload: true, allowOpenInNewTab: true }), validateConfiguration: pdfReader,
     supportsResponse: false, supportsCompletion: false, supportsResources: true, duplicable: true, availability: "available",
   },
   {

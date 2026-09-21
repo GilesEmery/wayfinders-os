@@ -44,6 +44,7 @@ export function InlineTextBlockEditor({ blockId, kind, text, title = "", level =
   const lastSaved = useRef(JSON.stringify({ text, title, level } satisfies Draft));
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mounted = useRef(false);
+  const changedRef = useRef<() => void>(() => undefined);
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -131,6 +132,8 @@ export function InlineTextBlockEditor({ blockId, kind, text, title = "", level =
     saveTimer.current = setTimeout(save, AUTOSAVE_MS);
   }, [currentDraft, editor, save, storageKey]);
 
+  useEffect(() => { changedRef.current = changed; }, [changed]);
+
   useEffect(() => {
     if (!editor) return;
     const stored = localStorage.getItem(storageKey);
@@ -146,9 +149,10 @@ export function InlineTextBlockEditor({ blockId, kind, text, title = "", level =
       } catch { localStorage.removeItem(storageKey); }
     }
     mounted.current = true;
-    editor.on("update", changed);
-    return () => { mounted.current = false; editor.off("update", changed); if (saveTimer.current) clearTimeout(saveTimer.current); };
-  }, [changed, editor, kind, storageKey]);
+    const handleUpdate = () => changedRef.current();
+    editor.on("update", handleUpdate);
+    return () => { mounted.current = false; editor.off("update", handleUpdate); if (saveTimer.current) clearTimeout(saveTimer.current); };
+  }, [editor, kind, storageKey]);
 
   useEffect(() => { if (mounted.current) changed(); }, [changed, draftTitle, headingLevel]);
 
