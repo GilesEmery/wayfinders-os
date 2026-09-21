@@ -276,6 +276,26 @@ export async function moveLesson(experienceId: string, versionId: string, lesson
   await audit(admin, "lesson.moved", "experience_lesson", lessonId, { experienceId, versionId, targetModuleId, position });
 }
 
+export async function moveModule(experienceId: string, versionId: string, moduleId: string, position: number) {
+  const { admin, db } = await context(experienceId, versionId);
+  const current = await db.from("experience_modules").select("id").eq("id", moduleId).eq("experience_version_id", versionId).maybeSingle();
+  if (!current.data) throw new Error("Module not found in this Version.");
+  const rows = await db.from("experience_modules").select("id,sort_order").eq("experience_version_id", versionId).order("sort_order").order("created_at");
+  if (rows.error) throw new Error(`Unable to load Module order: ${rows.error.message}`);
+  const ids = (rows.data ?? []).map((row) => row.id).filter((id) => id !== moduleId);
+  ids.splice(Math.min(Math.max(position, 0), ids.length), 0, moduleId);
+  const base = (rows.data ?? []).reduce((max, row) => Math.max(max, row.sort_order), -1) + ids.length + 10;
+  for (const [index, id] of ids.entries()) {
+    const parked = await db.from("experience_modules").update({ sort_order: base + index }).eq("id", id).eq("experience_version_id", versionId);
+    if (parked.error) throw new Error(`Unable to prepare Module order: ${parked.error.message}`);
+  }
+  for (const [index, id] of ids.entries()) {
+    const update = await db.from("experience_modules").update({ sort_order: index }).eq("id", id).eq("experience_version_id", versionId);
+    if (update.error) throw new Error(`Unable to save Module order: ${update.error.message}`);
+  }
+  await audit(admin, "module.reordered", "experience_module", moduleId, { experienceId, versionId, position });
+}
+
 export async function deleteItem(experienceId: string, versionId: string, kind: Kind, itemId: string, confirmed: boolean) {
   if (!confirmed) throw new Error("Confirm the destructive impact before deleting.");
   const { admin, db } = await context(experienceId, versionId);

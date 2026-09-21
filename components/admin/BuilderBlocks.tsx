@@ -1,6 +1,5 @@
 import type { Tables } from "@/lib/supabase/database.types";
-import Link from "next/link";
-import { BLOCK_DEFINITIONS, getBlockDefinition } from "@/lib/experiences/builder/block-registry";
+import { BLOCK_DEFINITIONS, getBlockDefinition, getParticipantBlockDefinition } from "@/lib/experiences/builder/block-registry";
 import { humanize } from "@/lib/admin/format";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { BlockChoiceEditor } from "./BlockChoiceEditor";
@@ -11,9 +10,9 @@ import { ParticipantResponseBlock } from "@/components/experiences/builder/Parti
 import {
   createBlockAction,
   deleteBlockAction,
+  dragBlockAction,
   duplicateBlockAction,
   moveBlockAction,
-  reorderBlockAction,
   saveInlineBlockAction,
   setBlockAssetAction,
   updateBlockAction,
@@ -22,6 +21,11 @@ import {
 import { listCourseAssets, resolveCourseAssets, type ResolvedAsset } from "@/lib/experiences/builder/resource-assets";
 import { AssetSelect } from "./AssetSelect";
 import { InlineTextBlockEditor } from "./InlineTextBlockEditor";
+import { CurriculumDragItem } from "./CurriculumDragItem";
+import { EthosAssessment } from "@/components/experiences/builder/EthosAssessment";
+import { ETHOS_RENDERER_KEY } from "@/lib/experiences/builder/ethos-assessment";
+import { ActivatePurposeAssessment } from "@/components/experiences/builder/ActivatePurposeAssessment";
+import { ACTIVATE_PURPOSE_RENDERER_KEY } from "@/lib/experiences/builder/activate-purpose-assessment";
 
 type Route = { experienceId: string; versionId: string; sectionId: string };
 type Block = Tables<"content_blocks">;
@@ -48,8 +52,11 @@ function OptionFields({ config, multi }: { config: Record<string, unknown>; mult
 }
 
 function BlockPreview({ block, responseDefinition, asset }: { block: Block; responseDefinition?: ResponseDefinition; asset?: ResolvedAsset }) {
-  const definition = getBlockDefinition(block.block_type);
-  if (!definition) return <div className="builder-block-unavailable"><strong>Unavailable Block Type</strong><span>Block type: {block.block_type}</span><p>This Block is preserved, but its current renderer and editor are unavailable.</p></div>;
+  const participantDefinition = getParticipantBlockDefinition(block.block_type, block.custom_renderer_key);
+  if (!participantDefinition) return <div className="builder-block-unavailable"><strong>Unavailable Block Type</strong><span>Block type: {block.block_type}</span><p>This Block is preserved, but its current renderer and editor are unavailable.</p></div>;
+  if (block.block_type === "system_component" && block.custom_renderer_key === ETHOS_RENDERER_KEY) return <EthosAssessment initialData={{}} route={{ slug: "", moduleKey: "", lessonKey: "", sectionKey: "", blockKey: block.block_key }} preview/>;
+  if (block.block_type === "custom_component" && block.custom_renderer_key === ACTIVATE_PURPOSE_RENDERER_KEY) return <ActivatePurposeAssessment initialData={{}} route={{ slug: "", moduleKey: "", lessonKey: "", sectionKey: "", blockKey: block.block_key }} preview/>;
+  const definition = participantDefinition;
   const parsed = definition.validateConfiguration(block.content);
   if (!parsed.ok) return <div className="builder-block-unavailable"><strong>Invalid Block Configuration</strong><span>Block type: {block.block_type}</span><p>{parsed.errors.join(" ")}</p></div>;
   const config = parsed.value;
@@ -88,32 +95,42 @@ function EditorFields({ block, responseDefinition }: { block: Block; responseDef
   return <><label className="is-wide">Title<input name="title" defaultValue={value(config, "title")} maxLength={180}/></label><label className="is-wide">Body<textarea name="body" defaultValue={value(config, "body")} maxLength={4000} rows={5} required/></label><label>Treatment<select name="treatment" defaultValue={value(config, "treatment") || "info"}><option value="info">Info</option><option value="emphasis">Emphasis</option><option value="warning">Warning</option><option value="success">Success</option></select></label></>;
 }
 
-function BlockCard({ block, blocks, columns, responseDefinition, asset, route, editable, selected, focused }: { block: Block; blocks: Block[]; columns: Column[]; responseDefinition?: ResponseDefinition; asset?: ResolvedAsset; route: Route; editable: boolean; selected: boolean; focused: boolean }) {
+function BlockCard({ block, blocks, columns, responseDefinition, asset, availableAssets, route, editable, selected }: { block: Block; blocks: Block[]; columns: Column[]; responseDefinition?: ResponseDefinition; asset?: ResolvedAsset; availableAssets: Awaited<ReturnType<typeof listCourseAssets>>; route: Route; editable: boolean; selected: boolean }) {
   const definition = getBlockDefinition(block.block_type);
   const siblings = blocks.filter((candidate) => candidate.column_id === block.column_id);
   const targetColumns = columns.filter((column) => column.id !== block.column_id);
   const index = siblings.findIndex((candidate) => candidate.id === block.id);
   const inline = definition?.editorKey === "heading" || definition?.editorKey === "rich_text" || definition?.editorKey === "callout";
   const directInline = definition?.editorKey === "heading" || definition?.editorKey === "rich_text";
+  const nativeAsset = ["image", "pdf_reader", "document", "download"].includes(block.block_type);
   const config = configuration(block);
-  return <article className={`builder-block-card${definition ? "" : " is-unavailable"}${selected ? " is-selected" : ""}`}>
-    <header><div><span>{definition?.category ?? "Unavailable"}</span><strong>{definition?.label ?? "Unavailable Block Type"}</strong><small>{block.block_key} · {humanize(block.visibility)} · {humanize(block.requirement_level)}</small></div>{editable && <div className="builder-block-order"><Link href={`/admin/trainings/${route.experienceId}/versions/${route.versionId}?section=${route.sectionId}&block=${block.id}`} aria-current={selected ? "true" : undefined}>Details</Link><form action={reorderBlockAction.bind(null, route.experienceId, route.versionId, route.sectionId, block.id, "up")}><button disabled={index === 0} type="submit" aria-label={`Move ${definition?.label ?? block.block_type} up`}>↑</button></form><form action={reorderBlockAction.bind(null, route.experienceId, route.versionId, route.sectionId, block.id, "down")}><button disabled={index === siblings.length - 1} type="submit" aria-label={`Move ${definition?.label ?? block.block_type} down`}>↓</button></form></div>}</header>
+  const card = <article className={`builder-block-card${definition ? "" : " is-unavailable"}${selected ? " is-selected" : ""}`}>
+    <header><div><span>{definition?.category === "custom_assessment" ? "Custom assessment" : definition?.category ?? "Unavailable"}</span><strong>{definition?.label ?? "Unavailable Block Type"}</strong><small>{block.block_key} · {humanize(block.visibility)} · {humanize(block.requirement_level)}</small></div></header>
     <div className="builder-block-preview">{editable && directInline ? <InlineTextBlockEditor blockId={block.id} kind={definition!.editorKey as "heading" | "rich_text"} text={value(config, definition!.editorKey === "heading" ? "text" : "text")} title={value(config, "title")} level={(value(config, "level") || "h2") as "h2" | "h3" | "h4"} alignment={(value(config, "alignment") || "left") as "left" | "center"} eyebrow={value(config, "eyebrow")} requirementLevel={block.requirement_level} visibility={block.visibility} saveAction={saveInlineBlockAction.bind(null, route.experienceId, route.versionId, route.sectionId, block.id)}/> : editable && inline ? <details className="builder-inline-edit"><summary aria-label={`Edit ${definition?.label ?? "content"}`}><BlockPreview block={block} responseDefinition={responseDefinition} asset={asset}/><span>Edit content</span></summary><form action={updateBlockAction.bind(null, route.experienceId, route.versionId, route.sectionId, block.id)} className="admin-form builder-block-form"><EditorFields block={block} responseDefinition={responseDefinition}/><input type="hidden" name="requirement_level" value={block.requirement_level}/><input type="hidden" name="visibility" value={block.visibility}/><button className="admin-primary" type="submit">Save content</button></form></details> : <BlockPreview block={block} responseDefinition={responseDefinition} asset={asset}/>}</div>
     {!definition && <details className="builder-block-metadata"><summary>Inspect stored metadata</summary><dl><div><dt>Renderer key</dt><dd>{block.custom_renderer_key ?? "None"}</dd></div><div><dt>Metadata</dt><dd><pre>{JSON.stringify(block.metadata, null, 2)}</pre></dd></div></dl></details>}
     {editable && <div className="builder-block-controls">
-      {definition && !inline && !focused && <details open={(definition.supportsResponse && responseDefinition?.label === definition.label) || ((definition.editorKey === "media" || definition.editorKey === "pdf_reader") && !value(configuration(block), "url")) ? true : undefined}><summary>Edit {definition.supportsResponse ? "question" : "content"}</summary><form action={updateBlockAction.bind(null, route.experienceId, route.versionId, route.sectionId, block.id)} className="admin-form builder-block-form"><EditorFields block={block} responseDefinition={responseDefinition}/><label>Required or optional<select name="requirement_level" defaultValue={block.requirement_level}><option value="required">Required</option><option value="recommended">Recommended</option><option value="optional">Optional</option></select></label><label>Visibility<select name="visibility" defaultValue={block.visibility}><option value="visible">Visible</option><option value="hidden">Hidden</option></select></label><button className="admin-primary" type="submit">Save changes</button></form></details>}
-      <details className="builder-block-secondary-actions"><summary aria-label="More block actions">•••</summary><div>{definition?.duplicable && <form action={duplicateBlockAction.bind(null, route.experienceId, route.versionId, route.sectionId, block.id)}><button type="submit">Duplicate</button></form>}{targetColumns.length > 0 && <form action={moveBlockAction.bind(null, route.experienceId, route.versionId, route.sectionId, block.id)}><label>Move to<select name="target_column_id" defaultValue={targetColumns[0].id}>{targetColumns.map((column) => <option key={column.id} value={column.id}>{column.label || humanize(column.column_key)}</option>)}</select></label><button type="submit">Move</button></form>}<details className="builder-block-delete"><summary>Delete</summary><form action={deleteBlockAction.bind(null, route.experienceId, route.versionId, route.sectionId, block.id)}><label><input name="confirm" type="checkbox" required/> Confirm permanent deletion</label><button type="submit">Delete Block</button></form></details></div></details>
+      {nativeAsset && <details className="builder-block-asset" open={selected || !asset}><summary>{asset ? "Replace attached file" : emptyAssetCopy(block.block_type).title}</summary><div><form action={setBlockAssetAction.bind(null, route.experienceId, route.versionId, route.sectionId, block.id)} className="builder-inspector-form"><input type="hidden" name="asset_operation" value="select"/><AssetSelect assets={availableAssets} autoFocus={false}/><button type="submit" disabled={!availableAssets.length}>{asset ? "Replace with selected" : "Choose existing"}</button></form><form action={setBlockAssetAction.bind(null, route.experienceId, route.versionId, route.sectionId, block.id)} className="builder-inspector-form"><input type="hidden" name="asset_operation" value="upload"/><label>Upload file<input name="file" type="file" accept={block.block_type === "image" ? "image/jpeg,image/png,image/webp,image/gif" : block.block_type === "pdf_reader" ? "application/pdf,.pdf" : ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rtf,.txt,.csv"} required/></label><label>Library title<input name="asset_title" maxLength={200}/></label><button type="submit">{asset ? "Upload replacement" : "Upload file"}</button></form>{asset && <form action={setBlockAssetAction.bind(null, route.experienceId, route.versionId, route.sectionId, block.id)}><input type="hidden" name="asset_operation" value="remove"/><button type="submit">Remove attachment</button></form>}</div></details>}
+      {definition && definition.category !== "custom_assessment" && <details className="builder-block-editor" open={selected || (!inline && ((definition.supportsResponse && responseDefinition?.label === definition.label) || (nativeAsset && !asset)))}><summary>Edit {definition.supportsResponse ? "question" : directInline ? "settings" : "content"}</summary><form action={(directInline ? updateBlockSettingsAction : updateBlockAction).bind(null, route.experienceId, route.versionId, route.sectionId, block.id)} className="admin-form builder-block-form">{!directInline && <EditorFields block={block} responseDefinition={responseDefinition}/>}<label>Required or optional<select name="requirement_level" defaultValue={block.requirement_level}><option value="required">Required</option><option value="recommended">Recommended</option><option value="optional">Optional</option></select></label><label>Visibility<select name="visibility" defaultValue={block.visibility}><option value="visible">Visible</option><option value="hidden">Hidden</option></select></label><button className="admin-primary" type="submit">Save changes</button></form></details>}
+      <div className="builder-block-footer"><div>{definition?.duplicable && <form action={duplicateBlockAction.bind(null, route.experienceId, route.versionId, route.sectionId, block.id)}><button type="submit">Duplicate</button></form>}{targetColumns.length > 0 && <details className="builder-block-move"><summary>Move…</summary><form action={moveBlockAction.bind(null, route.experienceId, route.versionId, route.sectionId, block.id)}><label>Move to<select name="target_column_id" defaultValue={targetColumns[0].id}>{targetColumns.map((column) => <option key={column.id} value={column.id}>{column.label || humanize(column.column_key)}</option>)}</select></label><button type="submit">Move</button></form></details>}</div><details className="builder-block-delete"><summary>Delete</summary><form action={deleteBlockAction.bind(null, route.experienceId, route.versionId, route.sectionId, block.id)}><label><input name="confirm" type="checkbox" required/> Confirm permanent deletion</label><button type="submit">Delete Block</button></form></details></div>
     </div>}
   </article>;
+  return editable ? <CurriculumDragItem action={dragBlockAction.bind(null, route.experienceId, route.versionId, route.sectionId)} id={block.id} kind="block" parentId={block.column_id!} index={index} label={definition?.label ?? block.block_type} className="builder-block-drag-wrapper">{card}</CurriculumDragItem> : card;
 }
 
-export async function BuilderColumnBlocks({ column, columns, blocks, route, editable, selectedBlockId, focused = false }: { column: Column; columns: Column[]; blocks: Block[]; route: Route; editable: boolean; selectedBlockId?: string; focused?: boolean }) {
+export async function BuilderColumnBlocks({ column, columns, blocks, route, editable, selectedBlockId }: { column: Column; columns: Column[]; blocks: Block[]; route: Route; editable: boolean; selectedBlockId?: string }) {
   const columnBlocks = blocks.filter((block) => block.column_id === column.id);
   const responseResult = columnBlocks.length ? await createAdminSupabaseClient().from("response_definitions").select("*").in("block_id", columnBlocks.map((block) => block.id)) : { data: [], error: null };
   const responseDefinitions = responseResult.data ?? [];
   const assets = await resolveCourseAssets(createAdminSupabaseClient(), columnBlocks.map((block) => block.id), []);
+  const assetKinds = new Set(columnBlocks.map((block) => block.block_type));
+  const [imageAssets, pdfAssets, documentAssets] = await Promise.all([
+    assetKinds.has("image") ? listCourseAssets(createAdminSupabaseClient(), "image") : Promise.resolve([]),
+    assetKinds.has("pdf_reader") ? listCourseAssets(createAdminSupabaseClient(), "pdf") : Promise.resolve([]),
+    assetKinds.has("document") || assetKinds.has("download") ? listCourseAssets(createAdminSupabaseClient(), "document") : Promise.resolve([]),
+  ]);
+  const availableAssets = (block: Block) => block.block_type === "image" ? imageAssets : block.block_type === "pdf_reader" ? pdfAssets : documentAssets;
   return <div className="builder-column-blocks">
-    <div className="builder-block-list">{columnBlocks.map((block) => <BlockCard block={block} blocks={blocks} columns={columns} responseDefinition={responseDefinitions.find((item) => item.block_id === block.id)} asset={assets.blocks[block.id]} route={route} editable={editable} selected={block.id === selectedBlockId} focused={focused} key={block.id}/>)}{columnBlocks.length === 0 && <p className="builder-block-empty">No Content yet. Add the first item to this column.</p>}</div>
+    <div className="builder-block-list">{columnBlocks.map((block) => <BlockCard block={block} blocks={blocks} columns={columns} responseDefinition={responseDefinitions.find((item) => item.block_id === block.id)} asset={assets.blocks[block.id]} availableAssets={availableAssets(block)} route={route} editable={editable} selected={block.id === selectedBlockId} key={block.id}/>)}{columnBlocks.length === 0 && <p className="builder-block-empty">No Content yet. Add the first item to this column.</p>}</div>
     {editable && <details className="builder-block-library"><summary>Add Content</summary>{([{"label":"Content","category":"content"},{"label":"Media","category":"media"},{"label":"Resources","category":"resource"},{"label":"Reflection + Response","category":"interaction"}] as const).map(group => <div key={group.category}><p>{group.label}</p>{BLOCK_DEFINITIONS.filter((definition) => definition.availability === "available" && definition.category === group.category && definition.blockType !== "download").map((definition) => <form action={createBlockAction.bind(null, route.experienceId, route.versionId, route.sectionId, column.id, definition.blockType)} key={definition.blockType}><button type="submit"><strong>{definition.label}</strong><span>{definition.description}</span></button></form>)}</div>)}</details>}
   </div>;
 }

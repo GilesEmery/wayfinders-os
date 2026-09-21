@@ -2,7 +2,7 @@ import type { Json } from "@/lib/supabase/database.types";
 import type { ValidationResult } from "./types";
 
 export type ResponseKind = "short_text" | "long_text" | "single_select" | "multi_select" | "boolean";
-export type DatabaseResponseType = "short_text" | "long_text" | "choice" | "multi_select";
+export type DatabaseResponseType = "short_text" | "long_text" | "choice" | "multi_select" | "structured_response";
 export type ResponseOption = Readonly<{ key: string; label: string; description?: string; sortOrder: number }>;
 export type ResponseData = Readonly<{ value: string | boolean }> | Readonly<{ values: string[] }>;
 export type ResponseDefinition = Readonly<{ responseKind: ResponseKind; responseType: DatabaseResponseType; label: string; maxLength?: number; participantRendererKey: string; draftable: true; finalizable: true; multipleResponses: false }>;

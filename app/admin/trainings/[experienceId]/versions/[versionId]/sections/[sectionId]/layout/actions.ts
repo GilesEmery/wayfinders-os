@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { configureSectionLayout, moveSectionColumn, updateSectionColumns } from "@/lib/experiences/admin/layout-mutations";
-import { createBlock, deleteBlock, duplicateBlock, moveBlock, reorderBlock, setBlockAsset, updateBlock, updateBlockSettings } from "@/lib/experiences/admin/block-mutations";
+import { createBlock, deleteBlock, duplicateBlock, moveBlock, reorderBlock, reorderBlockToPosition, setBlockAsset, updateBlock, updateBlockSettings } from "@/lib/experiences/admin/block-mutations";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 function path(experienceId: string, versionId: string, sectionId: string, message?: { error?: string; saved?: string }) {
@@ -57,4 +57,13 @@ export async function setBlockAssetAction(experienceId: string, versionId: strin
 export async function deleteBlockAction(experienceId: string, versionId: string, sectionId: string, blockId: string, form: FormData) { await runBlock(experienceId, versionId, sectionId, () => deleteBlock(experienceId, versionId, sectionId, blockId, form.get("confirm") === "on"), "Content deleted."); }
 export async function duplicateBlockAction(experienceId: string, versionId: string, sectionId: string, blockId: string) { await runBlock(experienceId, versionId, sectionId, () => duplicateBlock(experienceId, versionId, sectionId, blockId), "Content duplicated."); }
 export async function reorderBlockAction(experienceId: string, versionId: string, sectionId: string, blockId: string, direction: "up" | "down") { await runBlock(experienceId, versionId, sectionId, () => reorderBlock(experienceId, versionId, sectionId, blockId, direction), "Content order saved."); }
+export async function dragBlockAction(experienceId: string, versionId: string, sectionId: string, form: FormData) {
+  const blockId = String(form.get("item_id") ?? "");
+  const columnId = String(form.get("parent_id") ?? "");
+  const position = Number(form.get("position"));
+  await runBlock(experienceId, versionId, sectionId, async () => {
+    if (!blockId || !columnId || !Number.isInteger(position)) throw new Error("That Content drop was invalid.");
+    await reorderBlockToPosition(experienceId, versionId, sectionId, blockId, columnId, position);
+  }, "Content order saved.", blockId);
+}
 export async function moveBlockAction(experienceId: string, versionId: string, sectionId: string, blockId: string, form: FormData) { await runBlock(experienceId, versionId, sectionId, () => moveBlock(experienceId, versionId, sectionId, blockId, String(form.get("target_column_id") ?? "")), "Content moved."); }

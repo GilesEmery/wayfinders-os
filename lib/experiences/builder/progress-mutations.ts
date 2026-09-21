@@ -8,7 +8,7 @@ import { getBlockDefinition } from "./block-registry";
 
 type ReadyCourse = Extract<Awaited<ReturnType<typeof resolveParticipantCourse>>, { status: "ready" }>;
 type ProgressTarget = Readonly<{ moduleKey: string; lessonKey: string; section: BuilderSection }>;
-type AuthorizedTarget = Readonly<{ participantId: string; enrollmentId: string; versionId: string; experienceId: string; target: ProgressTarget; structure: ReadyCourse["structure"] }>;
+type AuthorizedTarget = Readonly<{ participantId: string; enrollmentId: string; versionId: string; experienceId: string; requirementsBypassed: boolean; target: ProgressTarget; structure: ReadyCourse["structure"] }>;
 const KEY = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 async function authorizeTarget(slug: string, moduleKey: string, lessonKey: string, sectionKey: string, cohortId?: string | null): Promise<AuthorizedTarget | null> {
@@ -18,7 +18,7 @@ async function authorizeTarget(slug: string, moduleKey: string, lessonKey: strin
   const target = resolution.structure.modules.flatMap((module) => module.lessons.flatMap((lesson) => lesson.sections.map((section) => ({ moduleKey: module.module_key, lessonKey: lesson.lesson_key, section })))).find((item) => item.moduleKey === moduleKey && item.lessonKey === lessonKey && item.section.section_key === sectionKey);
   const genericSection = target && !target.section.legacy && (target.section.renderer_mode === "builder" || (target.section.renderer_mode === "hybrid" && !target.section.custom_renderer_key));
   if (!target || !genericSection) return null;
-  return { participantId: resolution.participantId, enrollmentId: resolution.enrollmentId, versionId: resolution.structure.version.id, experienceId: resolution.structure.experience.id, target, structure: resolution.structure };
+  return { participantId: resolution.participantId, enrollmentId: resolution.enrollmentId, versionId: resolution.structure.version.id, experienceId: resolution.structure.experience.id, requirementsBypassed: resolution.requirementsBypassed, target, structure: resolution.structure };
 }
 
 async function reconcileExperienceProgress(context: AuthorizedTarget, now: string) {
@@ -103,6 +103,7 @@ export async function completeParticipantSectionForForwardNavigation(slug: strin
     const targetIndex = sections.findIndex((item) => item.moduleKey === target.moduleKey && item.lessonKey === target.lessonKey && item.section.section_key === target.sectionKey);
     if (targetIndex <= currentIndex) return { ok: false, reason: "That destination is not forward in this Course." } as const;
   } else if (currentIndex !== sections.length - 1) return { ok: false, reason: "Only the final Page can finish the Course." } as const;
+  if (context.requirementsBypassed) return { ok: true, courseCompleted: false, bypassed: true } as const;
   const eligibility = await requiredContentSatisfied(context);
   if (!eligibility.ok) return eligibility;
   const summary = await persistSectionCompletion(context, new Date().toISOString());

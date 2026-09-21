@@ -25,7 +25,8 @@ async function context(slug: string, moduleKey: string, lessonKey: string, secti
 async function mutate(mode: "draft" | "final", slug: string, moduleKey: string, lessonKey: string, sectionKey: string, blockKey: string, cohortId: string | null | undefined, form: FormData) {
   const authorized = await context(slug, moduleKey, lessonKey, sectionKey, blockKey, cohortId);
   if (!authorized) throw new Error("This response is unavailable.");
-  if (authorized.response.response?.status === "submitted" || authorized.response.response?.status === "finalized") return;
+  const replacingFinalResponse = authorized.resolution.requirementsBypassed && (authorized.response.response?.status === "submitted" || authorized.response.response?.status === "finalized");
+  if (!replacingFinalResponse && (authorized.response.response?.status === "submitted" || authorized.response.response?.status === "finalized")) return;
   const responseInput = authorized.responseContract.responseKind === "multi_select"
     ? { values: form.getAll("response") }
     : authorized.responseContract.responseKind === "boolean"
@@ -39,8 +40,11 @@ async function mutate(mode: "draft" | "final", slug: string, moduleKey: string, 
   const db = createAdminSupabaseClient();
   const now = new Date().toISOString();
   const payload = { participant_id: authorized.resolution.participantId, enrollment_id: authorized.resolution.enrollmentId!, experience_version_id: authorized.resolution.structure.version.id, response_definition_id: authorized.response.definition.id, response_data: responseDataJson(parsed.value), status: mode === "final" ? "finalized" : "draft", finalized_at: mode === "final" ? now : null, updated_at: now };
-  const result = authorized.response.response
-    ? await db.from("participant_responses").update(payload).eq("id", authorized.response.response.id).eq("participant_id", authorized.resolution.participantId).eq("enrollment_id", authorized.resolution.enrollmentId!).eq("status", "draft")
+  const updateQuery = authorized.response.response
+    ? db.from("participant_responses").update(payload).eq("id", authorized.response.response.id).eq("participant_id", authorized.resolution.participantId).eq("enrollment_id", authorized.resolution.enrollmentId!)
+    : null;
+  const result = updateQuery
+    ? replacingFinalResponse ? await updateQuery : await updateQuery.eq("status", "draft")
     : await db.from("participant_responses").insert(payload);
   if (result.error) throw new Error(`Unable to ${mode === "final" ? "submit" : "save"} the response: ${result.error.message}`);
   await recordParticipantSectionVisit(slug, moduleKey, lessonKey, sectionKey, cohortId);

@@ -14,6 +14,7 @@ import { resolveCourseAssets, type ResolvedAsset } from "./resource-assets";
 import { loadCompanionRuntime, type CompanionRuntimeData } from "./companion-data";
 import { canAccessCohortContext, getAuthorizationContext } from "@/lib/platform/authorization";
 import { cohortVersionMatchesCanonicalEnrollment, selectExplicitCohortOffering } from "./cohort-context";
+import { canBypassCourseRequirements } from "./course-requirement-policy";
 
 type Db = ReturnType<typeof createAdminSupabaseClient>;
 type Enrollment = Tables<"experience_enrollments">;
@@ -40,7 +41,7 @@ export type ParticipantCourseResolution =
   | { status: "denied"; experience: Tables<"experiences"> }
   | { status: "invalid_context"; experience: Tables<"experiences">; reason: "invalid" | "ambiguous_delivery" | "version_mismatch" }
   | { status: "unavailable"; experience: Tables<"experiences">; reason: "runtime" | "version" | "curriculum" }
-  | { status: "ready"; structure: BuilderCourseStructure; courseTemplate: CourseTemplate; themeConfiguration: unknown; coverUrl: string | null; logoUrl: string | null; headerLogoUrl: string | null; assets: { blocks: Record<string, ResolvedAsset>; heroes: Record<string, ResolvedAsset> }; companion: CompanionRuntimeData; accessSource: ParticipantExperienceAccess["source"]; participantId: string; enrollmentId: string | null; cohortId: string | null; progress: ParticipantProgressSnapshot; responses: Readonly<Record<string, ParticipantResponseContext>> };
+  | { status: "ready"; structure: BuilderCourseStructure; courseTemplate: CourseTemplate; themeConfiguration: unknown; coverUrl: string | null; logoUrl: string | null; headerLogoUrl: string | null; assets: { blocks: Record<string, ResolvedAsset>; heroes: Record<string, ResolvedAsset> }; companion: CompanionRuntimeData; accessSource: ParticipantExperienceAccess["source"]; participantId: string; enrollmentId: string | null; cohortId: string | null; requirementsBypassed: boolean; progress: ParticipantProgressSnapshot; responses: Readonly<Record<string, ParticipantResponseContext>> };
 
 const ENROLLMENT_ACCESS = new Set(["enrolled", "in_progress", "completed"]);
 
@@ -149,7 +150,7 @@ export async function resolveParticipantCourse(slug: string, requestedCohortId: 
   if (!user) return { status: "signed_out", experience };
   const participant = await participantFor(user, db);
   if (!participant) return { status: "denied", experience };
-  const authorization = requestedCohortId ? await getAuthorizationContext(user.id, user.email) : null;
+  const authorization = await getAuthorizationContext(user.id, user.email);
   const access = await resolveParticipantExperienceAccess({ participantId: participant.id, experienceId: experience.id, cohortId: requestedCohortId, cohortAuthority: Boolean(requestedCohortId && canAccessCohortContext(authorization, requestedCohortId)), db });
   if (access.contextError) return { status: "invalid_context", experience, reason: access.contextError };
   if (!access.allowed) {
@@ -159,6 +160,13 @@ export async function resolveParticipantCourse(slug: string, requestedCohortId: 
   if (experience.status === "draft" && (!access.enrollment?.experience_version_id || access.source !== "enrollment")) {
     return { status: "not_found" };
   }
+
+  const resolvedCohortId = access.cohortId;
+  const cohortLeadershipResult = resolvedCohortId
+    ? await db.from("cohort_memberships").select("membership_role").eq("cohort_id", resolvedCohortId).eq("participant_id", participant.id).eq("membership_role", "facilitator").eq("status", "active").limit(1).maybeSingle()
+    : { data: null, error: null };
+  if (cohortLeadershipResult.error) throw new Error(`Unable to verify Cohort leadership: ${cohortLeadershipResult.error.message}`);
+  const requirementsBypassed = canBypassCourseRequirements({ globalRole: authorization?.globalRole ?? null, cohortId: resolvedCohortId, cohortMembershipRole: cohortLeadershipResult.data?.membership_role ?? null, assignments: authorization?.assignments ?? [] });
 
   const versionId = access.versionId ?? experience.current_published_version_id;
   if (!versionId) return { status: "unavailable", experience, reason: "version" };
@@ -188,7 +196,7 @@ export async function resolveParticipantCourse(slug: string, requestedCohortId: 
   const [coverUrl, logoUrl, headerLogoUrl] = await Promise.all([resolveCourseCoverUrl(structure.version.course_configuration, themeConfiguration, db), resolveCourseLogoUrl(structure.version.course_configuration, themeConfiguration, db), resolveCourseHeaderLogoUrl(structure.version.course_configuration, themeConfiguration, db)]);
   const sections = structure.modules.flatMap((module) => module.lessons.flatMap((lesson) => lesson.sections));
   const [assets, companion] = await Promise.all([resolveCourseAssets(db, blockIds, sections), loadCompanionRuntime({ versionId: structure.version.id, offering: access.offering, participantId: participant.id, enrollmentId, db })]);
-  return { status: "ready", structure, courseTemplate: resolveCourseTemplate(experience.delivery_mode as ExperienceDeliveryMode, structure.version.shell_mode), themeConfiguration, coverUrl, logoUrl, headerLogoUrl, assets, companion, accessSource: access.source, participantId: participant.id, enrollmentId, cohortId: access.cohortId, progress, responses };
+  return { status: "ready", structure, courseTemplate: resolveCourseTemplate(experience.delivery_mode as ExperienceDeliveryMode, structure.version.shell_mode), themeConfiguration, coverUrl, logoUrl, headerLogoUrl, assets, companion, accessSource: access.source, participantId: participant.id, enrollmentId, cohortId: access.cohortId, requirementsBypassed, progress, responses };
 }
 
 export function participantSectionHref(slug: string, moduleKey: string, lessonKey: string, sectionKey: string, cohortId?: string | null) {

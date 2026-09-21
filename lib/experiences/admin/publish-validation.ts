@@ -2,7 +2,7 @@ import "server-only";
 
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { getExperienceStructure } from "@/lib/experiences/builder/data";
-import { getBlockDefinition, parseBlockConfiguration } from "@/lib/experiences/builder/block-registry";
+import { getPublishBlockDefinition } from "@/lib/experiences/admin/publish-validation-policy";
 import { getRouteHandoff, getSectionRenderer } from "@/lib/experiences/builder/runtime-registry";
 import { validateResponseOptions } from "@/lib/experiences/builder/response-registry";
 import { safeExternalUrl } from "@/lib/experiences/builder/media-source";
@@ -57,12 +57,12 @@ export async function validatePublishRuntime(experienceId: string, versionId: st
   for (const block of blocksResult.data ?? []) {
     if (block.status !== "active" || block.visibility !== "visible") continue;
     const required = block.requirement_level === "required";
-    const definition = getBlockDefinition(block.block_type);
-    if (!definition || definition.availability !== "available") {
+    const definition = getPublishBlockDefinition(block.block_type, block.custom_renderer_key);
+    if (!definition) {
       if (required) issues.push(`Block “${block.block_key}” is not supported by the participant runtime.`);
       continue; // Existing optional/recommended unavailable fallback.
     }
-    const parsed = parseBlockConfiguration(block.block_type, block.content);
+    const parsed = definition.validateConfiguration(block.content);
     if (!parsed.ok && required) issues.push(`Block “${block.block_key}” has invalid configuration: ${parsed.errors.join(" ")}`);
     const nativeAsset = (linksResult.data ?? []).filter((link) => link.content_block_id === block.id).some((link) => {
       const resource = resources.get(link.resource_id);
@@ -75,9 +75,6 @@ export async function validatePublishRuntime(experienceId: string, versionId: st
     }
     if (definition.previewKey === "media" && (!parsed.ok || (!safeExternalUrl(parsed.value.url) && !nativeAsset))) {
       issues.push(`${definition.label} “${block.block_key}” needs an uploaded asset or HTTPS source.`);
-    }
-    if (required && block.custom_renderer_key && block.custom_renderer_key !== definition.participantRendererKey) {
-      issues.push(`Block “${block.block_key}” uses an unavailable renderer.`);
     }
     if (required && (!block.section_id || !block.column_id)) issues.push(`Block “${block.block_key}” is not placed in a Page Content area.`);
     if (definition.response && required) {

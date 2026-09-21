@@ -1,4 +1,4 @@
-import { getBlockDefinition } from "@/lib/experiences/builder/block-registry";
+import { getParticipantBlockDefinition } from "@/lib/experiences/builder/block-registry";
 import type { BuilderContentBlock } from "@/lib/experiences/builder/types";
 import type { ParticipantResponseContext } from "@/lib/experiences/builder/participant-runtime";
 import { ParticipantResponseBlock } from "./ParticipantResponseBlock";
@@ -6,6 +6,10 @@ import { ParticipantMediaBlock } from "./ParticipantMediaBlock";
 import { ParticipantPdfReader } from "./ParticipantPdfReader";
 import { ParticipantRichText } from "./ParticipantRichText";
 import type { ResolvedAsset } from "@/lib/experiences/builder/resource-assets";
+import { ETHOS_RENDERER_KEY } from "@/lib/experiences/builder/ethos-assessment";
+import { EthosAssessment } from "./EthosAssessment";
+import { ACTIVATE_PURPOSE_RENDERER_KEY } from "@/lib/experiences/builder/activate-purpose-assessment";
+import { ActivatePurposeAssessment } from "./ActivatePurposeAssessment";
 
 function value(configuration: Record<string, unknown>, key: string) {
   return typeof configuration[key] === "string" ? configuration[key] as string : "";
@@ -16,17 +20,25 @@ function Unavailable({ block }: { block: BuilderContentBlock }) {
   return <div className="participant-block-unavailable" role="status">Content unavailable</div>;
 }
 
-export function ParticipantBlockRenderer({ block, response, asset, route, preview = false }: { block: BuilderContentBlock; response?: ParticipantResponseContext; asset?: ResolvedAsset; route: { slug: string; moduleKey: string; lessonKey: string; sectionKey: string }; preview?: boolean }) {
+export function ParticipantBlockRenderer({ block, response, asset, route, preview = false, requirementsBypassed = false }: { block: BuilderContentBlock; response?: ParticipantResponseContext; asset?: ResolvedAsset; route: { slug: string; moduleKey: string; lessonKey: string; sectionKey: string; cohortId?: string | null }; preview?: boolean; requirementsBypassed?: boolean }) {
   if (block.status !== "active" || block.visibility !== "visible") return null;
-  const definition = getBlockDefinition(block.block_type);
-  if (!definition || (block.custom_renderer_key && block.custom_renderer_key !== definition.participantRendererKey)) return <Unavailable block={block}/>;
+  const definition = getParticipantBlockDefinition(block.block_type, block.custom_renderer_key);
+  if (!definition) return <Unavailable block={block}/>;
+  if (block.block_type === "system_component" && block.custom_renderer_key === ETHOS_RENDERER_KEY) {
+    if (!response || response.definition.response_type !== "structured_response") return <Unavailable block={block}/>;
+    return <EthosAssessment initialData={response.response?.response_data ?? {}} route={{ ...route, blockKey: block.block_key }} preview={preview}/>;
+  }
+  if (block.block_type === "custom_component" && block.custom_renderer_key === ACTIVATE_PURPOSE_RENDERER_KEY) {
+    if (!response || response.definition.response_type !== "structured_response") return <Unavailable block={block}/>;
+    return <ActivatePurposeAssessment initialData={response.response?.response_data ?? {}} route={{ ...route, blockKey: block.block_key }} preview={preview}/>;
+  }
   const parsed = definition.validateConfiguration(block.configuration);
   if (!parsed.ok) return <Unavailable block={block}/>;
   const configuration = parsed.value;
 
   if (definition.previewKey === "response") {
     if (!response || response.definition.response_type !== definition.response?.responseType) return <Unavailable block={block}/>;
-    return <ParticipantResponseBlock context={response} route={{ ...route, blockKey: block.block_key }} configuration={configuration} responseKind={definition.response.responseKind} preview={preview}/>;
+    return <ParticipantResponseBlock context={response} route={{ ...route, blockKey: block.block_key }} configuration={configuration} responseKind={definition.response.responseKind} preview={preview} allowFinalizedEditing={requirementsBypassed}/>;
   }
 
   if (definition.previewKey === "heading") {

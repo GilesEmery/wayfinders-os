@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createLesson, createModule, createSection, deleteItem, moveLesson, moveSection, renameCurriculumItem, reorderItem, updateLesson, updateModule, updateSection } from "@/lib/experiences/admin/curriculum-mutations";
+import { createLesson, createModule, createSection, deleteItem, moveLesson, moveModule, moveSection, renameCurriculumItem, reorderItem, updateLesson, updateModule, updateSection } from "@/lib/experiences/admin/curriculum-mutations";
 import { audit, requireAdmin } from "@/lib/admin/auth";
 import { canBuildExperienceById, getAuthorizationContext } from "@/lib/platform/authorization";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -83,4 +83,20 @@ export async function reorderCurriculumAction(experienceId: string, versionId: s
 export async function renameCurriculumItemAction(experienceId: string, versionId: string, kind: "module" | "lesson" | "section", itemId: string, sectionId: string | undefined, form: FormData) { await run(experienceId, versionId, () => renameCurriculumItem(experienceId, versionId, kind, itemId, form), "Title saved.", sectionId); }
 export async function moveSectionAction(experienceId: string, versionId: string, sectionId: string, form: FormData) { await run(experienceId, versionId, () => moveSection(experienceId, versionId, sectionId, String(form.get("target_lesson_id") ?? ""), Number(form.get("position"))), "Page moved.", sectionId); }
 export async function moveLessonAction(experienceId: string, versionId: string, lessonId: string, form: FormData) { await run(experienceId, versionId, () => moveLesson(experienceId, versionId, lessonId, String(form.get("target_module_id") ?? ""), Number(form.get("position"))), "Lesson moved."); }
+export async function dragCurriculumAction(experienceId: string, versionId: string, selectedSectionId: string | undefined, form: FormData) {
+  const kind = String(form.get("kind") ?? "");
+  const itemId = String(form.get("item_id") ?? "");
+  const parentId = String(form.get("parent_id") ?? "");
+  const position = Number(form.get("position"));
+  if (!itemId || !parentId || !Number.isInteger(position) || !["module", "lesson", "section"].includes(kind)) {
+    await run(experienceId, versionId, async () => { throw new Error("That curriculum drop was invalid."); }, "", selectedSectionId);
+    return;
+  }
+  const operation = kind === "module"
+    ? () => moveModule(experienceId, versionId, itemId, position)
+    : kind === "lesson"
+      ? () => moveLesson(experienceId, versionId, itemId, parentId, position)
+      : () => moveSection(experienceId, versionId, itemId, parentId, position);
+  await run(experienceId, versionId, operation, "Order saved.", selectedSectionId);
+}
 export async function deleteAction(experienceId: string, versionId: string, kind: "module" | "lesson" | "section", itemId: string, form: FormData) { await run(experienceId, versionId, () => deleteItem(experienceId, versionId, kind, itemId, form.get("confirm_delete") === "yes"), `${kind[0].toUpperCase()}${kind.slice(1)} deleted.`); }

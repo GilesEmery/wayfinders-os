@@ -1,9 +1,9 @@
 import type { Json } from "@/lib/supabase/database.types";
 import type { BlockCompletionRule, ValidationResult } from "./types";
-import { validateResponseOptions, type DatabaseResponseType, type ResponseKind } from "./response-registry";
-import { validateMediaConfiguration } from "./media-source";
+import { validateResponseOptions, type DatabaseResponseType, type ResponseKind } from "./response-registry.ts";
+import { validateMediaConfiguration } from "./media-source.ts";
 
-export type BlockCategory = "content" | "media" | "interaction" | "resource" | "navigation" | "communication" | "system" | "custom";
+export type BlockCategory = "content" | "media" | "interaction" | "resource" | "navigation" | "communication" | "system" | "custom" | "custom_assessment";
 export type BlockEditorKey = "heading" | "rich_text" | "callout" | "response" | "media" | "pdf_reader";
 export type BlockPreviewKey = BlockEditorKey;
 export type BlockConfiguration = Readonly<Record<string, Json | undefined>>;
@@ -25,6 +25,7 @@ export type BlockDefinition = Readonly<{
   supportsResources: boolean;
   duplicable: boolean;
   availability: "available" | "experimental";
+  participantRuntime?: "available";
   response?: Readonly<{ responseKind: ResponseKind; responseType: DatabaseResponseType; completionSignal: "response_submitted" }>;
 }>;
 
@@ -117,6 +118,16 @@ function booleanResponse(input: unknown): ValidationResult<BlockConfiguration> {
   return result({ affirmativeLabel: affirmativeLabel.value }, [...parsed.errors, affirmativeLabel.error]);
 }
 
+function ethosAssessment(input: unknown): ValidationResult<BlockConfiguration> {
+  const parsed = strict(input, []);
+  return parsed.value ? result({}, parsed.errors) : { ok: false, errors: parsed.errors };
+}
+
+function activatePurposeAssessment(input: unknown): ValidationResult<BlockConfiguration> {
+  const parsed = strict(input, []);
+  return parsed.value ? result({}, parsed.errors) : { ok: false, errors: parsed.errors };
+}
+
 function pdfReader(input: unknown): ValidationResult<BlockConfiguration> {
   const parsed = strict(input, ["title", "description", "readerMode"]);
   if (!parsed.value) return { ok: false, errors: parsed.errors };
@@ -127,6 +138,16 @@ function pdfReader(input: unknown): ValidationResult<BlockConfiguration> {
 }
 
 const definitions = [
+  {
+    blockType: "system_component", label: "Wayfinders Ethos Assessment", description: "The required five-step Hub Leader Ethos Assessment.", category: "custom_assessment", iconKey: "assessment", editorKey: "response", previewKey: "response", participantRendererKey: "wayfinders-ethos-assessment.v1", defaultCompletionRule: "response_submitted",
+    defaultConfiguration: () => ({}), validateConfiguration: ethosAssessment,
+    supportsResponse: true, supportsCompletion: true, supportsResources: false, duplicable: false, availability: "experimental", participantRuntime: "available", response: { responseKind: "short_text", responseType: "structured_response", completionSignal: "response_submitted" },
+  },
+  {
+    blockType: "custom_component", label: "Activate Your Purpose Assessment", description: "The required one-question-at-a-time Purpose growth assessment.", category: "custom_assessment", iconKey: "assessment", editorKey: "response", previewKey: "response", participantRendererKey: "activate-your-purpose-assessment.v1", defaultCompletionRule: "response_submitted",
+    defaultConfiguration: () => ({}), validateConfiguration: activatePurposeAssessment,
+    supportsResponse: true, supportsCompletion: true, supportsResources: false, duplicable: false, availability: "experimental", participantRuntime: "available", response: { responseKind: "short_text", responseType: "structured_response", completionSignal: "response_submitted" },
+  },
   {
     blockType: "heading", label: "Heading", description: "Introduce a topic or divide content with a clear heading.", category: "content", iconKey: "heading", editorKey: "heading", previewKey: "heading", participantRendererKey: "heading.v1", defaultCompletionRule: "none",
     defaultConfiguration: () => ({ text: "New heading", level: "h2", alignment: "left" }), validateConfiguration: heading,
@@ -201,9 +222,25 @@ const definitions = [
 
 const BLOCKS = new Map(definitions.map((definition) => [definition.blockType, Object.freeze(definition)]));
 
+const CUSTOM_PARTICIPANT_BLOCKS = new Map([
+  ["system_component:wayfinders-ethos-assessment.v1", BLOCKS.get("system_component")!],
+  ["custom_component:activate-your-purpose-assessment.v1", BLOCKS.get("custom_component")!],
+]);
+
 export const BLOCK_DEFINITIONS: readonly BlockDefinition[] = Object.freeze([...definitions]);
 export const getBlockDefinition = (blockType: string): BlockDefinition | null => BLOCKS.get(blockType) ?? null;
 export const isRegisteredBlockType = (blockType: string): boolean => BLOCKS.has(blockType);
+export const isParticipantRuntimeReady = (definition: BlockDefinition): boolean => definition.availability === "available" || definition.participantRuntime === "available";
+
+/** Resolve the exact database Block type + renderer pair supported by the participant runtime. */
+export function getParticipantBlockDefinition(blockType: string, rendererKey: string | null): BlockDefinition | null {
+  if (blockType === "custom_component" || blockType === "system_component") {
+    return rendererKey ? CUSTOM_PARTICIPANT_BLOCKS.get(`${blockType}:${rendererKey}`) ?? null : null;
+  }
+  const definition = getBlockDefinition(blockType);
+  if (!definition || (rendererKey && rendererKey !== definition.participantRendererKey)) return null;
+  return definition;
+}
 
 export function parseBlockConfiguration(blockType: string, input: unknown): ValidationResult<BlockConfiguration> {
   const definition = getBlockDefinition(blockType);

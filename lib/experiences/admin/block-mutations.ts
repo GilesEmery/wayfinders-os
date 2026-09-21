@@ -373,6 +373,18 @@ export async function reorderBlock(experienceId: string, versionId: string, sect
   await audit(admin, "section.block.reordered", "content_block", blockId, { experienceId, versionId, sectionId, columnId: block.column_id, direction });
 }
 
+export async function reorderBlockToPosition(experienceId: string, versionId: string, sectionId: string, blockId: string, columnId: string, position: number) {
+  const { admin, db, columns } = await context(experienceId, versionId, sectionId);
+  if (!columns.some((column) => column.id === columnId)) throw new Error("The target Column does not belong to this Section.");
+  const block = await blockInContext(db, blockId, sectionId);
+  if (block.column_id !== columnId) throw new Error("Use Move to send Content to a different Column.");
+  const siblings = await columnBlocks(db, columnId);
+  const ordered = siblings.map((item) => item.id).filter((id) => id !== blockId);
+  ordered.splice(Math.min(Math.max(position, 0), ordered.length), 0, blockId);
+  await applyOrder(db, columnId, ordered);
+  await audit(admin, "section.block.reordered", "content_block", blockId, { experienceId, versionId, sectionId, columnId, position });
+}
+
 export async function moveBlock(experienceId: string, versionId: string, sectionId: string, blockId: string, targetColumnId: string) {
   const { admin, db, columns } = await context(experienceId, versionId, sectionId);
   const block = await blockInContext(db, blockId, sectionId);

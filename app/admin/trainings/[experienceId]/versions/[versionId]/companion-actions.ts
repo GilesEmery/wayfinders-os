@@ -123,3 +123,28 @@ export async function companionModuleCommandAction(experienceId: string, version
   revalidatePath(route(experienceId, versionId));
   redirect(route(experienceId, versionId, selectedId, command === "remove" ? `${current.display_title} removed.` : "Companion updated."));
 }
+
+export async function dragCompanionModuleAction(experienceId: string, versionId: string, selectedId: string | undefined, form: FormData) {
+  const { admin, db } = await editable(experienceId, versionId);
+  const moduleId = String(form.get("module_id") ?? "");
+  const position = Number(form.get("position"));
+  if (!moduleId || !Number.isInteger(position) || position < 0) throw new Error("That Companion drop was invalid.");
+  const result = await db.from("companion_modules").select("id,sort_order").eq("experience_version_id", versionId).order("sort_order").order("created_at");
+  if (result.error) throw new Error("Companion modules could not be loaded.");
+  const rows = result.data ?? [];
+  if (!rows.some((item) => item.id === moduleId)) throw new Error("Companion module was not found.");
+  const ids = rows.map((item) => item.id).filter((id) => id !== moduleId);
+  ids.splice(Math.min(position, ids.length), 0, moduleId);
+  const parkingBase = Math.max(-1, ...rows.map((item) => item.sort_order)) + ids.length + 10;
+  for (const [index, id] of ids.entries()) {
+    const parked = await db.from("companion_modules").update({ sort_order: parkingBase + index }).eq("id", id).eq("experience_version_id", versionId);
+    if (parked.error) throw new Error("Companion order could not be prepared.");
+  }
+  for (const [index, id] of ids.entries()) {
+    const updated = await db.from("companion_modules").update({ sort_order: index }).eq("id", id).eq("experience_version_id", versionId);
+    if (updated.error) throw new Error("Companion order could not be saved.");
+  }
+  await audit(admin, "course.companion.module_reordered", "companion_module", moduleId, { experienceId, versionId, position });
+  revalidatePath(route(experienceId, versionId));
+  redirect(route(experienceId, versionId, selectedId, "Companion order saved."));
+}
