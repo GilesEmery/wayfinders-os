@@ -4,6 +4,7 @@ import type { ParticipantProgressSnapshot } from "@/lib/experiences/builder/prog
 import type { BuilderCourseStructure, BuilderSection } from "@/lib/experiences/builder/types";
 import { groupLabel, normalizeCourseConfiguration } from "@/lib/experiences/builder/course-configuration";
 import { navigateForwardAction } from "@/lib/experiences/builder/progress-actions";
+import { CourseNavigatorViewport } from "./CourseNavigatorViewport";
 
 export type CourseSectionLocation = Readonly<{ moduleKey: string; moduleTitle: string; lessonKey: string; lessonTitle: string; section: BuilderSection }>;
 export function flattenCourseSections(structure: BuilderCourseStructure): CourseSectionLocation[] {
@@ -16,7 +17,7 @@ export function CourseNavigator({ structure, current, progress, hrefFor, complet
   const locations = flattenCourseSections(structure);
   const locationIndexes = new Map(locations.map((location, index) => [location.section.id, index]));
   const currentIndex = locationIndexes.get(current.section.id) ?? -1;
-  return <nav className="participant-course-navigator" aria-label="Course navigator"><p>{groupLabel(group)} Navigator</p>{structure.modules.map((module) => {
+  return <CourseNavigatorViewport activeLocationKey={`${current.moduleKey}:${current.lessonKey}:${current.section.section_key}`}><p>{groupLabel(group)} Navigator</p>{structure.modules.map((module) => {
     const activeModule = module.module_key === current.moduleKey;
     return <details key={module.id} open={activeModule}><summary><span>{module.title}</span><ProgressState status={progress.modules[module.id] ?? "not_started"}/></summary><div>{module.lessons.map((lesson) => {
       const activeLesson = activeModule && lesson.lesson_key === current.lessonKey;
@@ -30,5 +31,5 @@ export function CourseNavigator({ structure, current, progress, hrefFor, complet
         return <li key={section.id}>{completeOnForward && targetIndex > currentIndex ? <form action={navigateForwardAction.bind(null, structure.experience.slug, current.moduleKey, current.lessonKey, current.section.section_key, location.moduleKey, location.lessonKey, location.section.section_key, cohortId)}><button aria-current={active ? "page" : undefined} className={active ? "is-active" : undefined} type="submit">{content}</button></form> : <Link aria-current={active ? "page" : undefined} className={active ? "is-active" : undefined} href={href}>{content}</Link>}</li>;
       })}</ol></details>;
     })}</div></details>;
-  })}</nav>;
+  })}</CourseNavigatorViewport>;
 }

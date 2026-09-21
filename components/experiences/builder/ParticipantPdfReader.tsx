@@ -19,16 +19,17 @@ function PdfReaderInstance({ config, asset }: { config: Record<string, unknown>;
   const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
-  const frameRef = useRef<HTMLElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const openerRef = useRef<HTMLButtonElement | null>(null);
   const documentRef = useRef<PDFDocumentProxy | null>(null);
   const loadingRef = useRef<PDFDocumentLoadingTask | null>(null);
   const renderRef = useRef<RenderTask | null>(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [pageCount, setPageCount] = useState(0);
-  const [zoom, setZoom] = useState(1);
   const [width, setWidth] = useState(0);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [refreshing, setRefreshing] = useState(false);
+  const [popoutOpen, setPopoutOpen] = useState(false);
   const mode = (text(config, "readerMode") || "reader") as ReaderMode;
   const title = text(config, "title") || asset?.title || asset?.originalFilename || "PDF Reader";
   const description = text(config, "description") || asset?.description;
@@ -36,12 +37,13 @@ function PdfReaderInstance({ config, asset }: { config: Record<string, unknown>;
   useEffect(() => {
     const element = viewportRef.current;
     if (!element) return;
+    setWidth(0);
     const update = () => setWidth(element.clientWidth);
     update();
     const observer = new ResizeObserver(update);
     observer.observe(element);
     return () => observer.disconnect();
-  }, []);
+  }, [popoutOpen]);
 
   useEffect(() => {
     let cancelled = false;
@@ -81,8 +83,7 @@ function PdfReaderInstance({ config, asset }: { config: Record<string, unknown>;
       if (cancelled) return;
       const base = page.getViewport({ scale: 1 });
       const fitted = Math.max(0.25, (width - 2) / base.width);
-      const scale = fitted * zoom;
-      const viewport = page.getViewport({ scale });
+      const viewport = page.getViewport({ scale: fitted });
       const ratio = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = Math.floor(viewport.width * ratio);
       canvas.height = Math.floor(viewport.height * ratio);
@@ -97,35 +98,48 @@ function PdfReaderInstance({ config, asset }: { config: Record<string, unknown>;
       if (!cancelled && !(error instanceof Error && error.name === "RenderingCancelledException")) setStatus("error");
     });
     return () => { cancelled = true; renderRef.current?.cancel(); };
-  }, [pageNumber, status, width, zoom]);
+  }, [pageNumber, status, width]);
+
+  useEffect(() => {
+    if (!popoutOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    const close = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setPopoutOpen(false);
+    };
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", close);
+    closeButtonRef.current?.focus();
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", close);
+      openerRef.current?.focus();
+    };
+  }, [popoutOpen]);
 
   const move = (next: number) => setPageNumber(Math.min(Math.max(next, 1), pageCount || 1));
-  const retry = () => { setRefreshing(true); router.refresh(); };
-  const fullscreen = async () => {
-    if (!frameRef.current) return;
-    if (document.fullscreenElement) await document.exitFullscreen();
-    else await frameRef.current.requestFullscreen();
+  const openPopout = (button: HTMLButtonElement) => {
+    openerRef.current = button;
+    setPopoutOpen(true);
   };
+  const retry = () => { setRefreshing(true); router.refresh(); };
 
   if (!asset) return <div className="participant-block-unavailable" role="status">PDF unavailable</div>;
   const readerStatus = asset.mimeType === "application/pdf" ? status : "error";
 
-  return <figure className={`participant-pdf-reader is-${mode}`} ref={frameRef} onKeyDown={(event) => {
+  const reader = <figure className={`participant-pdf-reader is-${mode}${popoutOpen ? " is-popout" : ""}`} onKeyDown={(event) => {
     if (mode !== "slides") return;
     if (event.key === "ArrowLeft") { event.preventDefault(); move(pageNumber - 1); }
     if (event.key === "ArrowRight") { event.preventDefault(); move(pageNumber + 1); }
   }} tabIndex={mode === "slides" ? 0 : undefined} aria-label={`${title} PDF reader`}>
     <figcaption>{title && <strong>{title}</strong>}{description && <span>{description}</span>}</figcaption>
     <div className="participant-pdf-toolbar" aria-label="PDF controls">
-      <button type="button" onClick={() => move(pageNumber - 1)} disabled={readerStatus !== "ready" || pageNumber <= 1} aria-label="Previous PDF page">← <span>Previous</span></button>
+      {popoutOpen && <button type="button" onClick={() => move(pageNumber - 1)} disabled={readerStatus !== "ready" || pageNumber <= 1} aria-label="Previous PDF page">← <span>Previous</span></button>}
       <output aria-live="polite">{pageCount ? `Page ${pageNumber} of ${pageCount}` : "Loading pages…"}</output>
-      <button type="button" onClick={() => move(pageNumber + 1)} disabled={readerStatus !== "ready" || pageNumber >= pageCount} aria-label="Next PDF page"><span>Next</span> →</button>
-      <span className="participant-pdf-zoom">
-        <button type="button" onClick={() => setZoom((value) => Math.max(0.6, Number((value - 0.1).toFixed(1))))} disabled={readerStatus !== "ready" || zoom <= 0.6} aria-label="Zoom out">−</button>
-        <button type="button" onClick={() => setZoom(1)} disabled={readerStatus !== "ready"} aria-label="Fit PDF to width">Fit</button>
-        <button type="button" onClick={() => setZoom((value) => Math.min(2, Number((value + 0.1).toFixed(1))))} disabled={readerStatus !== "ready" || zoom >= 2} aria-label="Zoom in">+</button>
-      </span>
-      <button type="button" onClick={fullscreen} aria-label="View PDF fullscreen">Fullscreen</button>
+      {popoutOpen
+        ? <button type="button" onClick={() => move(pageNumber + 1)} disabled={readerStatus !== "ready" || pageNumber >= pageCount} aria-label="Next PDF page"><span>Next</span> →</button>
+        : <button className="participant-pdf-open" type="button" onClick={(event) => openPopout(event.currentTarget)} disabled={readerStatus !== "ready"} aria-label={`Open ${title} PDF`}>Open PDF</button>}
     </div>
     <div className="participant-pdf-viewport" ref={viewportRef}>
       {readerStatus === "loading" && <div className="participant-pdf-state" role="status">Loading PDF…</div>}
@@ -135,6 +149,15 @@ function PdfReaderInstance({ config, asset }: { config: Record<string, unknown>;
     <div className="participant-pdf-actions">
       <a href={asset.url} target="_blank" rel="noopener noreferrer">Open in new tab<span className="sr-only">: {asset.originalFilename || title}</span></a>
       <a href={asset.downloadUrl}>Download<span className="sr-only"> {asset.originalFilename || title}</span></a>
+      {!popoutOpen && <button className="participant-pdf-open" type="button" onClick={(event) => openPopout(event.currentTarget)} disabled={readerStatus !== "ready"} aria-label={`Open ${title} PDF`}>Open PDF</button>}
     </div>
   </figure>;
+
+  if (!popoutOpen) return reader;
+  return <div className="participant-pdf-popout" role="dialog" aria-modal="true" aria-label={`${title} document viewer`} onMouseDown={(event) => {
+    if (event.target === event.currentTarget) setPopoutOpen(false);
+  }}>
+    <button ref={closeButtonRef} className="participant-pdf-popout-close" type="button" onClick={() => setPopoutOpen(false)} aria-label={`Close ${title} document viewer`}>×</button>
+    {reader}
+  </div>;
 }
