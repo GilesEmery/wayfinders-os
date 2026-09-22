@@ -3,6 +3,7 @@ import { ensurePlatformProfile } from "@/lib/platform/auth";
 import { LMU_SESSION_COOKIE } from "@/lib/experiences/lmu/server/constants";
 import { PayloadError, apiError, readJsonObject } from "@/lib/experiences/lmu/server/http";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { connectParticipantToOpenHub } from "@/lib/platform/hub-membership";
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,6 +11,7 @@ export async function POST(request: NextRequest) {
     const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
     const password = typeof body.password === "string" ? body.password : "";
     const fullName = typeof body.fullName === "string" ? body.fullName.trim() : "";
+    const hubSlug = typeof body.hubSlug === "string" ? body.hubSlug : "";
     if (!email || !password) return apiError("Enter your email and password.", 400);
     const supabase = await createServerSupabaseClient();
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -23,6 +25,13 @@ export async function POST(request: NextRequest) {
         { error: context.error ?? "Unable to load your Wayfinders profile.", code: "code" in context ? context.code : undefined },
         { status: "code" in context && typeof context.code === "string" && ["account_link_ambiguous", "account_link_conflict"].includes(context.code) ? 409 : 500 },
       );
+    }
+    if (hubSlug) {
+      try {
+        await connectParticipantToOpenHub(context.participant.id, hubSlug);
+      } catch (hubError) {
+        console.error("Signed-in account could not be connected to requested Hub", { participantId: context.participant.id, hubSlug, hubError });
+      }
     }
     const response = NextResponse.json(context);
     response.cookies.delete(LMU_SESSION_COOKIE);

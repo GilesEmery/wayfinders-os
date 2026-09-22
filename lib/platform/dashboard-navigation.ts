@@ -23,8 +23,10 @@ const operationalGroups: DashboardNavigationGroup[] = [
 
 export function buildPersonalNavigation(): DashboardNavigationGroup[] {
   return [
-    { label: "My Journey", items: [
+    { label: "My Dashboard", items: [
       { label: "My Dashboard", href: "/dashboard", icon: "overview" },
+      { label: "My Journey", href: "/my-journey", icon: "timeline" },
+      { label: "Purpose Profile", href: "/purpose-profile", icon: "wayfinders" },
       { label: "My Trainings", href: "/dashboard#trainings", icon: "trainings" },
       { label: "My Assessments", href: "/dashboard#assessments", icon: "assessments" },
       { label: "My Cohorts", href: "/dashboard#community", icon: "cohorts" },

@@ -4,6 +4,7 @@ import { passwordValidationError } from "@/lib/platform/password";
 import { LMU_SESSION_COOKIE } from "@/lib/experiences/lmu/server/constants";
 import { PayloadError, apiError, readJsonObject } from "@/lib/experiences/lmu/server/http";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { connectParticipantToOpenHub } from "@/lib/platform/hub-membership";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -14,6 +15,7 @@ export async function POST(request: NextRequest) {
     const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
     const password = typeof body.password === "string" ? body.password : "";
     const confirmPassword = typeof body.confirmPassword === "string" ? body.confirmPassword : "";
+    const hubSlug = typeof body.hubSlug === "string" ? body.hubSlug : null;
     if (!fullName || fullName.length > 160) return apiError("Enter your full name.", 400);
     if (!EMAIL_PATTERN.test(email) || email.length > 254) return apiError("Enter a valid email address.", 400);
     const passwordError = passwordValidationError(password);
@@ -31,6 +33,11 @@ export async function POST(request: NextRequest) {
       { error: context.error ?? "Unable to create your Wayfinders profile.", code: "code" in context ? context.code : undefined },
       { status: "code" in context && typeof context.code === "string" && ["account_link_ambiguous", "account_link_conflict"].includes(context.code) ? 409 : 500 },
     );
+    try {
+      await connectParticipantToOpenHub(context.participant.id, hubSlug);
+    } catch (hubError) {
+      console.error("Account created without requested Hub connection", { participantId: context.participant.id, hubSlug, hubError });
+    }
     const response = NextResponse.json(context, { status: 201 });
     response.cookies.delete(LMU_SESSION_COOKIE);
     return response;

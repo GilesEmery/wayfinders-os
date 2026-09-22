@@ -95,11 +95,13 @@ export function WayfindersAuthProvider({ children, initialAccount }: { children:
     setError("");
     setErrorCode("");
     try {
+      const pathParts = pathname.split("/").filter(Boolean);
+      const hubSlug = pathParts.length === 1 ? pathParts[0] : "";
       const response = await fetch(`/api/account/${mode}`, {
         method: "POST",
         credentials: "same-origin",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(mode === "signup" ? { fullName, email, password, confirmPassword } : { email, password, fullName }),
+        body: JSON.stringify(mode === "signup" ? { fullName, email, password, confirmPassword, hubSlug } : { email, password, fullName, hubSlug }),
       });
       const payload = await response.json().catch(() => ({})) as ErrorPayload;
       if (!response.ok) {
