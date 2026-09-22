@@ -18,7 +18,7 @@ export default async function Page() {
       <p className="admin-kicker">Administration</p>
       <h1>Administrators</h1>
       <p className="admin-lede">
-        Add and manage authorized Purpose OS administrators. New administrators activate their own account at /admin/setup.
+        Add and manage authorized Purpose OS administrators. New administrators must accept the secure invitation sent to their email address.
       </p>
       <section className="admin-admin-invite">
         <h2>Add administrator</h2>

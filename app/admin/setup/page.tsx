@@ -1,2 +1,5 @@
-import { AdminAuthForm } from "@/components/admin/AdminAuthForm";
-export default function Page(){return <AdminAuthForm mode="setup"/>;}
+import { notFound } from "next/navigation";
+
+export default function Page() {
+  notFound();
+}

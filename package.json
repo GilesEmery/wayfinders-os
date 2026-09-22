@@ -14,6 +14,7 @@
     "test:resource-library": "node --test lib/resources/resource-library-policy.test.ts",
     "test:participant-navigation": "node --test lib/platform/participant-navigation.test.ts",
     "test:public-landing": "node --test lib/platform/public-landing.test.ts",
+    "test:admin-invitation-security": "node --test lib/admin/admin-invitation-security.test.ts",
     "import:hub-leader-cohort:dry-run": "node --env-file=.env.local scripts/imports/import-hub-leader-cohort-1753.mjs",
     "import:hub-leader-cohort": "node --env-file=.env.local scripts/imports/import-hub-leader-cohort-1753.mjs --apply"
   },

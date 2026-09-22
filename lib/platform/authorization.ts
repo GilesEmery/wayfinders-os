@@ -29,18 +29,8 @@ export async function getAuthorizationContext(authUserId?: string, userEmail?: s
     db.from("admin_members").select("role,status").eq("auth_user_id", resolvedId).eq("status", "active").maybeSingle(),
     db.from("platform_role_assignments").select("role,scope_type,scope_id").eq("auth_user_id", resolvedId).eq("status", "active"),
   ]);
-  let member = memberResult.data;
+  const member = memberResult.data;
   const assignments = assignmentsResult.data;
-  const normalizedEmail = (userEmail ?? platformUser?.email)?.trim().toLowerCase();
-  if (!member && normalizedEmail) {
-    const invited = await db.from("admin_members").select("id,role,status,auth_user_id").eq("email_normalized", normalizedEmail).in("status", ["active", "invited"]).maybeSingle();
-    if (invited.data && !invited.data.auth_user_id) {
-      const linked = await db.from("admin_members").update({ auth_user_id: resolvedId, status: "active", last_login_at: new Date().toISOString() }).eq("id", invited.data.id).is("auth_user_id", null).select("role,status").maybeSingle();
-      member = linked.data;
-    } else if (invited.data?.auth_user_id === resolvedId && invited.data.status === "active") {
-      member = invited.data;
-    }
-  }
   const globalRole = member?.role === "super_admin" || member?.role === "admin" ? member.role : null;
   return { authUserId: resolvedId, globalRole, assignments: (assignments ?? []) as PlatformRoleAssignment[] };
 }

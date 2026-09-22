@@ -72,3 +72,23 @@ export async function audit(
     metadata: metadata as Json,
     });
 }
+
+export async function auditSecurityEvent(
+  identity: AdminIdentity,
+  action: string,
+  entityType?: string,
+  entityId?: string,
+  metadata: Record<string, unknown> = {},
+) {
+  const { error } = await createAdminSupabaseClient()
+    .from("admin_audit_log")
+    .insert({
+      admin_user_id: identity.id,
+      admin_email: identity.email,
+      action,
+      entity_type: entityType ?? null,
+      entity_id: entityId ?? null,
+      metadata: metadata as Json,
+    });
+  if (error) throw new Error(`Unable to record administrative security event: ${error.message}`);
+}

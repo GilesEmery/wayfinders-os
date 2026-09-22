@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 
-export function AdminPasswordForm({ mode }: { mode: "change" | "recovery" }) {
+export function AdminPasswordForm() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
@@ -20,10 +20,8 @@ export function AdminPasswordForm({ mode }: { mode: "change" | "recovery" }) {
       setBusy(false);
       return;
     }
-    const body = mode === "change"
-      ? { currentPassword: String(form.get("currentPassword") ?? ""), newPassword, confirmPassword }
-      : { email: String(form.get("email") ?? ""), newPassword, confirmPassword };
-    const response = await fetch(mode === "change" ? "/api/admin/password" : "/api/admin/recovery", {
+    const body = { currentPassword: String(form.get("currentPassword") ?? ""), newPassword, confirmPassword };
+    const response = await fetch("/api/admin/password", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
@@ -36,15 +34,14 @@ export function AdminPasswordForm({ mode }: { mode: "change" | "recovery" }) {
     }
     event.currentTarget.reset();
     setSuccess(true);
-    setMessage(mode === "change" ? "Your admin password has been changed." : "The local super-admin password has been recovered. You can now sign in.");
+    setMessage("Your admin password has been changed.");
   }
 
   return <form className="admin-form admin-password-form" onSubmit={submit}>
-    {mode === "recovery" && <label>Email Address<input name="email" type="email" value="giles@yourwayfinders.org" readOnly /></label>}
-    {mode === "change" && <label>Current Password<input name="currentPassword" type="password" minLength={8} required autoComplete="current-password" /></label>}
+    <label>Current Password<input name="currentPassword" type="password" minLength={8} required autoComplete="current-password" /></label>
     <label>New Password<input name="newPassword" type="password" minLength={8} required autoComplete="new-password" /></label>
     <label>Confirm New Password<input name="confirmPassword" type="password" minLength={8} required autoComplete="new-password" /></label>
     {message && <p className={`admin-form-message${success ? " is-success" : ""}`} role="status">{message}</p>}
-    <button className="admin-primary" disabled={busy}>{busy ? "PLEASE WAIT…" : mode === "change" ? "CHANGE PASSWORD" : "RECOVER PASSWORD"}</button>
+    <button className="admin-primary" disabled={busy}>{busy ? "PLEASE WAIT…" : "CHANGE PASSWORD"}</button>
   </form>;
 }

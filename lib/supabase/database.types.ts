@@ -28,9 +28,9 @@ export type Database = {
         Relationships: []
       }
       admin_members: {
-        Row: { id: string; email: string; email_normalized: string; auth_user_id: string | null; role: string; status: string; invited_by: string | null; created_at: string; updated_at: string; last_login_at: string | null }
-        Insert: { id?: string; email: string; email_normalized: string; auth_user_id?: string | null; role?: string; status?: string; invited_by?: string | null; created_at?: string; updated_at?: string; last_login_at?: string | null }
-        Update: { id?: string; email?: string; email_normalized?: string; auth_user_id?: string | null; role?: string; status?: string; invited_by?: string | null; created_at?: string; updated_at?: string; last_login_at?: string | null }
+        Row: { id: string; email: string; email_normalized: string; auth_user_id: string | null; role: string; status: string; invited_by: string | null; created_at: string; updated_at: string; last_login_at: string | null; invitation_issued_at: string | null; invitation_expires_at: string | null; invitation_accepted_at: string | null; invitation_revoked_at: string | null }
+        Insert: { id?: string; email: string; email_normalized: string; auth_user_id?: string | null; role?: string; status?: string; invited_by?: string | null; created_at?: string; updated_at?: string; last_login_at?: string | null; invitation_issued_at?: string | null; invitation_expires_at?: string | null; invitation_accepted_at?: string | null; invitation_revoked_at?: string | null }
+        Update: { id?: string; email?: string; email_normalized?: string; auth_user_id?: string | null; role?: string; status?: string; invited_by?: string | null; created_at?: string; updated_at?: string; last_login_at?: string | null; invitation_issued_at?: string | null; invitation_expires_at?: string | null; invitation_accepted_at?: string | null; invitation_revoked_at?: string | null }
         Relationships: [{ foreignKeyName: "admin_members_invited_by_fkey"; columns: ["invited_by"]; isOneToOne: false; referencedRelation: "admin_members"; referencedColumns: ["id"] }]
       }
       organizations: FoundationTable<{
@@ -448,6 +448,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      activate_admin_invitation: {
+        Args: { p_auth_user_id: string; p_email: string; p_now?: string }
+        Returns: { member_id: string; activated_role: string }[]
+      }
       move_draft_experience_lesson: {
         Args: { p_experience_id: string; p_experience_version_id: string; p_lesson_id: string; p_target_module_id: string; p_position?: number }
         Returns: undefined
