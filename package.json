@@ -15,8 +15,13 @@
     "test:participant-navigation": "node --test lib/platform/participant-navigation.test.ts",
     "test:public-landing": "node --test lib/platform/public-landing.test.ts",
     "test:admin-invitation-security": "node --test lib/admin/admin-invitation-security.test.ts",
+    "test:existing-user-role-management": "node --test lib/admin/existing-user-role-management.test.ts",
+    "test:import-kaleo": "node --test scripts/imports/import-kaleo-888.test.mjs",
+    "test:import-kaleo-leader": "KALEO_969_SOURCE='/Users/gilesemery/Desktop/courses 2/969 - Kaleo Disciple Leader.zip' node --test scripts/imports/import-kaleo-969.test.mjs",
     "import:hub-leader-cohort:dry-run": "node --env-file=.env.local scripts/imports/import-hub-leader-cohort-1753.mjs",
     "import:hub-leader-cohort": "node --env-file=.env.local scripts/imports/import-hub-leader-cohort-1753.mjs --apply"
+    ,"import:kaleo:dry-run": "node --env-file=.env.local scripts/imports/import-kaleo-888.mjs",
+    "import:kaleo-leader:dry-run": "node --env-file=.env.local scripts/imports/import-kaleo-888.mjs --course=969"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.6.1",

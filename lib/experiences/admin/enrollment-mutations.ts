@@ -35,3 +35,18 @@ export async function enrollParticipantInVersion(experienceId: string, versionId
   await audit(admin, "participant.enrolled", "experience_enrollment", created.data.id, { experienceId, versionId, participantId, versionPolicy });
   return { id: created.data.id, reused: false };
 }
+
+export async function withdrawParticipantEnrollment(experienceId: string, versionId: string, enrollmentId: string) {
+  const admin = await requireAdmin();
+  const authorization = await getAuthorizationContext(admin.id, admin.email);
+  if (!await canAdminExperienceById(authorization, experienceId)) throw new Error("You are not authorized to remove learners from this Experience.");
+  const db = createAdminSupabaseClient();
+  const enrollment = await db.from("experience_enrollments").select("id,participant_id,status").eq("id", enrollmentId).eq("experience_id", experienceId).eq("experience_version_id", versionId).maybeSingle();
+  if (enrollment.error) throw new Error(`Unable to verify the enrollment: ${enrollment.error.message}`);
+  if (!enrollment.data) throw new Error("Enrollment not found for this Course Version.");
+  if (enrollment.data.status === "withdrawn") return;
+  const withdrawnAt = new Date().toISOString();
+  const withdrawn = await db.from("experience_enrollments").update({ status: "withdrawn", updated_at: withdrawnAt }).eq("id", enrollment.data.id).eq("experience_id", experienceId).eq("experience_version_id", versionId).select("id").maybeSingle();
+  if (withdrawn.error || !withdrawn.data) throw new Error(`Unable to remove the learner: ${withdrawn.error?.message ?? "Enrollment was not updated."}`);
+  await audit(admin, "participant.enrollment_withdrawn", "experience_enrollment", enrollment.data.id, { experienceId, versionId, participantId: enrollment.data.participant_id, previousStatus: enrollment.data.status, withdrawnAt });
+}

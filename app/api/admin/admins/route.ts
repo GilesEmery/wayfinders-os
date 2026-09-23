@@ -13,9 +13,12 @@ export async function POST(request: Request) {
   if (!EMAIL.test(email) || email.length > 254) return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
   if (!canMutateRole({ actor: identity, action: "assign", targetRole: "admin", targetUserId: email, scope: { type: "global", id: null } })) return NextResponse.json({ error: "This protected role change is not allowed." }, { status: 403 });
   const admin = createAdminSupabaseClient();
+  const { data: participantAccount, error: participantError } = await admin.from("participants").select("id,auth_user_id").eq("email_normalized", email).not("auth_user_id", "is", null).maybeSingle();
+  if (participantError) return NextResponse.json({ error: "Unable to verify whether this person already has a PurposeOS account." }, { status: 503 });
+  if (participantAccount?.auth_user_id) return NextResponse.json({ error: "This person already has a PurposeOS account. Grant Administrator access from their Wayfinder profile instead of sending an invitation.", profileUrl: `/admin/users/${participantAccount.id}#access` }, { status: 409 });
   const { data: existing, error: existingError } = await admin.from("admin_members").select("id,status,auth_user_id").eq("email_normalized", email).maybeSingle();
   if (existingError) return NextResponse.json({ error: "Unable to verify this administrator." }, { status: 503 });
-  if (existing?.auth_user_id) return NextResponse.json({ error: "This administrator already has an account." }, { status: 409 });
+  if (existing?.auth_user_id) return NextResponse.json({ error: "This administrator already has an account. Manage their access from their Wayfinder profile." }, { status: 409 });
   const { data: member, error: memberError } = existing
     ? await admin.from("admin_members").update({ email, status: "invited", role: "admin", invited_by: identity.memberId, invitation_issued_at: null, invitation_expires_at: null, invitation_accepted_at: null, invitation_revoked_at: null }).eq("id", existing.id).is("auth_user_id", null).select("id").single()
     : await admin.from("admin_members").insert({ email, email_normalized: email, role: "admin", status: "invited", invited_by: identity.memberId }).select("id").single();

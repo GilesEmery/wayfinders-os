@@ -448,6 +448,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      manage_existing_user_authority: {
+        Args: { p_actor_auth_user_id: string; p_target_participant_id: string; p_role: string; p_enabled: boolean; p_hub_id?: string | null; p_now?: string }
+        Returns: { managed_role: string; enabled: boolean; scope_id: string | null }[]
+      }
       activate_admin_invitation: {
         Args: { p_auth_user_id: string; p_email: string; p_now?: string }
         Returns: { member_id: string; activated_role: string }[]

@@ -44,18 +44,27 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
     if (kind === "hub") {
       const role = requestedRole === "hub_leader" ? "hub_leader" : "member";
+      if (role === "hub_leader") {
+        const { error } = await db.rpc("manage_existing_user_authority", {
+          p_actor_auth_user_id: identity.id,
+          p_target_participant_id: participantId,
+          p_role: "hub_leader",
+          p_enabled: operation === "assign",
+          p_hub_id: targetId,
+        });
+        if (error) return apiError("Unable to update Hub Leader authority.", error.code === "42501" ? 403 : 400);
+        return NextResponse.json({ ok: true });
+      }
       if (operation === "remove") {
+        if (participant.auth_user_id) {
+          const { data: leaderAuthority, error: leaderError } = await db.from("platform_role_assignments").select("id").eq("auth_user_id", participant.auth_user_id).eq("role", "hub_leader").eq("scope_type", "hub").eq("scope_id", targetId).eq("status", "active").maybeSingle();
+          if (leaderError) return apiError("Unable to verify Hub Leader authority.", 503);
+          if (leaderAuthority) return apiError("Remove Hub Leader authority before removing this Hub membership.", 409);
+        }
         await db.from("hub_memberships").delete().eq("participant_id", participantId).eq("hub_id", targetId);
         await db.from("participant_preferences").update({ default_hub_id: null }).eq("participant_id", participantId).eq("default_hub_id", targetId);
       }
       else await db.from("hub_memberships").upsert({ participant_id: participantId, hub_id: targetId, membership_role: role, status: "active", joined_at: new Date().toISOString() }, { onConflict: "hub_id,participant_id" });
-      if (participant.auth_user_id) {
-        if (operation === "remove" || role !== "hub_leader") await db.from("platform_role_assignments").delete().eq("auth_user_id", participant.auth_user_id).eq("role", "hub_leader").eq("scope_type", "hub").eq("scope_id", targetId);
-        if (operation === "assign" && role === "hub_leader") {
-          await db.from("platform_role_assignments").delete().eq("auth_user_id", participant.auth_user_id).eq("role", "hub_leader").eq("scope_type", "hub").eq("scope_id", targetId);
-          await db.from("platform_role_assignments").insert({ auth_user_id: participant.auth_user_id, role: "hub_leader", scope_type: "hub", scope_id: targetId, granted_by: identity.id, status: "active" });
-        }
-      }
     }
     if (kind === "cohort") {
       const role = requestedRole === "facilitator" ? "facilitator" : "participant";
