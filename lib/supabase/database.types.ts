@@ -48,6 +48,27 @@ export type Database = {
       platform_role_assignments: FoundationTable<{
         id: string; auth_user_id: string; role: string; scope_type: string; scope_id: string | null; status: string; granted_by: string | null; created_at: string; updated_at: string
       }, "auth_user_id" | "role" | "scope_type">
+      authorization_roles: FoundationTable<{
+        role_key: string; display_name: string; description: string; is_system_protected: boolean; created_at: string
+      }, "role_key" | "display_name" | "description">
+      authorization_entitlements: FoundationTable<{
+        entitlement_key: string; display_name: string; description: string; created_at: string
+      }, "entitlement_key" | "display_name" | "description">
+      authorization_permissions: FoundationTable<{
+        permission_key: string; description: string; created_at: string
+      }, "permission_key" | "description">
+      authorization_role_entitlements: FoundationTable<{
+        role_key: string; entitlement_key: string; created_at: string
+      }, "role_key" | "entitlement_key">
+      authorization_role_permissions: FoundationTable<{
+        role_key: string; permission_key: string; created_at: string
+      }, "role_key" | "permission_key">
+      authorization_entitlement_overrides: FoundationTable<{
+        auth_user_id: string; entitlement_key: string; effect: string; granted_by: string; created_at: string; updated_at: string
+      }, "auth_user_id" | "entitlement_key" | "effect" | "granted_by">
+      authorization_permission_overrides: FoundationTable<{
+        auth_user_id: string; permission_key: string; effect: string; scope_type: string; scope_id: string | null; granted_by: string; created_at: string; updated_at: string
+      }, "auth_user_id" | "permission_key" | "effect" | "granted_by">
       experiences: FoundationTable<{
         id: string; slug: string; name: string; description: string | null; experience_type: string; delivery_mode: string; status: string; accent_color: string | null; visibility: string; admission_policy: string; created_by: string | null; current_published_version_id: string | null; owner_organization_id: string | null; default_theme_id: string | null; card_configuration: Json; created_at: string; updated_at: string
       }, "slug" | "name" | "experience_type">
@@ -448,6 +469,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      manage_authorization_foundation: {
+        Args: { p_actor_auth_user_id: string; p_target_participant_id: string; p_assignment_type: string; p_key: string; p_effect?: string | null; p_scope_type?: string; p_scope_id?: string | null; p_now?: string }
+        Returns: undefined
+      }
       manage_existing_user_authority: {
         Args: { p_actor_auth_user_id: string; p_target_participant_id: string; p_role: string; p_enabled: boolean; p_hub_id?: string | null; p_now?: string }
         Returns: { managed_role: string; enabled: boolean; scope_id: string | null }[]

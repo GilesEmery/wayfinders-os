@@ -8,8 +8,8 @@ export type PlatformAuthorizationContext = {
   assignments: PlatformRoleAssignment[];
 };
 
-export type PlatformRole = "super_admin" | "admin" | "organization_admin" | "hub_leader" | "facilitator" | "course_builder" | "course_admin";
-export type PlatformScopeType = "global" | "organization" | "hub" | "cohort" | "experience";
+export type PlatformRole = "super_admin" | "admin" | "organization_admin" | "hub_leader" | "facilitator" | "course_builder" | "course_admin" | "course_creator";
+export type PlatformScopeType = "platform" | "global" | "organization" | "hub" | "cohort" | "experience" | "training" | "resource";
 export type PlatformRoleAssignment = { role: PlatformRole; scope_type: PlatformScopeType; scope_id: string | null };
 
 export type DashboardCapabilities = {

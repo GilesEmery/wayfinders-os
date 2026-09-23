@@ -21,15 +21,36 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (!actor) return apiError("PurposeOS Administrator access is required.", 403);
     const { participantId } = await params;
     const body = await readJsonObject(request);
-    const role = body.role === "admin" || body.role === "hub_leader" ? body.role : null;
+    const assignmentType = body.assignmentType === "entitlement_override" ? "entitlement_override" : "role";
+    const role = body.role === "admin" || body.role === "hub_leader" || body.role === "course_creator" ? body.role : null;
+    const entitlementKey = assignmentType === "entitlement_override" && typeof body.entitlementKey === "string" ? body.entitlementKey : null;
+    const effect = body.effect === "allow" || body.effect === "deny" || body.effect === null ? body.effect : undefined;
     const enabled = typeof body.enabled === "boolean" ? body.enabled : null;
     const hubId = role === "hub_leader" && typeof body.hubId === "string" ? body.hubId : null;
-    if (!role || enabled === null || (role === "hub_leader" && !hubId)) return apiError("Choose a valid authority change.", 400);
+    if (assignmentType === "role" && (!role || enabled === null || (role === "hub_leader" && !hubId))) return apiError("Choose a valid authority change.", 400);
+    if (assignmentType === "entitlement_override" && (!entitlementKey || effect === undefined)) return apiError("Choose a valid entitlement override.", 400);
 
     const db = createAdminSupabaseClient();
     const participant = await db.from("participants").select("id,auth_user_id").eq("id", participantId).maybeSingle();
     if (participant.error || !participant.data) return apiError("Wayfinder not found.", 404);
     if (!participant.data.auth_user_id) return apiError("This Wayfinder must activate their PurposeOS account before receiving authority.", 400);
+
+    if (role === "course_creator" || assignmentType === "entitlement_override") {
+      if (actor.role !== "super_admin") return apiError("Only Super Admins can change Course Creator or entitlement access.", 403);
+      const result = await db.rpc("manage_authorization_foundation", {
+        p_actor_auth_user_id: actor.id,
+        p_target_participant_id: participantId,
+        p_assignment_type: assignmentType,
+        p_key: role === "course_creator" ? "course_creator" : entitlementKey!,
+        p_effect: role === "course_creator" ? (enabled ? "allow" : null) : effect,
+        p_scope_type: "platform",
+        p_scope_id: null,
+      });
+      if (result.error) return apiError("Unable to update this authority assignment.", result.error.code === "42501" ? 403 : 400);
+      return NextResponse.json({ ok: true });
+    }
+
+    if ((role !== "admin" && role !== "hub_leader") || enabled === null) return apiError("Choose a valid authority change.", 400);
 
     const targetRole = role as ManagedRole;
     assertCanMutateRole({

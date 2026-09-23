@@ -1,5 +1,5 @@
 export type DashboardNavigationIcon = "access" | "administration" | "analytics" | "assessments" | "automations" | "boards" | "channels" | "cohorts" | "communications" | "events" | "forms" | "hub" | "messages" | "notifications" | "overview" | "partners" | "projects" | "resources" | "settings" | "tasks" | "timeline" | "trainings" | "wayfinders";
-export type DashboardNavigationItem = { label: string; href: string; icon: DashboardNavigationIcon };
+export type DashboardNavigationItem = { label: string; href: string; icon: DashboardNavigationIcon; requiresEntitlement?: string };
 export type DashboardNavigationGroup = { label: string; items: DashboardNavigationItem[]; context?: { label: string; href: string } };
 
 type DashboardNavigationContext = {
@@ -12,10 +12,10 @@ type DashboardNavigationContext = {
 };
 
 const operationalGroups: DashboardNavigationGroup[] = [
-  { label: "Network", items: [{ label: "Wayfinders", href: "/admin/users", icon: "wayfinders" }, { label: "Hubs", href: "/admin/hubs", icon: "hub" }, { label: "Partners", href: "/admin/partners", icon: "partners" }] },
-  { label: "Work", items: [{ label: "My Tasks", href: "/admin/tasks", icon: "tasks" }, { label: "Projects", href: "/admin/projects", icon: "projects" }, { label: "Boards", href: "/admin/boards", icon: "boards" }, { label: "Timeline", href: "/admin/timeline", icon: "timeline" }] },
-  { label: "Communication", items: [{ label: "Channels", href: "/admin/channels", icon: "channels" }, { label: "Messages", href: "/admin/messages", icon: "messages" }, { label: "Notifications", href: "/admin/notifications", icon: "notifications" }] },
-  { label: "Experiences", items: [{ label: "Assessments", href: "/admin/assessments", icon: "assessments" }, { label: "Manage Trainings", href: "/admin/trainings", icon: "trainings" }, { label: "Cohorts", href: "/admin/cohorts", icon: "cohorts" }, { label: "Resources", href: "/admin/resources", icon: "resources" }] },
+  { label: "Network", items: [{ label: "Wayfinders", href: "/admin/users", icon: "wayfinders", requiresEntitlement: "wayfinders" }, { label: "Hubs", href: "/admin/hubs", icon: "hub", requiresEntitlement: "hubs" }, { label: "Partners", href: "/admin/partners", icon: "partners", requiresEntitlement: "partners" }] },
+  { label: "Work", items: [{ label: "My Tasks", href: "/admin/tasks", icon: "tasks", requiresEntitlement: "my_tasks" }, { label: "Projects", href: "/admin/projects", icon: "projects", requiresEntitlement: "projects" }, { label: "Boards", href: "/admin/boards", icon: "boards", requiresEntitlement: "boards" }, { label: "Timeline", href: "/admin/timeline", icon: "timeline", requiresEntitlement: "timeline" }] },
+  { label: "Communication", items: [{ label: "Channels", href: "/admin/channels", icon: "channels", requiresEntitlement: "channels" }, { label: "Messages", href: "/admin/messages", icon: "messages", requiresEntitlement: "messages" }, { label: "Notifications", href: "/admin/notifications", icon: "notifications", requiresEntitlement: "notifications" }] },
+  { label: "Experiences", items: [{ label: "Assessments", href: "/admin/assessments", icon: "assessments", requiresEntitlement: "assessments" }, { label: "Manage Trainings", href: "/admin/trainings", icon: "trainings", requiresEntitlement: "manage_trainings" }, { label: "Cohorts", href: "/admin/cohorts", icon: "cohorts" }, { label: "Resources", href: "/admin/resources", icon: "resources" }] },
   { label: "Engagement", items: [{ label: "Events", href: "/admin/events", icon: "events" }, { label: "Forms", href: "/admin/forms", icon: "forms" }, { label: "Communications", href: "/admin/communications", icon: "communications" }] },
   { label: "Insights", items: [{ label: "Analytics", href: "/admin/analytics", icon: "analytics" }] },
   { label: "System", items: [{ label: "Access & Billing", href: "/admin/access", icon: "access" }, { label: "Automations", href: "/admin/automations", icon: "automations" }, { label: "Settings", href: "/admin/settings", icon: "settings" }] },
@@ -55,6 +55,10 @@ export function buildOperationalNavigation(role: "admin" | "super_admin") {
   groups[0].context = { label: "Admin Dashboard", href: "/admin" };
   if (role === "super_admin") groups.find((group) => group.label === "System")?.items.unshift({ label: "Classifications", href: "/admin/settings/classifications", icon: "settings" }, { label: "Administration", href: "/admin/admins", icon: "administration" });
   return groups;
+}
+
+export function filterNavigationByEntitlements(groups: DashboardNavigationGroup[], hasEntitlement: (key: string) => boolean) {
+  return groups.map((group) => ({ ...group, items: group.items.filter((item) => !item.requiresEntitlement || hasEntitlement(item.requiresEntitlement)) })).filter((group) => group.items.length > 0 || group.context);
 }
 
 export function buildDashboardNavigation(context: DashboardNavigationContext): DashboardNavigationGroup[] {
