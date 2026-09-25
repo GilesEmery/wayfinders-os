@@ -10,6 +10,8 @@ import { ETHOS_RENDERER_KEY } from "@/lib/experiences/builder/ethos-assessment";
 import { EthosAssessment } from "./EthosAssessment";
 import { ACTIVATE_PURPOSE_RENDERER_KEY } from "@/lib/experiences/builder/activate-purpose-assessment";
 import { ActivatePurposeAssessment } from "./ActivatePurposeAssessment";
+import { LAUNCHING_WAYFINDERS_HUB_RENDERER_KEY } from "@/lib/experiences/builder/launching-wayfinders-hub-assessment";
+import { LaunchingWayfindersHubAssessment } from "./LaunchingWayfindersHubAssessment";
 
 function value(configuration: Record<string, unknown>, key: string) {
   return typeof configuration[key] === "string" ? configuration[key] as string : "";
@@ -31,6 +33,10 @@ export function ParticipantBlockRenderer({ block, response, asset, route, previe
   if (block.block_type === "custom_component" && block.custom_renderer_key === ACTIVATE_PURPOSE_RENDERER_KEY) {
     if (!response || response.definition.response_type !== "structured_response") return <Unavailable block={block}/>;
     return <ActivatePurposeAssessment initialData={response.response?.response_data ?? {}} route={{ ...route, blockKey: block.block_key }} preview={preview}/>;
+  }
+  if (block.block_type === "custom_component" && block.custom_renderer_key === LAUNCHING_WAYFINDERS_HUB_RENDERER_KEY) {
+    if (!response || response.definition.response_type !== "structured_response") return <Unavailable block={block}/>;
+    return <LaunchingWayfindersHubAssessment initialData={response.response?.response_data ?? {}} route={{ ...route, blockKey: block.block_key }} preview={preview}/>;
   }
   const parsed = definition.validateConfiguration(block.configuration);
   if (!parsed.ok) return <Unavailable block={block}/>;

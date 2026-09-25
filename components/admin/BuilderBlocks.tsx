@@ -27,11 +27,21 @@ import { EthosAssessment } from "@/components/experiences/builder/EthosAssessmen
 import { ETHOS_RENDERER_KEY } from "@/lib/experiences/builder/ethos-assessment";
 import { ActivatePurposeAssessment } from "@/components/experiences/builder/ActivatePurposeAssessment";
 import { ACTIVATE_PURPOSE_RENDERER_KEY } from "@/lib/experiences/builder/activate-purpose-assessment";
+import { LaunchingWayfindersHubAssessment } from "@/components/experiences/builder/LaunchingWayfindersHubAssessment";
+import { LAUNCHING_WAYFINDERS_HUB_RENDERER_KEY } from "@/lib/experiences/builder/launching-wayfinders-hub-assessment";
+import { Fragment } from "react";
 
 type Route = { experienceId: string; versionId: string; sectionId: string };
 type Block = Tables<"content_blocks">;
 type Column = Tables<"section_columns">;
 type ResponseDefinition = Tables<"response_definitions">;
+
+const BLOCK_LIBRARY_GROUPS = [{ label: "Content", category: "content" }, { label: "Media", category: "media" }, { label: "Resources", category: "resource" }, { label: "Reflection + Response", category: "interaction" }] as const;
+
+function BlockLibrary({ route, columnId, position }: { route: Route; columnId: string; position?: number }) {
+  const inline = Number.isInteger(position);
+  return <details className={`builder-block-library${inline ? " is-inline-insertion" : ""}`}><summary>{inline ? "+ Add Content here" : "Add Content"}</summary>{BLOCK_LIBRARY_GROUPS.map((group) => <div key={group.category}><p>{group.label}</p>{BLOCK_DEFINITIONS.filter((definition) => definition.availability === "available" && definition.category === group.category && definition.blockType !== "download").map((definition) => <form action={createBlockAction.bind(null, route.experienceId, route.versionId, route.sectionId, columnId, definition.blockType, position)} key={definition.blockType}><button type="submit"><strong>{definition.label}</strong><span>{definition.description}</span></button></form>)}</div>)}</details>;
+}
 
 function value(configuration: Record<string, unknown>, key: string) {
   return typeof configuration[key] === "string" ? configuration[key] as string : "";
@@ -57,6 +67,7 @@ function BlockPreview({ block, responseDefinition, asset }: { block: Block; resp
   if (!participantDefinition) return <div className="builder-block-unavailable"><strong>Unavailable Block Type</strong><span>Block type: {block.block_type}</span><p>This Block is preserved, but its current renderer and editor are unavailable.</p></div>;
   if (block.block_type === "system_component" && block.custom_renderer_key === ETHOS_RENDERER_KEY) return <EthosAssessment initialData={{}} route={{ slug: "", moduleKey: "", lessonKey: "", sectionKey: "", blockKey: block.block_key }} preview/>;
   if (block.block_type === "custom_component" && block.custom_renderer_key === ACTIVATE_PURPOSE_RENDERER_KEY) return <ActivatePurposeAssessment initialData={{}} route={{ slug: "", moduleKey: "", lessonKey: "", sectionKey: "", blockKey: block.block_key }} preview/>;
+  if (block.block_type === "custom_component" && block.custom_renderer_key === LAUNCHING_WAYFINDERS_HUB_RENDERER_KEY) return <LaunchingWayfindersHubAssessment initialData={{}} route={{ slug: "", moduleKey: "", lessonKey: "", sectionKey: "", blockKey: block.block_key }} preview/>;
   const definition = participantDefinition;
   const parsed = definition.validateConfiguration(block.content);
   if (!parsed.ok) return <div className="builder-block-unavailable"><strong>Invalid Block Configuration</strong><span>Block type: {block.block_type}</span><p>{parsed.errors.join(" ")}</p></div>;
@@ -135,8 +146,8 @@ export async function BuilderColumnBlocks({ column, columns, blocks, route, edit
   ]);
   const availableAssets = (block: Block) => block.block_type === "image" ? imageAssets : block.block_type === "pdf_reader" ? pdfAssets : documentAssets;
   return <div className="builder-column-blocks">
-    <div className="builder-block-list">{columnBlocks.map((block) => <BlockCard block={block} blocks={blocks} columns={columns} responseDefinition={responseDefinitions.find((item) => item.block_id === block.id)} asset={assets.blocks[block.id]} availableAssets={availableAssets(block)} route={route} editable={editable} selected={block.id === selectedBlockId} key={block.id}/>)}{columnBlocks.length === 0 && <p className="builder-block-empty">No Content yet. Add the first item to this column.</p>}</div>
-    {editable && <details className="builder-block-library"><summary>Add Content</summary>{([{"label":"Content","category":"content"},{"label":"Media","category":"media"},{"label":"Resources","category":"resource"},{"label":"Reflection + Response","category":"interaction"}] as const).map(group => <div key={group.category}><p>{group.label}</p>{BLOCK_DEFINITIONS.filter((definition) => definition.availability === "available" && definition.category === group.category && definition.blockType !== "download").map((definition) => <form action={createBlockAction.bind(null, route.experienceId, route.versionId, route.sectionId, column.id, definition.blockType)} key={definition.blockType}><button type="submit"><strong>{definition.label}</strong><span>{definition.description}</span></button></form>)}</div>)}</details>}
+    <div className="builder-block-list">{columnBlocks.map((block, index) => <Fragment key={block.id}>{editable && <BlockLibrary route={route} columnId={column.id} position={index}/>}<BlockCard block={block} blocks={blocks} columns={columns} responseDefinition={responseDefinitions.find((item) => item.block_id === block.id)} asset={assets.blocks[block.id]} availableAssets={availableAssets(block)} route={route} editable={editable} selected={block.id === selectedBlockId}/></Fragment>)}{columnBlocks.length === 0 && <p className="builder-block-empty">No Content yet. Add the first item to this column.</p>}</div>
+    {editable && <BlockLibrary route={route} columnId={column.id}/>}
   </div>;
 }
 

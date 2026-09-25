@@ -151,7 +151,7 @@ async function blockInContext(db: Db, blockId: string, sectionId: string) {
   return result.data;
 }
 
-export async function createBlock(experienceId: string, versionId: string, sectionId: string, columnId: string, blockType: string): Promise<string> {
+export async function createBlock(experienceId: string, versionId: string, sectionId: string, columnId: string, blockType: string, position?: number): Promise<string> {
   const { admin, db, section, lesson, columns } = await context(experienceId, versionId, sectionId);
   const column = columns.find((candidate) => candidate.id === columnId);
   const definition = getBlockDefinition(blockType);
@@ -184,7 +184,18 @@ export async function createBlock(experienceId: string, versionId: string, secti
       throw new Error(`Unable to create the linked response definition: ${responseResult.error.message}`);
     }
   }
-  await audit(admin, "section.block.created", "content_block", result.data.id, { experienceId, versionId, sectionId, columnId, blockType, blockKey });
+  if (Number.isInteger(position)) {
+    try {
+      const ordered = (await columnBlocks(db, columnId)).map((item) => item.id).filter((id) => id !== result.data.id);
+      ordered.splice(Math.min(Math.max(position!, 0), ordered.length), 0, result.data.id);
+      await applyOrder(db, columnId, ordered);
+    } catch (error) {
+      if (definition.response) await db.from("response_definitions").delete().eq("block_id", result.data.id);
+      await db.from("content_blocks").delete().eq("id", result.data.id);
+      throw error;
+    }
+  }
+  await audit(admin, "section.block.created", "content_block", result.data.id, { experienceId, versionId, sectionId, columnId, blockType, blockKey, position: Number.isInteger(position) ? position : null });
   return result.data.id;
 }
 
