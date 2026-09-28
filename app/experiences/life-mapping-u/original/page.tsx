@@ -4,7 +4,8 @@ import { MapAccent } from "@/components/experiences/lmu/MapAccent";
 import { ParticipantEntryForm } from "@/components/experiences/lmu/ParticipantEntryForm";
 import { SecondaryButton } from "@/components/experiences/lmu/SecondaryButton";
 
-export default function OriginalExperiencePage() {
+export default async function OriginalExperiencePage({ searchParams }: { searchParams: Promise<{ embeddedAttempt?: string; returnTo?: string }> }) {
+  const { embeddedAttempt, returnTo } = await searchParams;
   return <div className="landing-page lmu-front-door-page">
     <LMUHeader context="Original experience" theme="dark" />
     <main className="lmu-entry-layout">
@@ -12,7 +13,7 @@ export default function OriginalExperiencePage() {
         <p className="eyebrow eyebrow-rule">Life Mapping U · Original</p>
         <h1>Welcome to Life Mapping U</h1>
         <p className="lmu-front-door-lede">Return to your module journey or begin the original Life Mapping U experience.</p>
-        <ParticipantEntryForm />
+        <ParticipantEntryForm embeddedAttemptId={embeddedAttempt} returnTo={returnTo}/>
         <SecondaryButton href="/experiences/life-mapping-u">Back</SecondaryButton>
       </section>
       <aside className="lmu-front-door-map" aria-hidden="true"><MapAccent density="tight" position="center" opacity={0.2} /></aside>

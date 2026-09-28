@@ -70,6 +70,7 @@ function formConfiguration(blockType: string, form: FormData): unknown {
   if (blockType === "card_selection") return optionConfiguration(form, false);
   if (blockType === "checklist") return optionConfiguration(form, true);
   if (blockType === "check_in") return { affirmativeLabel: form.get("affirmative_label") };
+  if (blockType === "prebuilt_assessment") return { assessmentExperienceId: form.get("assessment_experience_id"), title: form.get("title") ?? "", description: form.get("description") ?? "" };
   if (blockType === "pdf_reader") return { title: form.get("title") ?? "", description: form.get("description") ?? "", readerMode: form.get("reader_mode") ?? "reader", showReader: form.has("show_reader"), allowDownload: form.has("allow_download"), allowOpenInNewTab: form.has("allow_open_in_new_tab") };
   if (["video", "image", "document", "download", "external_link"].includes(blockType)) return { title: form.get("title") ?? "", description: form.get("description") ?? "", url: form.get("url") ?? "", caption: form.get("caption") ?? "", alt: form.get("alt") ?? "", linkLabel: form.get("link_label") ?? "" };
   throw new Error(`Unavailable Block type: ${blockType}.`);
@@ -156,7 +157,15 @@ export async function createBlock(experienceId: string, versionId: string, secti
   const column = columns.find((candidate) => candidate.id === columnId);
   const definition = getBlockDefinition(blockType);
   if (!column || !definition || definition.availability !== "available") throw new Error("That Block type or target Column is unavailable.");
-  const parsed = definition.validateConfiguration(definition.defaultConfiguration());
+  let initialConfiguration = definition.defaultConfiguration();
+  if (blockType === "prebuilt_assessment") {
+    const registered = await db.from("prebuilt_assessments").select("experience_id").eq("status", "active").order("created_at").limit(1).maybeSingle();
+    if (registered.error || !registered.data) throw new Error("Register an active prebuilt Assessment before adding this Block.");
+    const assessment = await db.from("experiences").select("id,name,description").eq("id", registered.data.experience_id).eq("experience_type", "assessment").eq("status", "active").maybeSingle();
+    if (assessment.error || !assessment.data) throw new Error("The registered prebuilt Assessment is unavailable.");
+    initialConfiguration = { assessmentExperienceId: assessment.data.id, title: assessment.data.name, description: assessment.data.description ?? "" };
+  }
+  const parsed = definition.validateConfiguration(initialConfiguration);
   if (!parsed.ok) throw new Error(parsed.errors.join(" "));
   const blockKey = await uniqueBlockKey(db, sectionId, definition.blockType);
   const placement = { lesson_id: lesson.id, section_id: sectionId, column_id: columnId, block_key: blockKey };

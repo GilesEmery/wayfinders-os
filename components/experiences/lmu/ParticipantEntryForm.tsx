@@ -12,19 +12,19 @@ type AccountContext = {
 };
 type AccountErrorPayload = { error?: string; code?: string };
 
-async function sessionRequest(fullName?: string) {
-  const response = await fetch("/api/lmu/session", {
+async function sessionRequest(fullName?: string, embeddedAttemptId?: string) {
+  const response = await fetch(fullName ? "/api/lmu/session" : `/api/lmu/session${embeddedAttemptId ? `?embeddedAttempt=${encodeURIComponent(embeddedAttemptId)}` : ""}`, {
     method: fullName ? "POST" : "GET",
     credentials: "same-origin",
     headers: fullName ? { "content-type": "application/json" } : undefined,
-    body: fullName ? JSON.stringify({ fullName }) : undefined,
+    body: fullName ? JSON.stringify({ fullName, embeddedAttemptId }) : undefined,
   });
   const payload = await response.json().catch(() => ({})) as AccountContext & AccountErrorPayload;
   if (!response.ok) throw Object.assign(new Error(payload.error || "Unable to continue."), { code: payload.code });
   return payload;
 }
 
-export function ParticipantEntryForm() {
+export function ParticipantEntryForm({ embeddedAttemptId, returnTo }: { embeddedAttemptId?: string; returnTo?: string }) {
   const router = useRouter();
   const { authenticated } = useWayfindersAuth();
   const [context, setContext] = useState<AccountContext | null>(null);
@@ -33,6 +33,10 @@ export function ParticipantEntryForm() {
   const [fullName, setFullName] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (embeddedAttemptId && returnTo?.startsWith("/experiences/")) window.sessionStorage.setItem("purposeos:embedded-assessment:return", returnTo);
+  }, [embeddedAttemptId, returnTo]);
 
   const continueWith = useCallback((value: AccountContext) => {
     saveParticipantProfile({ firstName: value.participant.first_name, email: value.participant.email });
@@ -45,7 +49,7 @@ export function ParticipantEntryForm() {
   useEffect(() => {
     if (!authenticated) return;
     let active = true;
-    void sessionRequest().then((value) => {
+    void sessionRequest(undefined, embeddedAttemptId).then((value) => {
       if (!active) return;
       setContext(value);
     }).catch((reason: unknown) => {
@@ -54,14 +58,14 @@ export function ParticipantEntryForm() {
       else setError(reason instanceof Error ? reason.message : "Unable to prepare Life Mapping U.");
     }).finally(() => { if (active) setChecking(false); });
     return () => { active = false; };
-  }, [authenticated]);
+  }, [authenticated, embeddedAttemptId]);
 
   async function finishProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
     setError("");
     try {
-      const value = await sessionRequest(fullName.trim());
+      const value = await sessionRequest(fullName.trim(), embeddedAttemptId);
       setContext(value);
       setNeedsFullName(false);
       continueWith(value);

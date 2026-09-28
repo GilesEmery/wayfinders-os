@@ -2,9 +2,10 @@ import type { Json } from "@/lib/supabase/database.types";
 import type { BlockCompletionRule, ValidationResult } from "./types";
 import { validateResponseOptions, type DatabaseResponseType, type ResponseKind } from "./response-registry.ts";
 import { validateMediaConfiguration } from "./media-source.ts";
+import { parsePrebuiltAssessmentConfiguration } from "./prebuilt-assessment.ts";
 
 export type BlockCategory = "content" | "media" | "interaction" | "resource" | "navigation" | "communication" | "system" | "custom" | "custom_assessment";
-export type BlockEditorKey = "heading" | "rich_text" | "callout" | "response" | "media" | "pdf_reader";
+export type BlockEditorKey = "heading" | "rich_text" | "callout" | "response" | "media" | "pdf_reader" | "prebuilt_assessment";
 export type BlockPreviewKey = BlockEditorKey;
 export type BlockConfiguration = Readonly<Record<string, Json | undefined>>;
 
@@ -137,6 +138,11 @@ function launchingWayfindersHubAssessment(input: unknown): ValidationResult<Bloc
   return parsed.value ? result({}, parsed.errors) : { ok: false, errors: parsed.errors };
 }
 
+function personalImpactStatementAssessment(input: unknown): ValidationResult<BlockConfiguration> {
+  const parsed = strict(input, []);
+  return parsed.value ? result({}, parsed.errors) : { ok: false, errors: parsed.errors };
+}
+
 function pdfReader(input: unknown): ValidationResult<BlockConfiguration> {
   const parsed = strict(input, ["title", "description", "readerMode", "showReader", "allowDownload", "allowOpenInNewTab"]);
   if (!parsed.value) return { ok: false, errors: parsed.errors };
@@ -152,6 +158,11 @@ function pdfReader(input: unknown): ValidationResult<BlockConfiguration> {
 }
 
 const definitions = [
+  {
+    blockType: "prebuilt_assessment", label: "Prebuilt Assessment", description: "Add a reusable PurposeOS Assessment with its full native design and results.", category: "custom_assessment", iconKey: "assessment", editorKey: "prebuilt_assessment", previewKey: "prebuilt_assessment", participantRendererKey: "prebuilt-assessment.v1", defaultCompletionRule: "interaction",
+    defaultConfiguration: () => ({ assessmentExperienceId: "00000000-0000-4000-8000-000000000000", title: "Select an Assessment", description: "" }), validateConfiguration: parsePrebuiltAssessmentConfiguration,
+    supportsResponse: false, supportsCompletion: true, supportsResources: false, duplicable: true, availability: "available",
+  },
   {
     blockType: "system_component", label: "Wayfinders Ethos Assessment", description: "The required five-step Hub Leader Ethos Assessment.", category: "custom_assessment", iconKey: "assessment", editorKey: "response", previewKey: "response", participantRendererKey: "wayfinders-ethos-assessment.v1", defaultCompletionRule: "response_submitted",
     defaultConfiguration: () => ({}), validateConfiguration: ethosAssessment,
@@ -242,10 +253,17 @@ const LAUNCHING_WAYFINDERS_HUB_DEFINITION = Object.freeze({
   supportsResponse: true, supportsCompletion: true, supportsResources: false, duplicable: false, availability: "experimental", participantRuntime: "available", response: { responseKind: "short_text", responseType: "structured_response", completionSignal: "response_submitted" },
 } satisfies BlockDefinition);
 
+const PERSONAL_IMPACT_STATEMENT_DEFINITION = Object.freeze({
+  blockType: "custom_component", label: "Personal Impact Statement", description: "The canonical seven-stage Personal Impact Statement Assessment.", category: "custom_assessment", iconKey: "assessment", editorKey: "response", previewKey: "response", participantRendererKey: "personal-impact-statement.v1", defaultCompletionRule: "response_submitted",
+  defaultConfiguration: () => ({}), validateConfiguration: personalImpactStatementAssessment,
+  supportsResponse: true, supportsCompletion: true, supportsResources: false, duplicable: false, availability: "experimental", participantRuntime: "available", response: { responseKind: "short_text", responseType: "structured_response", completionSignal: "response_submitted" },
+} satisfies BlockDefinition);
+
 const CUSTOM_PARTICIPANT_BLOCKS = new Map([
   ["system_component:wayfinders-ethos-assessment.v1", BLOCKS.get("system_component")!],
   ["custom_component:activate-your-purpose-assessment.v1", BLOCKS.get("custom_component")!],
   ["custom_component:launching-wayfinders-hub-assessment.v1", LAUNCHING_WAYFINDERS_HUB_DEFINITION],
+  ["custom_component:personal-impact-statement.v1", PERSONAL_IMPACT_STATEMENT_DEFINITION],
 ]);
 
 export const BLOCK_DEFINITIONS: readonly BlockDefinition[] = Object.freeze([...definitions]);

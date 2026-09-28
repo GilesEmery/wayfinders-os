@@ -17,11 +17,12 @@
     "test:admin-invitation-security": "node --test lib/admin/admin-invitation-security.test.ts",
     "test:existing-user-role-management": "node --test lib/admin/existing-user-role-management.test.ts",
     "test:authority-foundation": "node --test lib/platform/effective-access-policy.test.ts",
+    "test:personal-impact-statement": "node --test lib/experiences/builder/personal-impact-statement.test.ts",
     "test:import-kaleo": "node --test scripts/imports/import-kaleo-888.test.mjs",
     "test:import-kaleo-leader": "KALEO_969_SOURCE='/Users/gilesemery/Desktop/courses 2/969 - Kaleo Disciple Leader.zip' node --test scripts/imports/import-kaleo-969.test.mjs",
     "import:hub-leader-cohort:dry-run": "node --env-file=.env.local scripts/imports/import-hub-leader-cohort-1753.mjs",
-    "import:hub-leader-cohort": "node --env-file=.env.local scripts/imports/import-hub-leader-cohort-1753.mjs --apply"
-    ,"import:kaleo:dry-run": "node --env-file=.env.local scripts/imports/import-kaleo-888.mjs",
+    "import:hub-leader-cohort": "node --env-file=.env.local scripts/imports/import-hub-leader-cohort-1753.mjs --apply",
+    "import:kaleo:dry-run": "node --env-file=.env.local scripts/imports/import-kaleo-888.mjs",
     "import:kaleo-leader:dry-run": "node --env-file=.env.local scripts/imports/import-kaleo-888.mjs --course=969"
   },
   "dependencies": {
@@ -34,7 +35,7 @@
     "@tiptap/starter-kit": "3.31.3",
     "hls.js": "^1.6.19",
     "lucide-react": "^1.31.0",
-    "next": "16.3.0",
+    "next": "16.3.6",
     "pdfjs-dist": "^6.3.289",
     "react": "19.2.8",
     "react-dom": "19.2.8",
@@ -46,8 +47,8 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.3.0",
-    "supabase": "^2.116.0",
+    "eslint-config-next": "16.3.6",
+    "supabase": "^2.118.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

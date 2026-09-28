@@ -3,16 +3,16 @@ import { ensureParticipantContext } from "@/lib/experiences/lmu/server/account";
 import { apiError, PayloadError, readJsonObject } from "@/lib/experiences/lmu/server/http";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
-async function accountContext(fullName?: string) {
+async function accountContext(fullName?: string, embeddedAttemptId?: string) {
   const supabase = await createServerSupabaseClient();
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user) return null;
-  return ensureParticipantContext(user, fullName);
+  return ensureParticipantContext(user, fullName, embeddedAttemptId);
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const context = await accountContext();
+    const context = await accountContext(undefined, request.nextUrl.searchParams.get("embeddedAttempt") ?? undefined);
     if (!context) return apiError("No authenticated Wayfinders account.", 401);
     if ("error" in context) {
       if ("code" in context && context.code === "full_name_required") {
@@ -31,7 +31,8 @@ export async function POST(request: NextRequest) {
     const body = await readJsonObject(request);
     const fullName = typeof body.fullName === "string" ? body.fullName.trim() : "";
     if (!fullName || fullName.length > 160) return apiError("Enter your full name.", 400);
-    const context = await accountContext(fullName);
+    const embeddedAttemptId = typeof body.embeddedAttemptId === "string" ? body.embeddedAttemptId : undefined;
+    const context = await accountContext(fullName, embeddedAttemptId);
     if (!context) return apiError("Sign in to continue.", 401);
     if ("error" in context) return apiError(context.error ?? "Unable to load your Wayfinders profile.", 500);
     return NextResponse.json(context);

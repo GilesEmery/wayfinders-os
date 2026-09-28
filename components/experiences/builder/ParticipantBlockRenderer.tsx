@@ -12,6 +12,10 @@ import { ACTIVATE_PURPOSE_RENDERER_KEY } from "@/lib/experiences/builder/activat
 import { ActivatePurposeAssessment } from "./ActivatePurposeAssessment";
 import { LAUNCHING_WAYFINDERS_HUB_RENDERER_KEY } from "@/lib/experiences/builder/launching-wayfinders-hub-assessment";
 import { LaunchingWayfindersHubAssessment } from "./LaunchingWayfindersHubAssessment";
+import { PrebuiltAssessmentBlock } from "./PrebuiltAssessmentBlock";
+import { PREBUILT_ASSESSMENT_BLOCK_TYPE } from "@/lib/experiences/builder/prebuilt-assessment";
+import { PERSONAL_IMPACT_RENDERER_KEY } from "@/lib/experiences/builder/personal-impact-statement";
+import { PersonalImpactStatementAssessment } from "./PersonalImpactStatementAssessment";
 
 function value(configuration: Record<string, unknown>, key: string) {
   return typeof configuration[key] === "string" ? configuration[key] as string : "";
@@ -38,9 +42,15 @@ export function ParticipantBlockRenderer({ block, response, asset, route, previe
     if (!response || response.definition.response_type !== "structured_response") return <Unavailable block={block}/>;
     return <LaunchingWayfindersHubAssessment initialData={response.response?.response_data ?? {}} route={{ ...route, blockKey: block.block_key }} preview={preview}/>;
   }
+  if (block.block_type === "custom_component" && block.custom_renderer_key === PERSONAL_IMPACT_RENDERER_KEY) {
+    if (!response || response.definition.response_type !== "structured_response") return <Unavailable block={block}/>;
+    return <PersonalImpactStatementAssessment initialData={response.response?.response_data ?? {}} route={{ ...route, blockKey: block.block_key }} preview={preview}/>;
+  }
   const parsed = definition.validateConfiguration(block.configuration);
   if (!parsed.ok) return <Unavailable block={block}/>;
   const configuration = parsed.value;
+
+  if (block.block_type === PREBUILT_ASSESSMENT_BLOCK_TYPE) return <PrebuiltAssessmentBlock blockId={block.id} configuration={configuration as never} route={route} preview={preview}/>;
 
   if (definition.previewKey === "response") {
     if (!response || response.definition.response_type !== definition.response?.responseType) return <Unavailable block={block}/>;

@@ -4,7 +4,19 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { ensurePlatformProfile } from "@/lib/platform/auth";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
-export async function ensureParticipantContext(user: User, requestedFullName?: string) {
+async function bindEmbeddedAttempt(admin: ReturnType<typeof createAdminSupabaseClient>, participantId: string, assessmentId: string, embeddedAttemptId?: string) {
+  if (!embeddedAttemptId) return;
+  const experience = await admin.from("experiences").select("id").eq("slug", "life-mapping-u").eq("experience_type", "assessment").maybeSingle();
+  if (experience.error || !experience.data) throw new Error("Life Mapping U is not registered as an Assessment Experience.");
+  const attempt = await admin.from("embedded_assessment_attempts").select("id,status,assessment_enrollment_id,provider_attempt_id").eq("id", embeddedAttemptId).eq("participant_id", participantId).eq("assessment_experience_id", experience.data.id).maybeSingle();
+  if (attempt.error || !attempt.data) throw new Error("This embedded Assessment launch is unavailable.");
+  if (attempt.data.provider_attempt_id && attempt.data.provider_attempt_id !== assessmentId) throw new Error("This embedded Assessment launch is already connected to another attempt.");
+  if (attempt.data.provider_attempt_id === assessmentId) return;
+  const link = await admin.from("embedded_assessment_attempts").update({ provider_attempt_id: assessmentId, updated_at: new Date().toISOString() }).eq("id", attempt.data.id).eq("participant_id", participantId).is("provider_attempt_id", null);
+  if (link.error) throw new Error("Unable to connect Life Mapping U to the originating Course.");
+}
+
+export async function ensureParticipantContext(user: User, requestedFullName?: string, embeddedAttemptId?: string) {
   const admin = createAdminSupabaseClient();
   const profile = await ensurePlatformProfile(user, requestedFullName);
   if ("error" in profile) return profile;
@@ -19,11 +31,25 @@ export async function ensureParticipantContext(user: User, requestedFullName?: s
     .limit(1)
     .maybeSingle();
   if (active.error) return { error: "Unable to load your Life Mapping U assessment." } as const;
-  if (active.data) return { participant, assessment: active.data, createdAssessment: false } as const;
+  if (active.data) {
+    await bindEmbeddedAttempt(admin, participant.id, active.data.id, embeddedAttemptId);
+    return { participant, assessment: active.data, createdAssessment: false } as const;
+  }
 
-  const historical = await admin.from("lmu_assessments").select("id").eq("participant_id", participant.id).limit(1);
+  const historical = await admin.from("lmu_assessments").select("id,status,completed_at").eq("participant_id", participant.id).order("updated_at", { ascending: false }).limit(1);
   if (historical.error) return { error: "Unable to inspect your Life Mapping U history." } as const;
-  if (historical.data.length) return { participant, assessment: null, createdAssessment: false } as const;
+  if (historical.data.length) {
+    if (embeddedAttemptId && historical.data[0].status === "completed") {
+      await bindEmbeddedAttempt(admin, participant.id, historical.data[0].id, embeddedAttemptId);
+      const completedAt = historical.data[0].completed_at ?? new Date().toISOString();
+      const attempt = await admin.from("embedded_assessment_attempts").select("assessment_enrollment_id").eq("id", embeddedAttemptId).eq("participant_id", participant.id).maybeSingle();
+      if (attempt.data) {
+        await admin.from("embedded_assessment_attempts").update({ status: "completed", completed_at: completedAt, updated_at: completedAt }).eq("id", embeddedAttemptId);
+        await admin.from("experience_enrollments").update({ status: "completed", completed_at: completedAt, updated_at: completedAt }).eq("id", attempt.data.assessment_enrollment_id).eq("participant_id", participant.id);
+      }
+    }
+    return { participant, assessment: null, createdAssessment: false } as const;
+  }
 
   const createdAssessment = await admin
     .from("lmu_assessments")
@@ -37,9 +63,13 @@ export async function ensureParticipantContext(user: User, requestedFullName?: s
       .eq("participant_id", participant.id)
       .eq("status", "in_progress")
       .maybeSingle();
-    if (resumed.data) return { participant, assessment: resumed.data, createdAssessment: false } as const;
+    if (resumed.data) {
+      await bindEmbeddedAttempt(admin, participant.id, resumed.data.id, embeddedAttemptId);
+      return { participant, assessment: resumed.data, createdAssessment: false } as const;
+    }
     return { error: "Unable to start your Life Mapping U assessment." } as const;
   }
+  await bindEmbeddedAttempt(admin, participant.id, createdAssessment.data.id, embeddedAttemptId);
   return { participant, assessment: createdAssessment.data, createdAssessment: true } as const;
 }
 

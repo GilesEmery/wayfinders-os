@@ -22,5 +22,16 @@ export async function finalizeAssessmentIfComplete(
     .update({ status: "completed", completed_at: completedAt })
     .eq("id", assessmentId)
     .neq("status", "completed");
+  if (!updateError) {
+    const attempts = await admin.from("embedded_assessment_attempts").select("id,assessment_enrollment_id").eq("provider_attempt_id", assessmentId).neq("status", "completed");
+    if (attempts.error) return { completed: false, error: attempts.error };
+    if (attempts.data?.length) {
+      const completion = await admin.from("embedded_assessment_attempts").update({ status: "completed", completed_at: completedAt, updated_at: completedAt }).eq("provider_attempt_id", assessmentId);
+      if (completion.error) return { completed: false, error: completion.error };
+      const enrollments = [...new Set(attempts.data.map((attempt) => attempt.assessment_enrollment_id))];
+      const enrollmentCompletion = await admin.from("experience_enrollments").update({ status: "completed", completed_at: completedAt, updated_at: completedAt }).in("id", enrollments);
+      if (enrollmentCompletion.error) return { completed: false, error: enrollmentCompletion.error };
+    }
+  }
   return { completed: !updateError, error: updateError };
 }

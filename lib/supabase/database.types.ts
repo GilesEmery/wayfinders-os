@@ -93,6 +93,12 @@ export type Database = {
       content_blocks: FoundationTable<{
         id: string; lesson_id: string; section_id: string | null; column_id: string | null; block_key: string; block_type: string; sort_order: number; content: Json; settings: Json; requirement_level: string; status: string; visibility: string; completion_rule: string; custom_renderer_key: string | null; metadata: Json; created_at: string; updated_at: string
       }, "lesson_id" | "block_key" | "block_type" | "sort_order">
+      prebuilt_assessments: FoundationTable<{
+        experience_id: string; launch_path: string; completion_provider: string; status: string; created_at: string; updated_at: string
+      }, "experience_id" | "launch_path">
+      embedded_assessment_attempts: FoundationTable<{
+        id: string; parent_enrollment_id: string; parent_content_block_id: string; participant_id: string; assessment_experience_id: string; assessment_enrollment_id: string; provider_attempt_id: string | null; status: string; started_at: string; completed_at: string | null; created_at: string; updated_at: string
+      }, "parent_enrollment_id" | "parent_content_block_id" | "participant_id" | "assessment_experience_id" | "assessment_enrollment_id">
       resources: FoundationTable<{
         id: string; title: string; description: string | null; resource_type: string; resource_category: string; status: string; external_url: string | null; storage_bucket: string | null; storage_path: string | null; original_filename: string | null; mime_type: string | null; file_size_bytes: number | null; metadata: Json; created_by: string | null; created_at: string; updated_at: string
       }, "title" | "resource_type">
@@ -504,6 +510,10 @@ export type Database = {
       acknowledge_draft_companion_module_removal: {
         Args: { p_draft_version_id: string; p_source_companion_module_id: string; p_actor_id: string }
         Returns: undefined
+      }
+      begin_embedded_assessment: {
+        Args: { p_parent_enrollment_id: string; p_parent_content_block_id: string; p_participant_id: string; p_now?: string }
+        Returns: { attempt_id: string; assessment_enrollment_id: string; assessment_slug: string; launch_path: string; attempt_status: string }[]
       }
     }
     Enums: {

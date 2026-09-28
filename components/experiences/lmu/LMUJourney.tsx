@@ -47,6 +47,11 @@ export function LMUJourney({ experience }: { experience: LMUExperienceDefinition
   const storedProgress = useOriginalProgress();
   const router = useRouter();
   const [redoModuleId, setRedoModuleId] = useState<string | null>(null);
+  const [embeddedReturnTo] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    const value = window.sessionStorage.getItem("purposeos:embedded-assessment:return");
+    return value?.startsWith("/experiences/") ? value : null;
+  });
   const redoTriggerRef = useRef<HTMLButtonElement | null>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -95,6 +100,7 @@ export function LMUJourney({ experience }: { experience: LMUExperienceDefinition
         })}
         {resultModule && <ModuleJourneyItem allowLockedNavigation={allowTestingNavigation} completed={progress.completed} index={10} key={resultModule.id} module={resultModule} status={progress.completed === progress.total ? "available" : "locked"} total={progress.total} />}
       </ol>
+      {progress.completed === progress.total && embeddedReturnTo && <div className="embedded-assessment-return"><a className="button button-primary" href={embeddedReturnTo}>Return to Course <span aria-hidden="true">→</span></a></div>}
       {allowTestingNavigation ? <div className="journey-dev-tools"><span>Local testing · all modules available</span></div> : null}
       {redoModule && redoConsequences && <div className="lmu-redo-dialog-backdrop"><div ref={dialogRef} className="lmu-redo-dialog" role="dialog" aria-modal="true" aria-labelledby="redo-section-title" aria-describedby="redo-section-description"><h2 id="redo-section-title">{redoConsequences.title}</h2><p id="redo-section-description">{redoConsequences.description}</p><div><button ref={cancelRef} type="button" onClick={cancelRedo}>Cancel</button><button className="is-destructive" type="button" onClick={confirmRedo}>Redo Module</button></div></div></div>}
     </>

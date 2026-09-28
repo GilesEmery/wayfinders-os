@@ -30,13 +30,15 @@ import { ACTIVATE_PURPOSE_RENDERER_KEY } from "@/lib/experiences/builder/activat
 import { LaunchingWayfindersHubAssessment } from "@/components/experiences/builder/LaunchingWayfindersHubAssessment";
 import { LAUNCHING_WAYFINDERS_HUB_RENDERER_KEY } from "@/lib/experiences/builder/launching-wayfinders-hub-assessment";
 import { Fragment } from "react";
+import { PersonalImpactStatementAssessment } from "@/components/experiences/builder/PersonalImpactStatementAssessment";
+import { PERSONAL_IMPACT_RENDERER_KEY } from "@/lib/experiences/builder/personal-impact-statement";
 
 type Route = { experienceId: string; versionId: string; sectionId: string };
 type Block = Tables<"content_blocks">;
 type Column = Tables<"section_columns">;
 type ResponseDefinition = Tables<"response_definitions">;
 
-const BLOCK_LIBRARY_GROUPS = [{ label: "Content", category: "content" }, { label: "Media", category: "media" }, { label: "Resources", category: "resource" }, { label: "Reflection + Response", category: "interaction" }] as const;
+const BLOCK_LIBRARY_GROUPS = [{ label: "Content", category: "content" }, { label: "Media", category: "media" }, { label: "Resources", category: "resource" }, { label: "Reflection + Response", category: "interaction" }, { label: "Assessments", category: "custom_assessment" }] as const;
 
 function BlockLibrary({ route, columnId, position }: { route: Route; columnId: string; position?: number }) {
   const inline = Number.isInteger(position);
@@ -49,6 +51,14 @@ function value(configuration: Record<string, unknown>, key: string) {
 
 function configuration(block: Block) {
   return block.content && typeof block.content === "object" && !Array.isArray(block.content) ? block.content as Record<string, unknown> : {};
+}
+
+async function PrebuiltAssessmentFields({ config }: { config: Record<string, unknown> }) {
+  const db = createAdminSupabaseClient();
+  const registry = await db.from("prebuilt_assessments").select("experience_id").eq("status", "active");
+  const ids = (registry.data ?? []).map((item) => item.experience_id);
+  const experiences = ids.length ? await db.from("experiences").select("id,name,description").in("id", ids).eq("experience_type", "assessment").eq("status", "active").order("name") : { data: [], error: null };
+  return <><label className="is-wide">Prebuilt Assessment<select name="assessment_experience_id" defaultValue={value(config, "assessmentExperienceId")} required><option value="" disabled>Choose an Assessment</option>{(experiences.data ?? []).map((assessment) => <option value={assessment.id} key={assessment.id}>{assessment.name}</option>)}</select><span className="admin-field-note">The Assessment retains its own design, responses, scoring, results, and standalone availability.</span></label><label className="is-wide">Display title (optional)<input name="title" defaultValue={value(config, "title")} maxLength={200}/></label><label className="is-wide">Introduction (optional)<textarea name="description" defaultValue={value(config, "description")} maxLength={1000} rows={3}/></label></>;
 }
 
 function emptyAssetCopy(blockType: string) {
@@ -68,10 +78,12 @@ function BlockPreview({ block, responseDefinition, asset }: { block: Block; resp
   if (block.block_type === "system_component" && block.custom_renderer_key === ETHOS_RENDERER_KEY) return <EthosAssessment initialData={{}} route={{ slug: "", moduleKey: "", lessonKey: "", sectionKey: "", blockKey: block.block_key }} preview/>;
   if (block.block_type === "custom_component" && block.custom_renderer_key === ACTIVATE_PURPOSE_RENDERER_KEY) return <ActivatePurposeAssessment initialData={{}} route={{ slug: "", moduleKey: "", lessonKey: "", sectionKey: "", blockKey: block.block_key }} preview/>;
   if (block.block_type === "custom_component" && block.custom_renderer_key === LAUNCHING_WAYFINDERS_HUB_RENDERER_KEY) return <LaunchingWayfindersHubAssessment initialData={{}} route={{ slug: "", moduleKey: "", lessonKey: "", sectionKey: "", blockKey: block.block_key }} preview/>;
+  if (block.block_type === "custom_component" && block.custom_renderer_key === PERSONAL_IMPACT_RENDERER_KEY) return <PersonalImpactStatementAssessment initialData={{}} route={{ slug: "", moduleKey: "", lessonKey: "", sectionKey: "", blockKey: block.block_key }} preview/>;
   const definition = participantDefinition;
   const parsed = definition.validateConfiguration(block.content);
   if (!parsed.ok) return <div className="builder-block-unavailable"><strong>Invalid Block Configuration</strong><span>Block type: {block.block_type}</span><p>{parsed.errors.join(" ")}</p></div>;
   const config = parsed.value;
+  if (definition.previewKey === "prebuilt_assessment") return <div className="builder-response-preview"><strong>{value(config, "title") || "Prebuilt Assessment"}</strong><p>{value(config, "description") || "Participants launch the selected native Assessment here."}</p></div>;
   if (definition.previewKey === "heading") {
     const eyebrow = value(config, "eyebrow");
     const text = value(config, "text");
@@ -93,6 +105,7 @@ function EditorFields({ block, responseDefinition }: { block: Block; responseDef
   const definition = getBlockDefinition(block.block_type);
   if (!definition) return null;
   const config = configuration(block);
+  if (definition.editorKey === "prebuilt_assessment") return <PrebuiltAssessmentFields config={config}/>;
   if (definition.editorKey === "heading") return <><label className="is-wide">Heading text<input name="text" defaultValue={value(config, "text")} maxLength={240} required/></label><label>Level<select name="level" defaultValue={value(config, "level") || "h2"}><option value="h2">H2</option><option value="h3">H3</option><option value="h4">H4</option></select></label><label>Alignment<select name="alignment" defaultValue={value(config, "alignment") || "left"}><option value="left">Left</option><option value="center">Center</option></select></label><label className="is-wide">Eyebrow<input name="eyebrow" defaultValue={value(config, "eyebrow")} maxLength={120}/></label></>;
   if (definition.editorKey === "rich_text") return <><label className="is-wide">Title (optional)<input name="title" defaultValue={value(config, "title")} maxLength={200}/></label><label className="is-wide">Content<textarea name="text" defaultValue={value(config, "text")} maxLength={12000} rows={8} required/><span className="admin-field-note">Use Markdown-style headings, lists, emphasis and HTTPS links. Raw HTML is displayed as text.</span></label></>;
   if (definition.editorKey === "pdf_reader") {
@@ -125,7 +138,7 @@ function BlockCard({ block, blocks, columns, responseDefinition, asset, availabl
     {!definition && <details className="builder-block-metadata"><summary>Inspect stored metadata</summary><dl><div><dt>Renderer key</dt><dd>{block.custom_renderer_key ?? "None"}</dd></div><div><dt>Metadata</dt><dd><pre>{JSON.stringify(block.metadata, null, 2)}</pre></dd></div></dl></details>}
     {editable && <div className="builder-block-controls">
       {nativeAsset && <details className="builder-block-asset" open={selected || !asset}><summary>{asset ? "Replace attached file" : emptyAssetCopy(block.block_type).title}</summary><div><form action={setBlockAssetAction.bind(null, route.experienceId, route.versionId, route.sectionId, block.id)} className="builder-inspector-form"><input type="hidden" name="asset_operation" value="select"/><AssetSelect assets={availableAssets} autoFocus={false}/><button type="submit" disabled={!availableAssets.length}>{asset ? "Replace with selected" : "Choose existing"}</button></form><form action={setBlockAssetAction.bind(null, route.experienceId, route.versionId, route.sectionId, block.id)} className="builder-inspector-form"><input type="hidden" name="asset_operation" value="upload"/><label>Upload file<input name="file" type="file" accept={block.block_type === "image" ? "image/jpeg,image/png,image/webp,image/gif" : block.block_type === "pdf_reader" ? "application/pdf,.pdf" : ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.rtf,.txt,.csv"} required/></label><label>Library title<input name="asset_title" maxLength={200}/></label><button type="submit">{asset ? "Upload replacement" : "Upload file"}</button></form>{asset && <form action={setBlockAssetAction.bind(null, route.experienceId, route.versionId, route.sectionId, block.id)}><input type="hidden" name="asset_operation" value="remove"/><button type="submit">Remove attachment</button></form>}</div></details>}
-      {definition && definition.category !== "custom_assessment" && <details className="builder-block-editor" open={selected || (!inline && ((definition.supportsResponse && responseDefinition?.label === definition.label) || (nativeAsset && !asset)))}><summary>Edit {definition.supportsResponse ? "question" : directInline ? "settings" : "content"}</summary><form action={(directInline ? updateBlockSettingsAction : updateBlockAction).bind(null, route.experienceId, route.versionId, route.sectionId, block.id)} className="admin-form builder-block-form">{!directInline && <EditorFields block={block} responseDefinition={responseDefinition}/>}<label>Required or optional<select name="requirement_level" defaultValue={block.requirement_level}><option value="required">Required</option><option value="recommended">Recommended</option><option value="optional">Optional</option></select></label><label>Visibility<select name="visibility" defaultValue={block.visibility}><option value="visible">Visible</option><option value="hidden">Hidden</option></select></label><button className="admin-primary" type="submit">Save changes</button></form></details>}
+      {definition && (definition.category !== "custom_assessment" || definition.blockType === "prebuilt_assessment") && <details className="builder-block-editor" open={selected || definition.blockType === "prebuilt_assessment" || (!inline && ((definition.supportsResponse && responseDefinition?.label === definition.label) || (nativeAsset && !asset)))}><summary>Edit {definition.blockType === "prebuilt_assessment" ? "Assessment" : definition.supportsResponse ? "question" : directInline ? "settings" : "content"}</summary><form action={(directInline ? updateBlockSettingsAction : updateBlockAction).bind(null, route.experienceId, route.versionId, route.sectionId, block.id)} className="admin-form builder-block-form">{!directInline && <EditorFields block={block} responseDefinition={responseDefinition}/>}<label>Required or optional<select name="requirement_level" defaultValue={block.requirement_level}><option value="required">Required</option><option value="recommended">Recommended</option><option value="optional">Optional</option></select></label><label>Visibility<select name="visibility" defaultValue={block.visibility}><option value="visible">Visible</option><option value="hidden">Hidden</option></select></label><button className="admin-primary" type="submit">Save changes</button></form></details>}
       <div className="builder-block-footer"><div>{definition?.duplicable && <form action={duplicateBlockAction.bind(null, route.experienceId, route.versionId, route.sectionId, block.id)}><button type="submit">Duplicate</button></form>}{targetColumns.length > 0 && <details className="builder-block-move"><summary>Move…</summary><form action={moveBlockAction.bind(null, route.experienceId, route.versionId, route.sectionId, block.id)}><label>Move to<select name="target_column_id" defaultValue={targetColumns[0].id}>{targetColumns.map((column) => <option key={column.id} value={column.id}>{column.label || humanize(column.column_key)}</option>)}</select></label><button type="submit">Move</button></form></details>}</div><details className="builder-block-delete"><summary>Delete</summary><form action={deleteBlockAction.bind(null, route.experienceId, route.versionId, route.sectionId, block.id)}><label><input name="confirm" type="checkbox" required/> Confirm permanent deletion</label><button type="submit">Delete Block</button></form></details></div>
     </div>}
   </article>;
