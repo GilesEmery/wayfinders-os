@@ -2,6 +2,7 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { resolveParticipantCourse } from "@/lib/experiences/builder/participant-runtime";
 import { startPrebuiltAssessmentAction } from "@/lib/experiences/builder/prebuilt-assessment-actions";
 import type { PrebuiltAssessmentConfiguration } from "@/lib/experiences/builder/prebuilt-assessment";
+import { AssessmentLaunchCard, assessmentLaunchLabel } from "./AssessmentLaunchCard";
 
 type Route = { slug: string; moduleKey: string; lessonKey: string; sectionKey: string; cohortId?: string | null };
 
@@ -19,9 +20,6 @@ export async function PrebuiltAssessmentBlock({ blockId, configuration, route, p
       else if (attempt.data) status = "in_progress";
     }
   }
-  return <article className={`prebuilt-assessment-block is-${status}`}>
-    <div><span>PurposeOS Assessment</span><h2>{title}</h2><p>{description}</p></div>
-    <strong className="prebuilt-assessment-status">{status === "completed" ? "Completed" : status === "in_progress" ? "In progress" : "Not started"}</strong>
-    {preview ? <button type="button" disabled>Preview Assessment</button> : <form action={startPrebuiltAssessmentAction.bind(null, blockId, route)}><button type="submit">{status === "completed" ? "Review Assessment" : status === "in_progress" ? "Continue Assessment" : "Start Assessment"}</button></form>}
-  </article>;
+  const action = preview ? <button type="button" disabled>Preview Assessment</button> : <form action={startPrebuiltAssessmentAction.bind(null, blockId, route)}><button type="submit">{assessmentLaunchLabel(status)}</button></form>;
+  return <AssessmentLaunchCard title={title} description={description} status={status} action={action}/>;
 }

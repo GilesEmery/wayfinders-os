@@ -50,3 +50,20 @@ test("required gating uses only completion signals and ignores optional or recom
   assert.match(progress, /attempt\.status === "completed"/);
   assert.doesNotMatch(progress, /participant_responses[\s\S]{0,300}embedded_assessment_attempts/);
 });
+
+test("all Course assessments share the high-contrast launch card and status actions", () => {
+  const card = readFileSync(new URL("../../../components/experiences/builder/AssessmentLaunchCard.tsx", import.meta.url), "utf8");
+  const prebuilt = readFileSync(new URL("../../../components/experiences/builder/PrebuiltAssessmentBlock.tsx", import.meta.url), "utf8");
+  const ethos = readFileSync(new URL("../../../components/experiences/builder/EthosAssessment.tsx", import.meta.url), "utf8");
+  const activate = readFileSync(new URL("../../../components/experiences/builder/ActivatePurposeAssessment.tsx", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../../../app/globals.css", import.meta.url), "utf8");
+  assert.match(card, /Start Assessment/);
+  assert.match(card, /Continue Assessment/);
+  assert.match(card, /Review Assessment/);
+  assert.match(prebuilt, /<AssessmentLaunchCard/);
+  assert.match(ethos, /title="Wayfinders Ethos Reflection"/);
+  assert.match(activate, /title="Activate Your Purpose"/);
+  assert.match(css, /\.assessment-launch-card{[^}]*background:var\(--experience-accent/);
+  assert.match(css, /\.assessment-launch-card h2{[^}]*color:#fff/);
+  assert.match(css, /\.assessment-launch-card button{[^}]*background:#fff/);
+});

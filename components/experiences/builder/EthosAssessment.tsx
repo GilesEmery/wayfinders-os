@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { AssessmentFocusFrame } from "./AssessmentFocusFrame";
+import { AssessmentLaunchCard, assessmentLaunchLabel, type AssessmentLaunchStatus } from "./AssessmentLaunchCard";
 import { saveEthosAssessmentAction } from "@/lib/experiences/builder/ethos-assessment-actions";
 import { ETHOS_CATEGORIES, ethosComplete, ethosResults, normalizeEthosAnswers, type EthosAnswers } from "@/lib/experiences/builder/ethos-assessment";
 
@@ -56,6 +57,9 @@ export function EthosAssessment({ initialData, route, preview = false }: { initi
   }
 
   const answeredCount = Object.keys(answers).length;
+  const launchStatus: AssessmentLaunchStatus = ethosComplete(answers) ? "completed" : answeredCount ? "in_progress" : "not_started";
+
+  if (!focused) return <AssessmentLaunchCard eyebrow="Wayfinders Assessment" title="Wayfinders Ethos Reflection" description="Reflect on how the Wayfinders Ethos is currently expressed in your leadership and identify your strongest opportunities for growth." status={launchStatus} action={<button type="button" onClick={() => setFocused(true)}>{preview ? "Preview Assessment" : assessmentLaunchLabel(launchStatus)}</button>}/>;
 
   return <AssessmentFocusFrame active={focused} label="Wayfinders Ethos Assessment in progress" onClose={() => setFocused(false)}><section className="ethos-assessment" aria-label="Wayfinders Ethos Assessment">
     <header className="ethos-intro">

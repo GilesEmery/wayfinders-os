@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { saveActivatePurposeAssessmentAction } from "@/lib/experiences/builder/activate-purpose-assessment-actions";
 import { AssessmentFocusFrame } from "./AssessmentFocusFrame";
+import { AssessmentLaunchCard, assessmentLaunchLabel, type AssessmentLaunchStatus } from "./AssessmentLaunchCard";
 import {
   ACTIVATE_PURPOSE_AREAS,
   ACTIVATE_PURPOSE_QUESTIONS,
@@ -108,6 +109,9 @@ export function ActivatePurposeAssessment({ initialData, route, preview = false 
     setSaveState("idle");
     setDialog(null);
   }
+
+  const launchStatus: AssessmentLaunchStatus = results ? "completed" : answeredCount ? "in_progress" : "not_started";
+  if (!focused) return <AssessmentLaunchCard eyebrow="PurposeOS Assessment" title="Activate Your Purpose" description="Discover your current growth stage across the five areas of purpose and identify the next step in your development." status={launchStatus} action={<button type="button" onClick={() => setFocused(true)}>{preview ? "Preview Assessment" : assessmentLaunchLabel(launchStatus)}</button>}/>;
 
   if (showResults && results) return <AssessmentFocusFrame active={focused} label="Activate Your Purpose Assessment in progress" onClose={() => setFocused(false)}><section aria-label="Activate Your Purpose Assessment results" className="purpose-assessment purpose-results-view">
     <header className="purpose-assessment-header"><div><p>Activate Your Purpose</p><span>Assessment complete</span></div><h2>Your growth stages</h2><p>Each area reflects where you are today. Explore a result for its stage description and development context.</p></header>
