@@ -72,6 +72,10 @@ test("runtime, preview, privacy, autosave, result, return context, and responsiv
   assert.match(component, /Return to Course/);
   assert.match(component, /Copy Statement/);
   assert.match(component, /Review My Responses/);
+  assert.match(component, /Your Previous Responses/);
+  assert.match(component, /Open this anytime to remember what you shared earlier/);
+  assert.match(component, /stage > 1[\s\S]*Causes You Care About/);
+  assert.match(component, /stage > 5[\s\S]*Distilled Statement/);
   assert.match(component, /Print \/ Save as PDF/);
   assert.match(mutation, /wasComplete/);
   assert.match(mutation, /participant_id.*resolution\.participantId/);
@@ -81,6 +85,7 @@ test("runtime, preview, privacy, autosave, result, return context, and responsiv
   assert.match(script, /share_mode: "disabled"/);
   assert.doesNotMatch(script, /prebuilt_assessments.*insert/);
   assert.match(css, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(css, /\.pis-previous-responses/);
 });
 
 test("publish registry recognizes the stable custom assessment runtime", () => {

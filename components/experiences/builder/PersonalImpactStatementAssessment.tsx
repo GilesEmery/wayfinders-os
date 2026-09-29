@@ -44,6 +44,22 @@ function Field({ label, sublabel, value, onChange, rows = 2 }: { label: string; 
   return <label className="pis-field" htmlFor={id}><strong>{label}</strong>{sublabel && <span>{sublabel}</span>}<textarea id={id} rows={rows} value={value} onChange={(event) => onChange(event.target.value)}/></label>;
 }
 
+function PreviousResponses({ data, stage }: { data: PersonalImpactData; stage: number }) {
+  if (stage === 0) return null;
+  const causes = [...data.causes.filter((cause) => cause !== "Other"), ...(data.causes.includes("Other") && data.causes_other ? [`Other: ${data.causes_other}`] : [])];
+  return <details className="pis-previous-responses">
+    <summary><span><strong>Your Previous Responses</strong><small>Open this anytime to remember what you shared earlier.</small></span><span aria-hidden="true">+</span></summary>
+    <dl>
+      <div><dt>Area of Influence</dt><dd>{data.area_of_influence}</dd></div>
+      {stage > 1 && <div><dt>Causes You Care About</dt><dd><ul>{causes.map((cause) => <li key={cause}>{cause}</li>)}</ul></dd></div>}
+      {stage > 2 && <div><dt>Rough Draft #1</dt><dd>{composeRoughDraftOne(data)}</dd></div>}
+      {stage > 3 && <div><dt>What’s at Stake?</dt><dd><p>{data.world_change}</p><p>{data.mission_loss}</p></dd></div>}
+      {stage > 4 && <div><dt>Rough Draft #2</dt><dd>{composeRoughDraftTwo(data)}</dd></div>}
+      {stage > 5 && <div><dt>Distilled Statement</dt><dd>{data.distilled_statement}</dd></div>}
+    </dl>
+  </details>;
+}
+
 export function PersonalImpactStatementAssessment({ initialData, route, preview = false, returnTo = null, mode = "course" }: { initialData: unknown; route: Route; preview?: boolean; returnTo?: string | null; mode?: PersonalImpactStatementMode }) {
   const initial = normalizePersonalImpactData(initialData);
   const [data, setData] = useState(initial);
@@ -131,6 +147,7 @@ export function PersonalImpactStatementAssessment({ initialData, route, preview 
       {stage === 5 && <><p className="pis-prompt">Now distill it down again by removing any unnecessary words:</p><div className="pis-reference-grid"><Draft label="Rough Draft #1">{composeRoughDraftOne(data)}</Draft><Draft label="Rough Draft #2">{composeRoughDraftTwo(data)}</Draft></div><Field label="Distilled Statement" value={data.distilled_statement} onChange={(value) => update("distilled_statement", value)} rows={7}/></>}
       {stage === 6 && <><div className="pis-teaching"><p>Now that you’ve written two rough drafts, you’re ready to bring it all together.</p><p>Your final Personal Impact Statement should feel clear, personal, and purposeful—it’s a synthesis of your earlier drafts, refined to capture the essence of your calling.</p><p><strong>Final Personal Impact Statement (Malala’s actual statement):</strong><br/><em>“I want to serve the people. And I want every girl, every child to be educated.”</em></p><p>Aim for clarity, brevity, and authenticity—this statement should sound like you.</p></div><div className="pis-reference-grid"><Draft label="Rough Draft #1">{composeRoughDraftOne(data)}</Draft><Draft label="Rough Draft #2">{composeRoughDraftTwo(data)}</Draft><Draft label="Distilled Statement">{data.distilled_statement}</Draft></div><Field label="Final Personal Impact Statement:" value={data.final_impact_statement} onChange={(value) => update("final_impact_statement", value)} rows={8}/></>}
     </div>
+    <PreviousResponses data={data} stage={stage}/>
     <p className="pis-message" role="status" aria-live="polite">{message || (preview ? "Preview — responses are not saved" : saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved" : saveState === "error" ? "Unable to save. Your responses remain on this screen." : "")}</p>
     <footer><button type="button" disabled={stage === 0} onClick={() => { setMessage(""); setStage((value) => Math.max(0, value - 1)); }}>Back</button><button className="pis-primary" type="button" onClick={next}>{stage === 6 ? "Complete My Statement" : "Continue"}</button></footer>
   </section>);
