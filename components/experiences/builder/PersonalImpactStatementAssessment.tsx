@@ -9,8 +9,6 @@ import {
   Sparkles, Users, UsersRound,
 } from "lucide-react";
 import { savePersonalImpactStatementAction } from "@/lib/experiences/builder/personal-impact-statement-actions";
-import { PlatformAccountControl } from "@/components/platform/PlatformAccountControl";
-import { PlatformBrand } from "@/components/platform/PlatformBrand";
 import {
   PERSONAL_IMPACT_CAUSES, PERSONAL_IMPACT_STAGES, composeRoughDraftOne, composeRoughDraftTwo,
   firstIncompletePersonalImpactStage, normalizePersonalImpactData, personalImpactComplete,
@@ -104,11 +102,9 @@ export function PersonalImpactStatementAssessment({ initialData, route, preview 
     else if (personalImpactComplete(data)) setView("result");
   }
 
-  const headerContext = view === "assessment" ? `${stage + 1} of 7 · ${PERSONAL_IMPACT_STAGES[stage]}` : view === "result" ? "Complete" : view === "review" ? "Review" : "Assessment";
   function shell(content: React.ReactNode) {
     if (preview) return <div className={`pis-shell is-${mode} is-preview`}>{content}</div>;
     return <div className={`pis-shell is-${mode}`}>
-      <header className="pis-shell-header"><PlatformBrand/><strong>Personal Impact Statement</strong><div><span>{headerContext}</span><PlatformAccountControl/></div></header>
       <nav className="pis-shell-back" aria-label="Assessment context"><Link href={returnTo ?? "/dashboard"}>← {returnTo ? "Return to Course" : "My Dashboard"}</Link></nav>
       <main className="pis-shell-main">{content}</main>
     </div>;

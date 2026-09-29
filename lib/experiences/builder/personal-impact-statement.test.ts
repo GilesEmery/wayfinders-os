@@ -99,6 +99,7 @@ test("standalone and Course entry paths converge on the canonical component", ()
   const courseCard = readFileSync(new URL("../../../components/experiences/builder/PrebuiltAssessmentBlock.tsx", import.meta.url), "utf8");
   assert.match(standalone, /<PersonalImpactStatementAssessment/);
   assert.match(standalone, /mode={returnTo \? "course" : "standalone"}/);
+  assert.match(standalone, /contextLogoUrl={result\.headerLogoUrl}/);
   assert.match(participant, /<PersonalImpactStatementAssessment/);
   assert.match(courseCard, /startPrebuiltAssessmentAction/);
   assert.match(courseCard, /Start Assessment/);
@@ -112,6 +113,7 @@ test("standalone and Course presentation use explicit shells around identical st
   const css = readFileSync(new URL("../../../app/globals.css", import.meta.url), "utf8");
   assert.match(component, /PersonalImpactStatementMode = "standalone" \| "course"/);
   assert.match(component, /pis-shell is-\$\{mode\}/);
+  assert.doesNotMatch(component, /pis-shell-header/);
   assert.equal(component.match(/export function PersonalImpactStatementAssessment/g)?.length, 1);
   assert.equal(standalone.match(/<PersonalImpactStatementAssessment/g)?.length, 1);
   assert.match(css, /\.pis-shell\.is-standalone/);
