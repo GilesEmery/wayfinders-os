@@ -5,7 +5,8 @@ import { resolveParticipantCourse } from "./participant-runtime";
 import { normalizeSectionProgress, summarizeParticipantProgress } from "./progress";
 import type { BuilderSection } from "./types";
 import { getBlockDefinition } from "./block-registry";
-import { PREBUILT_ASSESSMENT_BLOCK_TYPE } from "./prebuilt-assessment";
+import { sharedAssessmentCompleted } from "./shared-assessment-completion";
+import { PREBUILT_ASSESSMENT_BLOCK_TYPE, parsePrebuiltAssessmentConfiguration } from "./prebuilt-assessment";
 
 type ReadyCourse = Extract<Awaited<ReturnType<typeof resolveParticipantCourse>>, { status: "ready" }>;
 type ProgressTarget = Readonly<{ moduleKey: string; lessonKey: string; section: BuilderSection }>;
@@ -50,12 +51,17 @@ async function requiredContentSatisfied(context: AuthorizedTarget) {
   const assessmentBlocks = requiredBlocks.filter((block) => block.block_type === PREBUILT_ASSESSMENT_BLOCK_TYPE);
   const unsupported = requiredBlocks.filter((block) => !responseBlocks.includes(block) && !assessmentBlocks.includes(block) && !["none", "view"].includes(block.completion_rule));
   if (unsupported.length) return { ok: false, reason: "Finish all required activities before continuing." } as const;
-  if (section.completion_rule === "response_submitted" && !responseBlocks.length) return { ok: false, reason: "Submit the required response before continuing." } as const;
+  if (section.completion_rule === "response_submitted" && !responseBlocks.length && !assessmentBlocks.length) return { ok: false, reason: "Submit the required response before continuing." } as const;
   if (assessmentBlocks.length) {
-    const attempts = await db.from("embedded_assessment_attempts").select("parent_content_block_id,status").eq("parent_enrollment_id", context.enrollmentId).eq("participant_id", context.participantId).in("parent_content_block_id", assessmentBlocks.map((block) => block.id));
-    if (attempts.error) throw new Error(`Unable to evaluate required Assessments: ${attempts.error.message}`);
-    const completedAssessments = new Set((attempts.data ?? []).filter((attempt) => attempt.status === "completed").map((attempt) => attempt.parent_content_block_id));
-    if (assessmentBlocks.some((block) => !completedAssessments.has(block.id))) return { ok: false, reason: "Complete the required Assessment before continuing." } as const;
+    const configurations = assessmentBlocks.map((block) => ({ block, parsed: parsePrebuiltAssessmentConfiguration(block.configuration) }));
+    if (configurations.some(({ parsed }) => !parsed.ok)) return { ok: false, reason: "The required Assessment is unavailable." } as const;
+    const experienceIds = configurations.flatMap(({ parsed }) => parsed.ok ? [parsed.value.assessmentExperienceId] : []);
+    const [attempts, enrollments] = await Promise.all([
+      db.from("embedded_assessment_attempts").select("parent_content_block_id,assessment_experience_id,status").eq("parent_enrollment_id", context.enrollmentId).eq("participant_id", context.participantId).in("parent_content_block_id", assessmentBlocks.map((block) => block.id)),
+      db.from("experience_enrollments").select("experience_id,status,completed_at").eq("participant_id", context.participantId).in("experience_id", experienceIds),
+    ]);
+    if (attempts.error || enrollments.error) throw new Error("Unable to evaluate required Assessments.");
+    if (configurations.some(({ block, parsed }) => !parsed.ok || !sharedAssessmentCompleted(parsed.value.assessmentExperienceId, block.id, attempts.data ?? [], enrollments.data ?? []))) return { ok: false, reason: "Complete the required Assessment before continuing." } as const;
   }
   if (!responseBlocks.length) return { ok: true } as const;
 
@@ -127,8 +133,8 @@ export async function completeParticipantSection(slug: string, moduleKey: string
   return { ok: true, status: summary.status } as const;
 }
 
-export async function completeParticipantSectionFromResponses(slug: string, moduleKey: string, lessonKey: string, sectionKey: string) {
-  const context = await authorizeTarget(slug, moduleKey, lessonKey, sectionKey);
+export async function completeParticipantSectionFromResponses(slug: string, moduleKey: string, lessonKey: string, sectionKey: string, cohortId?: string | null) {
+  const context = await authorizeTarget(slug, moduleKey, lessonKey, sectionKey, cohortId);
   if (!context || !["response_submitted", "all_required_blocks"].includes(context.target.section.completion_rule)) return { ok: false } as const;
   const blocks = context.target.section.layout?.columns.flatMap((column) => column.blocks).filter((block) => block.status === "active" && block.visibility === "visible" && block.requirement_level === "required") ?? [];
   const responseBlocks = blocks.filter((block) => Boolean(getBlockDefinition(block.block_type)?.response));
@@ -142,9 +148,6 @@ export async function completeParticipantSectionFromResponses(slug: string, modu
   const submittedResult = await db.from("participant_responses").select("response_definition_id,status").eq("participant_id", context.participantId).eq("enrollment_id", context.enrollmentId).eq("experience_version_id", context.versionId).in("response_definition_id", requiredDefinitions.map((definition) => definition.id)).in("status", ["submitted", "finalized"]);
   if (submittedResult.error) throw new Error(`Unable to evaluate response completion: ${submittedResult.error.message}`);
   if (new Set((submittedResult.data ?? []).map((response) => response.response_definition_id)).size !== requiredDefinitions.length) return { ok: true, completed: false } as const;
-  const now = new Date().toISOString();
-  const upsert = await db.from("section_progress").upsert({ enrollment_id: context.enrollmentId, participant_id: context.participantId, experience_version_id: context.versionId, section_id: context.target.section.id, status: "completed", resume_state: {}, started_at: now, completed_at: now, updated_at: now }, { onConflict: "enrollment_id,section_id" });
-  if (upsert.error) throw new Error(`Unable to complete the Section: ${upsert.error.message}`);
-  const summary = await reconcileExperienceProgress(context, now);
+  const summary = await persistSectionCompletion(context, new Date().toISOString());
   return { ok: true, completed: true, status: summary.status } as const;
 }

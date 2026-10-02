@@ -12,9 +12,16 @@ export function AssessmentFocusFrame({ active, label, onClose, children }: { act
 
   useEffect(() => {
     if (!active) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
     const previousOverflow = document.body.style.overflow;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onCloseRef.current();
+      if (event.key === "Tab") {
+        const controls = Array.from(frameRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]') ?? []).filter((element) => element.getClientRects().length);
+        const first = controls[0]; const last = controls.at(-1);
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      }
     };
     document.body.style.overflow = "hidden";
     document.addEventListener("keydown", handleKeyDown);
@@ -22,6 +29,13 @@ export function AssessmentFocusFrame({ active, label, onClose, children }: { act
     return () => {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", handleKeyDown);
+      requestAnimationFrame(() => {
+        if (previousFocus?.isConnected) previousFocus.focus();
+        else {
+          const label = previousFocus?.getAttribute("aria-label");
+          if (label) Array.from(document.querySelectorAll<HTMLButtonElement>("button[aria-label]")).find((button) => button.getAttribute("aria-label") === label)?.focus();
+        }
+      });
     };
   }, [active]);
 

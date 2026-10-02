@@ -7,6 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test:signup-notifications": "node --test lib/email/signup-notification.test.ts",
+    "test:experience-password:http": "node scripts/verify-experience-password-http.mjs",
+    "test:experience-password": "node --test lib/experiences/access/password-access.test.mjs",
     "test:cohort-context": "node --test lib/experiences/builder/cohort-context.test.ts",
     "test:companion-availability": "node --test lib/experiences/builder/companion.test.ts",
     "test:companion-live": "node --test lib/experiences/builder/companion-live.test.ts",
@@ -23,7 +26,10 @@
     "import:hub-leader-cohort:dry-run": "node --env-file=.env.local scripts/imports/import-hub-leader-cohort-1753.mjs",
     "import:hub-leader-cohort": "node --env-file=.env.local scripts/imports/import-hub-leader-cohort-1753.mjs --apply",
     "import:kaleo:dry-run": "node --env-file=.env.local scripts/imports/import-kaleo-888.mjs",
-    "import:kaleo-leader:dry-run": "node --env-file=.env.local scripts/imports/import-kaleo-888.mjs --course=969"
+    "import:kaleo-leader:dry-run": "node --env-file=.env.local scripts/imports/import-kaleo-888.mjs --course=969",
+    "test:completion-consistency": "node --test lib/experiences/builder/assessment-completion.test.mjs lib/experiences/lmu/server/completion.test.mjs lib/platform/journey-policy.test.ts",
+    "preview:journey-fixtures": "node scripts/preview-journey-fixtures.mjs",
+    "test:completion-regressions": "node --test lib/experiences/builder/shared-assessment-completion.test.ts lib/experiences/builder/activate-purpose-completion.test.ts lib/experiences/builder/personal-impact-statement.test.ts lib/experiences/builder/start-something.test.ts lib/experiences/access/password-access.test.mjs lib/experiences/builder/prebuilt-assessment.test.ts lib/platform/participant-navigation.test.ts lib/platform/course-card.test.ts lib/assessment-results.test.ts lib/experiences/builder/cohort-context.test.ts lib/platform/effective-access-policy.test.ts lib/experiences/builder/personal-notes.test.ts"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.6.1",

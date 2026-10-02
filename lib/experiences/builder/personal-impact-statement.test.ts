@@ -6,7 +6,7 @@ import {
   PERSONAL_IMPACT_RESPONSE_KEY, PERSONAL_IMPACT_SLUG, PERSONAL_IMPACT_SOURCE_MAP,
   composeRoughDraftOne, composeRoughDraftTwo, emptyPersonalImpactData,
   firstIncompletePersonalImpactStage, normalizePersonalImpactData, personalImpactComplete,
-  personalImpactStatus, publicPersonalImpactSummary,
+  personalImpactStatus, projectPersonalImpactSave, publicPersonalImpactSummary,
 } from "./personal-impact-statement.ts";
 import { getPublishBlockDefinition } from "../admin/publish-validation-policy.ts";
 
@@ -59,6 +59,16 @@ test("live drafts are derived and public helper exposes only safe result fields"
   assert.equal("world_change" in publicPersonalImpactSummary(value), false);
 });
 
+test("completed results remain immutable while later draft edits continue", () => {
+  const first = complete();
+  const completed = projectPersonalImpactSave({}, first, "2026-10-01T12:00:00.000Z", null, true);
+  const later = { ...first, final_impact_statement: "A later working revision." };
+  const updated = projectPersonalImpactSave(completed, later, "2026-10-02T12:00:00.000Z");
+  assert.equal(updated.draft.final_impact_statement, "A later working revision.");
+  assert.equal(updated.finished?.participantMaterial.final_impact_statement, first.final_impact_statement);
+  assert.equal(updated.finished?.completedAt, "2026-10-01T12:00:00.000Z");
+});
+
 test("runtime, preview, privacy, autosave, result, return context, and responsive interaction are wired", () => {
   const component = readFileSync(new URL("../../../components/experiences/builder/PersonalImpactStatementAssessment.tsx", import.meta.url), "utf8");
   const mutation = readFileSync(new URL("./personal-impact-statement-mutations.ts", import.meta.url), "utf8");
@@ -77,8 +87,8 @@ test("runtime, preview, privacy, autosave, result, return context, and responsiv
   assert.match(component, /stage > 1[\s\S]*Causes You Care About/);
   assert.match(component, /stage > 5[\s\S]*Distilled Statement/);
   assert.match(component, /Print \/ Save as PDF/);
-  assert.match(mutation, /wasComplete/);
-  assert.match(mutation, /participant_id.*resolution\.participantId/);
+  assert.match(mutation, /confirmAssessmentCompletion/);
+  assert.match(mutation, /participantId.*resolution\.participantId/);
   assert.match(script, /experience_type: "assessment"/);
   assert.match(script, /status: "draft"/);
   assert.match(script, /raw_visibility: "participant_only"/);
@@ -101,10 +111,8 @@ test("standalone and Course entry paths converge on the canonical component", ()
   assert.match(standalone, /mode={returnTo \? "course" : "standalone"}/);
   assert.match(standalone, /contextLogoUrl={result\.headerLogoUrl}/);
   assert.match(participant, /<PersonalImpactStatementAssessment/);
-  assert.match(courseCard, /startPrebuiltAssessmentAction/);
-  assert.match(courseCard, /Start Assessment/);
-  assert.match(courseCard, /Continue Assessment/);
-  assert.match(courseCard, /Review Assessment/);
+  assert.match(courseCard, /EmbeddedAssessmentLauncher/);
+  assert.match(courseCard, /assessmentLaunchLabel\(status\)/);
 });
 
 test("standalone and Course presentation use explicit shells around identical stage and result markup", () => {
@@ -118,6 +126,7 @@ test("standalone and Course presentation use explicit shells around identical st
   assert.equal(standalone.match(/<PersonalImpactStatementAssessment/g)?.length, 1);
   assert.match(css, /\.pis-shell\.is-standalone/);
   assert.match(css, /\.pis-shell\.is-course \.pis-experience/);
+  assert.match(css, /\.pis-shell\.is-course \.pis-shell-main\{[^}]*map-pattern-white\.svg/);
   assert.match(css, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
 });
 

@@ -3,6 +3,7 @@ import { Cormorant_Garamond, Geist } from "next/font/google";
 import "./globals.css";
 import { WayfindersAuthProvider } from "@/components/platform/WayfindersAuthProvider";
 import { getPlatformAccount } from "@/lib/platform/auth";
+import { EmbeddedAssessmentDocument } from "@/components/platform/EmbeddedAssessmentDocument";
 
 const geist = Geist({
   variable: "--font-sans",
@@ -28,7 +29,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const account = await getPlatformAccount();
   return (
     <html lang="en" className={`${geist.variable} ${cormorant.variable}`}>
-      <body><WayfindersAuthProvider initialAccount={account}>{children}</WayfindersAuthProvider></body>
+      <body><EmbeddedAssessmentDocument/><WayfindersAuthProvider initialAccount={account}>{children}</WayfindersAuthProvider></body>
     </html>
   );
 }

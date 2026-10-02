@@ -3,6 +3,7 @@ import "server-only";
 import { audit, requireAdmin } from "@/lib/admin/auth";
 import { canBuildExperienceById, getAuthorizationContext } from "@/lib/platform/authorization";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
+import { mergeInlineTextContent, type InlineDraft, type InlineSaveResult } from "./inline-draft";
 import type { Json, TablesInsert } from "@/lib/supabase/database.types";
 import { getBlockDefinition, parseBlockConfiguration } from "../builder/block-registry";
 import { assertVersionEditable, validateBuilderBlockPlacement } from "../builder/validation";
@@ -208,6 +209,48 @@ export async function createBlock(experienceId: string, versionId: string, secti
   return result.data.id;
 }
 
+function inlineDraftFromBlock(block: Awaited<ReturnType<typeof blockInContext>>): InlineDraft {
+  const content = block.content && typeof block.content === "object" && !Array.isArray(block.content) ? block.content as Record<string, unknown> : {};
+  const level = ["h2", "h3", "h4"].includes(String(content.level)) ? String(content.level) as InlineDraft["level"] : "h2";
+  return { text: String(content.text ?? ""), title: block.block_type === "rich_text" ? String(content.title ?? "") : "", level };
+}
+
+export async function updateInlineTextBlock(experienceId: string, versionId: string, sectionId: string, blockId: string, form: FormData): Promise<InlineSaveResult> {
+  const expectedRevision = String(form.get("expected_revision") ?? "");
+  if (!expectedRevision) return { ok: false, code: "invalid", error: "This editor is missing its loaded revision. Reload before saving." };
+  const { admin, db, columns } = await context(experienceId, versionId, sectionId);
+  const block = await blockInContext(db, blockId, sectionId);
+  if (!columns.some((column) => column.id === block.column_id)) return { ok: false, code: "missing", error: "The Block is no longer in this Section layout." };
+  if (block.block_type !== "heading" && block.block_type !== "rich_text") return { ok: false, code: "invalid", error: "Only Heading and Rich Text Blocks support inline saving." };
+  if (block.updated_at !== expectedRevision) {
+    return { ok: false, code: "conflict", error: "This content changed after you opened it. Choose which version to keep.", revision: block.updated_at, serverDraft: inlineDraftFromBlock(block) };
+  }
+  const current = block.content && typeof block.content === "object" && !Array.isArray(block.content) ? block.content as Record<string, unknown> : {};
+  const nextDraft: InlineDraft = {
+    text: String(form.get("text") ?? ""),
+    title: block.block_type === "rich_text" ? String(form.get("title") ?? "") : "",
+    level: String(form.get("level") ?? current.level ?? "h2") as InlineDraft["level"],
+  };
+  const merged = mergeInlineTextContent(block.block_type, current, nextDraft);
+  const parsed = parseBlockConfiguration(block.block_type, merged);
+  if (!parsed.ok) return { ok: false, code: "invalid", error: parsed.errors.join(" ") };
+  const result = await db.from("content_blocks")
+    .update({ content: parsed.value as Json })
+    .eq("id", blockId)
+    .eq("section_id", sectionId)
+    .eq("column_id", block.column_id!)
+    .eq("updated_at", expectedRevision)
+    .select("updated_at")
+    .maybeSingle();
+  if (result.error) return { ok: false, code: "failed", error: `Unable to save Content: ${result.error.message}` };
+  if (!result.data) {
+    const latest = await blockInContext(db, blockId, sectionId);
+    return { ok: false, code: "conflict", error: "This content changed while your save was pending. Choose which version to keep.", revision: latest.updated_at, serverDraft: inlineDraftFromBlock(latest) };
+  }
+  await audit(admin, "section.block.inline_text.updated", "content_block", blockId, { experienceId, versionId, sectionId, columnId: block.column_id, blockType: block.block_type, expectedRevision, committedRevision: result.data.updated_at });
+  return { ok: true, revision: result.data.updated_at };
+}
+
 export async function updateBlock(experienceId: string, versionId: string, sectionId: string, blockId: string, form: FormData) {
   const { admin, db, columns } = await context(experienceId, versionId, sectionId);
   const block = await blockInContext(db, blockId, sectionId);
@@ -271,6 +314,11 @@ export async function updateBlockSettings(experienceId: string, versionId: strin
   }
   const result = await db.from("content_blocks").update(updates).eq("id", blockId).eq("section_id", sectionId).eq("column_id", block.column_id!);
   if (result.error) throw new Error(`Unable to update Block settings: ${result.error.message}`);
+  const definition = getBlockDefinition(block.block_type);
+  if (definition?.category === "custom_assessment" && definition.response) {
+    const responseResult = await db.from("response_definitions").update({ is_required: requirement === "required" }).eq("block_id", blockId).eq("lesson_id", block.lesson_id).eq("experience_version_id", versionId).select("id").maybeSingle();
+    if (responseResult.error || !responseResult.data) throw new Error(`Unable to update the linked Assessment requirement${responseResult.error ? `: ${responseResult.error.message}` : "."}`);
+  }
   await audit(admin, "section.block.settings.updated", "content_block", blockId, { experienceId, versionId, sectionId, columnId: block.column_id, requirement, visibility });
 }
 

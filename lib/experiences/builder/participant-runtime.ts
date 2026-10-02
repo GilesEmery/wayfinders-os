@@ -1,4 +1,5 @@
 import "server-only";
+import { requireExperiencePassword } from "@/lib/experiences/access/server";
 
 import type { User } from "@supabase/supabase-js";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
@@ -144,6 +145,7 @@ export async function resolveParticipantCourse(slug: string, requestedCohortId: 
   // inactive/archived Experiences remain unavailable to the participant route.
   if (experience.status === "inactive" || experience.status === "archived") return { status: "not_found" };
   if (experience.status === "draft" && !experience.current_published_version_id && !user) return { status: "not_found" };
+  await requireExperiencePassword(experience);
   const runtime = resolveExperienceRuntime(experience.slug, experience.delivery_mode as ExperienceDeliveryMode);
   if (runtime.kind === "custom") return experience.status === "active" ? { status: "custom", route: runtime.route } : { status: "not_found" };
   if (runtime.kind === "unavailable") return { status: "unavailable", experience, reason: "runtime" };

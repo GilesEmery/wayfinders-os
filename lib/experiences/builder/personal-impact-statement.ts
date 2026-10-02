@@ -14,6 +14,8 @@ export type PersonalImpactData = Record<Exclude<PersonalImpactField, "causes">, 
   causes: string[];
   causes_other: string;
 };
+export type PersonalImpactFinishedResult = { schemaVersion: 1; sourceVersion: typeof PERSONAL_IMPACT_RENDERER_KEY; completedAt: string; participantMaterial: PersonalImpactData };
+export type PersonalImpactEnvelope = { schemaVersion: 1; draft: PersonalImpactData; finished: PersonalImpactFinishedResult | null };
 
 export const PERSONAL_IMPACT_STAGES = [
   "Area of Influence", "Conflicts & Causes", "Personal Impact Statement: Rough Draft #1",
@@ -50,8 +52,10 @@ export function normalizePersonalImpactData(input: unknown): PersonalImpactData 
   const empty = emptyPersonalImpactData();
   if (!input || typeof input !== "object" || Array.isArray(input)) return empty;
   const outer = input as Record<string, unknown>;
-  const source = outer.response && typeof outer.response === "object" && !Array.isArray(outer.response)
-    ? outer.response as Record<string, unknown> : outer;
+  const source = outer.draft && typeof outer.draft === "object" && !Array.isArray(outer.draft)
+    ? outer.draft as Record<string, unknown>
+    : outer.response && typeof outer.response === "object" && !Array.isArray(outer.response)
+      ? outer.response as Record<string, unknown> : outer;
   const allowed = new Set<string>([...PERSONAL_IMPACT_CAUSES, "Other"]);
   const causes = Array.isArray(source.causes)
     ? [...new Set(source.causes.filter((item): item is string => typeof item === "string" && allowed.has(item)))].slice(0, 4)
@@ -60,8 +64,36 @@ export function normalizePersonalImpactData(input: unknown): PersonalImpactData 
   return { ...empty, ...strings, causes };
 }
 
+export function normalizePersonalImpactEnvelope(input: unknown, legacyCompletedAt?: string | null): PersonalImpactEnvelope {
+  const root = input && typeof input === "object" && !Array.isArray(input) ? input as Record<string, unknown> : {};
+  const draft = normalizePersonalImpactData(root.draft ?? root);
+  const stored = root.finished && typeof root.finished === "object" && !Array.isArray(root.finished) ? root.finished as Record<string, unknown> : null;
+  const storedMaterial = stored ? normalizePersonalImpactData(stored.participantMaterial) : null;
+  const finished: PersonalImpactFinishedResult | null = stored
+    && stored.schemaVersion === 1
+    && stored.sourceVersion === PERSONAL_IMPACT_RENDERER_KEY
+    && typeof stored.completedAt === "string"
+    && storedMaterial
+    && personalImpactComplete(storedMaterial)
+      ? { schemaVersion: 1, sourceVersion: PERSONAL_IMPACT_RENDERER_KEY, completedAt: stored.completedAt, participantMaterial: storedMaterial }
+      : legacyCompletedAt && personalImpactComplete(draft)
+        ? { schemaVersion: 1, sourceVersion: PERSONAL_IMPACT_RENDERER_KEY, completedAt: legacyCompletedAt, participantMaterial: structuredClone(draft) }
+        : null;
+  return { schemaVersion: 1, draft, finished };
+}
+
+export function projectPersonalImpactSave(priorInput: unknown, nextInput: unknown, now: string, legacyCompletedAt?: string | null, finish = false): PersonalImpactEnvelope {
+  const prior = normalizePersonalImpactEnvelope(priorInput, legacyCompletedAt);
+  const draft = normalizePersonalImpactData(nextInput);
+  if (finish && !personalImpactComplete(draft)) throw new Error("Complete every reflection before saving your response.");
+  const finished = prior.finished ?? (finish && personalImpactComplete(draft)
+    ? { schemaVersion: 1 as const, sourceVersion: PERSONAL_IMPACT_RENDERER_KEY, completedAt: now, participantMaterial: structuredClone(draft) }
+    : null);
+  return { schemaVersion: 1, draft, finished };
+}
+
 export function personalImpactComplete(data: PersonalImpactData): boolean {
-  return data.causes.length >= 1 && data.causes.length <= 4
+  return (!data.causes.includes("Other") || Boolean(data.causes_other.trim())) && data.causes.length >= 1 && data.causes.length <= 4
     && PERSONAL_IMPACT_FIELDS.filter((key) => key !== "causes").every((key) => data[key].trim().length > 0);
 }
 

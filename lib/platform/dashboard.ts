@@ -7,6 +7,8 @@ import { resolveCourseCoverUrl } from "@/lib/experiences/builder/course-cover";
 import { resolveResourceIds } from "@/lib/experiences/builder/resource-assets";
 import { resolveCourseCard } from "@/lib/platform/course-card";
 
+import { completedJourneyRecords } from "./journey-policy";
+
 export type DashboardData = Awaited<ReturnType<typeof getWayfinderDashboard>>;
 
 export async function getWayfinderDashboard() {
@@ -32,9 +34,14 @@ export async function getWayfinderDashboard() {
     db.from("participant_preferences").select("default_hub_id").eq("participant_id", participant.id).maybeSingle(),
   ]);
 
+  if (lmu.error || enrollments.error || progress.error) return { user, error: "Unable to load your Experiences. Please refresh and try again." } as const;
+  const history = await db.from("experience_enrollment_version_history").select("id,enrollment_id,experience_id,experience_version_id,artifact_snapshot").eq("participant_id", participant.id);
+  if (history.error) return { user, error: "Unable to load your Journey history. Please refresh and try again." } as const;
   const enrollmentRows = enrollments.data ?? [];
-  const experienceIds = [...new Set(enrollmentRows.map((row) => row.experience_id))];
-  const versionIds = [...new Set(enrollmentRows.map((row) => row.experience_version_id).filter((id): id is string => Boolean(id)))];
+  const completionRecords = completedJourneyRecords(enrollmentRows, history.data ?? []);
+  const cardEnrollments = [...enrollmentRows, ...completionRecords.map((record) => ({ id: record.id, experience_id: record.experienceId, experience_version_id: record.versionId }))];
+  const experienceIds = [...new Set(cardEnrollments.map((row) => row.experience_id))];
+  const versionIds = [...new Set(cardEnrollments.map((row) => row.experience_version_id).filter((id): id is string => Boolean(id)))];
   const organizationIds = (organizations.data ?? []).map((row) => row.organization_id);
   const hubIds = [...new Set([...(hubs.data ?? []).map((row) => row.hub_id), ...(roles.data ?? []).filter((role) => role.role === "hub_leader" && role.scope_type === "hub" && role.scope_id).map((role) => role.scope_id!)])];
   const cohortIds = (cohorts.data ?? []).map((row) => row.cohort_id);
@@ -63,7 +70,7 @@ export async function getWayfinderDashboard() {
   const lmuExperience = lmuExperienceResult.data;
   const experienceById = new Map(experienceRows.map((item) => [item.id, item]));
   const versionById = new Map(versionRows.map((item) => [item.id, item]));
-  const themeIds = [...new Set([...enrollmentRows.flatMap((enrollment) => {
+  const themeIds = [...new Set([...cardEnrollments.flatMap((enrollment) => {
     const version = enrollment.experience_version_id ? versionById.get(enrollment.experience_version_id) : undefined;
     const themeId = version?.theme_id ?? experienceById.get(enrollment.experience_id)?.default_theme_id;
     return themeId ? [themeId] : [];
@@ -71,12 +78,12 @@ export async function getWayfinderDashboard() {
   const themeCatalog = themeIds.length ? await db.from("experience_themes").select("id,configuration").in("id", themeIds) : { data: [], error: null };
   if (themeCatalog.error) throw new Error("Unable to load Course Card themes.");
   const themeById = new Map((themeCatalog.data ?? []).map((theme) => [theme.id, theme.configuration]));
-  const configurations = [...versionRows.map((version) => normalizeCourseConfiguration(version.course_configuration)), ...experienceRows.filter((experience) => experience.delivery_mode === "custom_code").map((experience) => normalizeCourseConfiguration(experience.card_configuration)), ...(lmuExperience ? [normalizeCourseConfiguration(lmuExperience.card_configuration)] : [])];
+  const configurations = [...versionRows.map((version) => normalizeCourseConfiguration(version.course_configuration)), ...experienceRows.map((experience) => normalizeCourseConfiguration(experience.card_configuration)), ...(lmuExperience ? [normalizeCourseConfiguration(lmuExperience.card_configuration)] : [])];
   const cardImages = await resolveResourceIds(db, configurations.flatMap((configuration) => configuration.card.image_resource_id ? [configuration.card.image_resource_id] : []));
-  const trainingCards = Object.fromEntries(await Promise.all(enrollmentRows.map(async (enrollment) => {
+  const trainingCards = Object.fromEntries(await Promise.all(cardEnrollments.map(async (enrollment) => {
     const experience = experienceById.get(enrollment.experience_id);
     const version = enrollment.experience_version_id ? versionById.get(enrollment.experience_version_id) : undefined;
-    if (!experience || (!version && experience.delivery_mode !== "custom_code")) return [enrollment.id, null] as const;
+    if (!experience) return [enrollment.id, null] as const;
     const configurationSource = version?.course_configuration ?? experience.card_configuration;
     const configuration = normalizeCourseConfiguration(configurationSource);
     const themeId = version?.theme_id ?? experience.default_theme_id;
@@ -98,6 +105,7 @@ export async function getWayfinderDashboard() {
     progress: progress.data ?? [],
     experiences: experienceRows,
     trainingCards,
+    completionRecords,
     lmuCard,
     organizationMemberships: organizations.data ?? [], organizations: organizationCatalog.data ?? [],
     hubMemberships: hubs.data ?? [], hubs: hubCatalog.data ?? [], hubMemberCatalog: hubMemberCatalog.data ?? [], defaultHubId: preferences.data?.default_hub_id ?? null,

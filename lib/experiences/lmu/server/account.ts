@@ -1,4 +1,5 @@
 import "server-only";
+import { needsExperiencePassword } from "@/lib/experiences/access/server";
 import type { User } from "@supabase/supabase-js";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { ensurePlatformProfile } from "@/lib/platform/auth";
@@ -18,6 +19,9 @@ async function bindEmbeddedAttempt(admin: ReturnType<typeof createAdminSupabaseC
 
 export async function ensureParticipantContext(user: User, requestedFullName?: string, embeddedAttemptId?: string) {
   const admin = createAdminSupabaseClient();
+  const experience = await admin.from("experiences").select("id").eq("slug", "life-mapping-u").maybeSingle();
+  if (experience.error || !experience.data) return { error: "Life Mapping U is unavailable." } as const;
+  if (await needsExperiencePassword(experience.data.id)) return { error: "Enter the Experience access password to continue.", code: "experience_password_required" } as const;
   const profile = await ensurePlatformProfile(user, requestedFullName);
   if ("error" in profile) return profile;
   const participant = profile.participant;
@@ -77,7 +81,12 @@ export async function resolveAuthenticatedParticipant() {
   const supabase = await createServerSupabaseClient();
   const { data: { user }, error } = await supabase.auth.getUser();
   if (error || !user) return null;
-  const context = await ensureParticipantContext(user);
-  if ("error" in context || !("assessment" in context) || !context.assessment) return null;
-  return { admin: createAdminSupabaseClient(), user, participant: context.participant, assessment: context.assessment };
+  const admin = createAdminSupabaseClient();
+  const experience = await admin.from("experiences").select("id").eq("slug", "life-mapping-u").maybeSingle();
+  if (experience.error || !experience.data || await needsExperiencePassword(experience.data.id)) return null;
+  const participant = await admin.from("participants").select("id,first_name,email,updated_at").eq("auth_user_id", user.id).maybeSingle();
+  if (participant.error || !participant.data) return null;
+  const assessment = await admin.from("lmu_assessments").select("id,participant_id,status,current_module,started_at,completed_at,updated_at").eq("participant_id", participant.data.id).in("status", ["in_progress", "completed"]).order("started_at", { ascending: false }).limit(1).maybeSingle();
+  if (assessment.error || !assessment.data) return null;
+  return { admin, user, participant: participant.data, assessment: assessment.data };
 }

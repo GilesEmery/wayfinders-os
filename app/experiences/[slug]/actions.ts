@@ -5,11 +5,14 @@ import { redirect } from "next/navigation";
 import { ensurePlatformProfile, getPlatformUser } from "@/lib/platform/auth";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
+import { requireExperiencePasswordBySlug } from "@/lib/experiences/access/server";
+
 const ACTIVE_ENROLLMENTS = ["enrolled", "in_progress", "completed"];
 
 export async function selfEnrollAction(slug: string) {
   const user = await getPlatformUser();
   if (!user) redirect(`/login?next=${encodeURIComponent(`/experiences/${slug}`)}`);
+  await requireExperiencePasswordBySlug(slug);
   const profile = await ensurePlatformProfile(user);
   if ("error" in profile) redirect(`/experiences/${slug}?enrollmentError=${encodeURIComponent(profile.error ?? "Unable to load your Wayfinders profile.")}`);
 

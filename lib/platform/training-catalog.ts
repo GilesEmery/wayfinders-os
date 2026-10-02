@@ -20,6 +20,7 @@ export type TrainingCatalogItem = {
   description: string | null;
   experienceType: string;
   admissionPolicy: string;
+  passwordProtected: boolean;
   card: CourseCardDisplay;
   enrollmentStatus: string | null;
   href: string;
@@ -36,6 +37,9 @@ export async function getTrainingCatalog(): Promise<{ items: TrainingCatalogItem
     .order("name");
   if (experiences.error) throw new Error(`Unable to load the Trainings Catalog: ${experiences.error.message}`);
   const rows = experiences.data ?? [];
+  const protectedRows = rows.length ? await db.from("experience_password_credentials").select("experience_id").in("experience_id", rows.map((item) => item.id)) : { data: [], error: null };
+  if (protectedRows.error) throw new Error("Unable to load Training access indicators.");
+  const passwordProtectedIds = new Set((protectedRows.data ?? []).map((item) => item.experience_id));
   const versionIds = rows.flatMap((item) => item.current_published_version_id ? [item.current_published_version_id] : []);
   const participantPromise = user
     ? db.from("participants").select("id").eq("auth_user_id", user.id).maybeSingle()
@@ -88,6 +92,7 @@ export async function getTrainingCatalog(): Promise<{ items: TrainingCatalogItem
       description: item.description,
       experienceType: item.experience_type,
       admissionPolicy: item.admission_policy,
+      passwordProtected: passwordProtectedIds.has(item.id),
       card: resolveCourseCard({ configuration, courseTitle: version?.title || item.name, courseDescription: item.description, experienceType: item.experience_type, cardImageUrl, coverImageUrl: coverUrl }),
       enrollmentStatus: enrollment?.status ?? null,
       href: catalogParticipantCourseHref(href, entries),

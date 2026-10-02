@@ -35,7 +35,13 @@ export function ParticipantEntryForm({ embeddedAttemptId, returnTo }: { embedded
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (embeddedAttemptId && returnTo?.startsWith("/experiences/")) window.sessionStorage.setItem("purposeos:embedded-assessment:return", returnTo);
+    if (embeddedAttemptId && returnTo?.startsWith("/experiences/")) {
+      window.sessionStorage.setItem("purposeos:embedded-assessment:return", returnTo);
+      window.sessionStorage.setItem("purposeos:embedded-assessment:attempt", embeddedAttemptId);
+    } else {
+      window.sessionStorage.removeItem("purposeos:embedded-assessment:return");
+      window.sessionStorage.removeItem("purposeos:embedded-assessment:attempt");
+    }
   }, [embeddedAttemptId, returnTo]);
 
   const continueWith = useCallback((value: AccountContext) => {

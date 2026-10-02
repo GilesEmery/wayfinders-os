@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { configureSectionLayout, moveSectionColumn, updateSectionColumns } from "@/lib/experiences/admin/layout-mutations";
-import { createBlock, deleteBlock, duplicateBlock, moveBlock, reorderBlock, reorderBlockToPosition, setBlockAsset, updateBlock, updateBlockSettings } from "@/lib/experiences/admin/block-mutations";
+import { createBlock, deleteBlock, duplicateBlock, moveBlock, reorderBlock, reorderBlockToPosition, setBlockAsset, updateBlock, updateBlockSettings, updateInlineTextBlock } from "@/lib/experiences/admin/block-mutations";
+import type { InlineSaveResult } from "@/lib/experiences/admin/inline-draft";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 function path(experienceId: string, versionId: string, sectionId: string, message?: { error?: string; saved?: string }) {
@@ -44,12 +45,11 @@ export async function updateColumnsAction(experienceId: string, versionId: strin
 export async function moveColumnAction(experienceId: string, versionId: string, sectionId: string, columnId: string, direction: "left" | "right") { await run(experienceId, versionId, sectionId, () => moveSectionColumn(experienceId, versionId, sectionId, columnId, direction), "Column order saved."); }
 export async function createBlockAction(experienceId: string, versionId: string, sectionId: string, columnId: string, blockType: string, position?: number) { await runBlock(experienceId, versionId, sectionId, () => createBlock(experienceId, versionId, sectionId, columnId, blockType, position), "Content added."); }
 export async function updateBlockAction(experienceId: string, versionId: string, sectionId: string, blockId: string, form: FormData) { await runBlock(experienceId, versionId, sectionId, () => updateBlock(experienceId, versionId, sectionId, blockId, form), "Content saved.", blockId); }
-export async function saveInlineBlockAction(experienceId: string, versionId: string, sectionId: string, blockId: string, form: FormData): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function saveInlineBlockAction(experienceId: string, versionId: string, sectionId: string, blockId: string, form: FormData): Promise<InlineSaveResult> {
   try {
-    await updateBlock(experienceId, versionId, sectionId, blockId, form);
-    return { ok: true };
+    return await updateInlineTextBlock(experienceId, versionId, sectionId, blockId, form);
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : "Unable to save Content." };
+    return { ok: false, code: "failed", error: error instanceof Error ? error.message : "Unable to save Content." };
   }
 }
 export async function updateBlockSettingsAction(experienceId: string, versionId: string, sectionId: string, blockId: string, form: FormData) { await runBlock(experienceId, versionId, sectionId, () => updateBlockSettings(experienceId, versionId, sectionId, blockId, form), "Block settings saved.", blockId); }

@@ -143,6 +143,11 @@ function personalImpactStatementAssessment(input: unknown): ValidationResult<Blo
   return parsed.value ? result({}, parsed.errors) : { ok: false, errors: parsed.errors };
 }
 
+function startSomethingExperience(input: unknown): ValidationResult<BlockConfiguration> {
+  const parsed = strict(input, []);
+  return parsed.value ? result({}, parsed.errors) : { ok: false, errors: parsed.errors };
+}
+
 function pdfReader(input: unknown): ValidationResult<BlockConfiguration> {
   const parsed = strict(input, ["title", "description", "readerMode", "showReader", "allowDownload", "allowOpenInNewTab"]);
   if (!parsed.value) return { ok: false, errors: parsed.errors };
@@ -259,11 +264,18 @@ const PERSONAL_IMPACT_STATEMENT_DEFINITION = Object.freeze({
   supportsResponse: true, supportsCompletion: true, supportsResources: false, duplicable: false, availability: "experimental", participantRuntime: "available", response: { responseKind: "short_text", responseType: "structured_response", completionSignal: "response_submitted" },
 } satisfies BlockDefinition);
 
+const START_SOMETHING_DEFINITION = Object.freeze({
+  blockType: "custom_component", label: "Start Something", description: "A six-stage native guided experience for moving an idea toward action.", category: "custom_assessment", iconKey: "assessment", editorKey: "response", previewKey: "response", participantRendererKey: "start-something.v1", defaultCompletionRule: "response_submitted",
+  defaultConfiguration: () => ({}), validateConfiguration: startSomethingExperience,
+  supportsResponse: true, supportsCompletion: true, supportsResources: false, duplicable: false, availability: "experimental", participantRuntime: "available", response: { responseKind: "short_text", responseType: "structured_response", completionSignal: "response_submitted" },
+} satisfies BlockDefinition);
+
 const CUSTOM_PARTICIPANT_BLOCKS = new Map([
   ["system_component:wayfinders-ethos-assessment.v1", BLOCKS.get("system_component")!],
   ["custom_component:activate-your-purpose-assessment.v1", BLOCKS.get("custom_component")!],
   ["custom_component:launching-wayfinders-hub-assessment.v1", LAUNCHING_WAYFINDERS_HUB_DEFINITION],
   ["custom_component:personal-impact-statement.v1", PERSONAL_IMPACT_STATEMENT_DEFINITION],
+  ["custom_component:start-something.v1", START_SOMETHING_DEFINITION],
 ]);
 
 export const BLOCK_DEFINITIONS: readonly BlockDefinition[] = Object.freeze([...definitions]);

@@ -49,13 +49,14 @@ function ResultCard({ result, onExplore }: { result: Result; onExplore: () => vo
   return <article className="purpose-result-card"><p>{result.area.title}</p><strong>{result.score} <span>/ 20</span></strong><h3>{result.stage.title}</h3><button aria-haspopup="dialog" onClick={onExplore} type="button">+ Explore</button></article>;
 }
 
-export function ActivatePurposeAssessment({ initialData, route, preview = false }: { initialData: unknown; route: Route; preview?: boolean }) {
+export function ActivatePurposeAssessment({ initialData, route, preview = false, standalone = false }: { initialData: unknown; route: Route; preview?: boolean; standalone?: boolean }) {
   const initialAnswers = normalizeActivatePurposeAnswers(initialData);
   const initiallyComplete = activatePurposeComplete(initialAnswers);
   const [answers, setAnswers] = useState<Record<string, ActivatePurposeAnswer>>(initialAnswers);
   const [questionIndex, setQuestionIndex] = useState(() => Math.min(firstIncompleteActivatePurposeQuestion(initialAnswers), ACTIVATE_PURPOSE_QUESTIONS.length - 1));
   const [showResults, setShowResults] = useState(initiallyComplete);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [finalized, setFinalized] = useState(() => Boolean((initialData as { finished?: unknown } | null)?.finished));
   const [focused, setFocused] = useState(false);
   const [dialog, setDialog] = useState<Result | null>(null);
   const queue = useRef(Promise.resolve());
@@ -68,6 +69,7 @@ export function ActivatePurposeAssessment({ initialData, route, preview = false 
   const results = activatePurposeResults(answers);
 
   function select(answer: ActivatePurposeAnswer) {
+    if (standalone && finalized) return;
     const next = { ...answers, [question.key]: answer };
     setAnswers(next);
     setFocused(true);
@@ -102,6 +104,7 @@ export function ActivatePurposeAssessment({ initialData, route, preview = false 
   }
 
   function retake() {
+    if (standalone) return;
     if (advanceTimer.current) clearTimeout(advanceTimer.current);
     setAnswers({});
     setQuestionIndex(0);
@@ -110,13 +113,13 @@ export function ActivatePurposeAssessment({ initialData, route, preview = false 
     setDialog(null);
   }
 
-  const launchStatus: AssessmentLaunchStatus = results ? "completed" : answeredCount ? "in_progress" : "not_started";
-  if (!focused) return <AssessmentLaunchCard eyebrow="PurposeOS Assessment" title="Activate Your Purpose" description="Discover your current growth stage across the five areas of purpose and identify the next step in your development." status={launchStatus} action={<button type="button" onClick={() => setFocused(true)}>{preview ? "Preview Assessment" : assessmentLaunchLabel(launchStatus)}</button>}/>;
+  const launchStatus: AssessmentLaunchStatus = (standalone ? finalized : results) ? "completed" : answeredCount ? "in_progress" : "not_started";
+  if (!focused) return <AssessmentLaunchCard eyebrow="PurposeOS Assessment" title="Activate Your Purpose" description="Discover your current growth stage across the three areas of purpose and identify the next step in your development." status={launchStatus} action={<button aria-label="Open Activate Your Purpose Assessment" type="button" onClick={() => setFocused(true)}>{preview ? "Preview Assessment" : assessmentLaunchLabel(launchStatus)}</button>}/>;
 
   if (showResults && results) return <AssessmentFocusFrame active={focused} label="Activate Your Purpose Assessment in progress" onClose={() => setFocused(false)}><section aria-label="Activate Your Purpose Assessment results" className="purpose-assessment purpose-results-view">
-    <header className="purpose-assessment-header"><div><p>Activate Your Purpose</p><span>Assessment complete</span></div><h2>Your growth stages</h2><p>Each area reflects where you are today. Explore a result for its stage description and development context.</p></header>
+    <header className="purpose-assessment-header"><div><p>Activate Your Purpose</p><span>{standalone && !finalized ? "Ready to finish" : "Assessment complete"}</span></div><h2>Your growth stages</h2><p>Each area reflects where you are today. Explore a result for its stage description and development context.</p></header>
     <div className="purpose-results-grid">{results.map((result) => <ResultCard key={result.area.key} result={result} onExplore={() => setDialog(result)}/>)}</div>
-    <footer className="purpose-results-footer"><button onClick={retake} type="button">Retake assessment</button><span aria-live="polite">{preview ? "Preview only · responses are not saved" : saveState === "saving" ? "Saving…" : saveState === "error" ? "Could not save. Choose the answer again." : "Assessment saved ✓"}</span></footer>
+    <footer className="purpose-results-footer">{!standalone && <button onClick={retake} type="button">Retake assessment</button>}{standalone && results && !finalized && <button disabled={saveState === "saving"} onClick={async () => { setSaveState("saving"); try { await queue.current; if (!preview) await saveActivatePurposeAssessmentAction(route.slug, route.moduleKey, route.lessonKey, route.sectionKey, route.blockKey, route.cohortId, answers, true); setFinalized(true); setSaveState("saved"); } catch { setSaveState("error"); } }} type="button">{saveState === "saving" ? "Saving…" : "Finish assessment"}</button>}<span aria-live="polite">{preview ? "Preview only · responses are not saved" : saveState === "saving" ? "Saving…" : saveState === "error" ? "Could not save. Choose the answer again." : standalone && !finalized ? "Draft saved · Finish to complete" : "Assessment saved ✓"}</span></footer>
     {dialog && <AreaDialog answers={answers} result={dialog} onClose={() => setDialog(null)}/>} 
   </section></AssessmentFocusFrame>;
 
@@ -124,7 +127,7 @@ export function ActivatePurposeAssessment({ initialData, route, preview = false 
   const firstInArea = area.questions[0].key === question.key;
   const progress = Math.round((answeredCount / ACTIVATE_PURPOSE_QUESTIONS.length) * 100);
   return <AssessmentFocusFrame active={focused} label="Activate Your Purpose Assessment in progress" onClose={() => setFocused(false)}><section aria-label="Activate Your Purpose Assessment" className="purpose-assessment">
-    <header className="purpose-assessment-header"><div><p>Activate Your Purpose</p><span>Required assessment</span></div><h2>Find your next step</h2><p>Choose the response that best describes where you are today. Every answer saves automatically.</p></header>
+    <header className="purpose-assessment-header"><div><p>Activate Your Purpose</p><span>Guided assessment</span></div><h2>Find your next step</h2><p>Choose the response that best describes where you are today. Every answer saves automatically.</p></header>
     <div className="purpose-progress" aria-label={`${answeredCount} of 15 questions complete`}><div><span>Question {questionIndex + 1} of 15</span><strong>{answeredCount} / 15 complete</strong></div><i aria-hidden="true"><span style={{ width: `${progress}%` }}/></i></div>
     <div className="purpose-question-stage">
       <div className={`purpose-area-heading${firstInArea ? " is-entry" : ""}`}><p>{area.title}</p>{firstInArea && <span>{area.description}</span>}</div>
@@ -132,7 +135,7 @@ export function ActivatePurposeAssessment({ initialData, route, preview = false 
         <legend className="sr-only">Question {questionIndex + 1} of 15</legend>
         <p className="sr-only" id={`purpose-area-${area.key}`}>{area.description}</p>
         <h3 id={`purpose-question-${question.key}`}>{question.prompt}</h3>
-        <div className="purpose-options">{(["A", "B", "C", "D"] as const).map((answer) => <label className={selected === answer ? "is-selected" : ""} key={answer}><input checked={selected === answer} name={question.key} onChange={() => select(answer)} type="radio" value={answer}/><b aria-hidden="true">{answer}</b><span>{question.options[answer]}</span><i aria-hidden="true">✓</i></label>)}</div>
+        <div className="purpose-options">{(["A", "B", "C", "D"] as const).map((answer) => <label className={selected === answer ? "is-selected" : ""} key={answer}><input disabled={standalone && finalized} checked={selected === answer} name={question.key} onChange={() => select(answer)} type="radio" value={answer}/><b aria-hidden="true">{answer}</b><span>{question.options[answer]}</span><i aria-hidden="true">✓</i></label>)}</div>
       </fieldset>
       <footer><button disabled={questionIndex === 0} onClick={back} type="button">← Back</button><span aria-live="polite">{preview ? "Preview only · responses are not saved" : saveState === "saving" ? "Saving…" : saveState === "error" ? "Could not save. Choose the answer again." : saveState === "saved" ? "Saved ✓" : "Select an answer to continue"}</span>{results && <button className="is-primary" onClick={() => setShowResults(true)} type="button">View results</button>}</footer>
     </div>

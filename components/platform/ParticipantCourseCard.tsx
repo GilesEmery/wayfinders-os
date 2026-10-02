@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { CourseCardDisplay } from "@/lib/platform/course-card";
 
-export function ParticipantCourseCard({ card, href, actionLabel, meta, variant = "vertical" }: { card: CourseCardDisplay; href: string; actionLabel: string; meta?: string | null; variant?: "vertical" | "horizontal" }) {
+export function ParticipantCourseCard({ card, href, actionLabel, meta, variant = "vertical", secondaryAction }: { card: CourseCardDisplay; href: string; actionLabel: string; meta?: string | null; variant?: "vertical" | "horizontal"; secondaryAction?: { href: string; label: string } }) {
   return <article className={`participant-course-card is-${variant}`}>
     <div className="participant-course-card-media">
       {card.imageUrl ? <Image src={card.imageUrl} alt="" fill sizes="(max-width: 720px) 100vw, 38vw" unoptimized/> : <div className="participant-course-card-placeholder" aria-hidden="true"><span>Purpose OS</span></div>}
@@ -13,6 +13,7 @@ export function ParticipantCourseCard({ card, href, actionLabel, meta, variant =
       {card.supportingText && <p>{card.supportingText}</p>}
       {meta && <span className="participant-course-card-meta">{meta}</span>}
       <Link href={href}>{actionLabel}</Link>
+      {secondaryAction && <Link href={secondaryAction.href}>{secondaryAction.label}</Link>}
     </div>
   </article>;
 }

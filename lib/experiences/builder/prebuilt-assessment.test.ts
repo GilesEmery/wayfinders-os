@@ -47,7 +47,7 @@ test("required gating uses only completion signals and ignores optional or recom
   const progress = readFileSync(new URL("./progress-mutations.ts", import.meta.url), "utf8");
   assert.match(progress, /block\.requirement_level === "required"/);
   assert.match(progress, /embedded_assessment_attempts/);
-  assert.match(progress, /attempt\.status === "completed"/);
+  assert.match(progress, /sharedAssessmentCompleted/);
   assert.doesNotMatch(progress, /participant_responses[\s\S]{0,300}embedded_assessment_attempts/);
 });
 
@@ -66,4 +66,50 @@ test("all Course assessments share the high-contrast launch card and status acti
   assert.match(css, /\.assessment-launch-card{[^}]*background:var\(--experience-accent/);
   assert.match(css, /\.assessment-launch-card h2{[^}]*color:#fff/);
   assert.match(css, /\.assessment-launch-card button{[^}]*background:#fff/);
+  assert.match(css, /\.assessment-launch-card,\.assessment-launch-card\.is-completed{background:#252a29/);
+});
+
+test("embedded prebuilt Assessments open in a resumable Course overlay", () => {
+  const block = readFileSync(new URL("../../../components/experiences/builder/PrebuiltAssessmentBlock.tsx", import.meta.url), "utf8");
+  const launcher = readFileSync(new URL("../../../components/experiences/builder/EmbeddedAssessmentLauncher.tsx", import.meta.url), "utf8");
+  const actions = readFileSync(new URL("./prebuilt-assessment-actions.ts", import.meta.url), "utf8");
+  const documentMode = readFileSync(new URL("../../../components/platform/EmbeddedAssessmentDocument.tsx", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../../../app/globals.css", import.meta.url), "utf8");
+  assert.match(block, /EmbeddedAssessmentLauncher/);
+  assert.match(actions, /preparePrebuiltAssessmentAction/);
+  assert.match(actions, /begin_embedded_assessment/);
+  assert.match(launcher, /role="dialog"/);
+  assert.match(launcher, /<iframe/);
+  assert.match(launcher, /launchPath &&/);
+  assert.match(launcher, /embeddedDisplay=modal/);
+  assert.doesNotMatch(launcher, /setLaunchPath\(null\)/);
+  assert.match(documentMode, /window\.self === window\.top/);
+  assert.match(documentMode, /embedded-assessment-document/);
+  assert.match(css, /\.embedded-assessment-overlay/);
+  assert.match(css, /\.embedded-assessment-modal/);
+});
+
+test("Course blocks and My Trainings share one canonical Assessment journey", () => {
+  const block = readFileSync(new URL("../../../components/experiences/builder/PrebuiltAssessmentBlock.tsx", import.meta.url), "utf8");
+  const dashboard = readFileSync(new URL("../../../app/dashboard/page.tsx", import.meta.url), "utf8");
+  assert.match(block, /experience_enrollments/);
+  assert.match(block, /participant_id.*course\.participantId/);
+  assert.match(block, /experience_id.*configuration\.assessmentExperienceId/);
+  assert.match(block, /canonicalEnrollment\.data\?\.status === "completed"/);
+  assert.match(block, /canonicalEnrollment\.data\?\.status === "in_progress"/);
+  const library = readFileSync(new URL("../../platform/active-journey.ts", import.meta.url), "utf8");
+  assert.match(library, /activeCanonicalJourneyEnrollment\(enrollment, experience.slug, Boolean\(lmu\)\)/);
+  assert.match(dashboard, /activeJourneyCards\(data\)/);
+  assert.match(dashboard, /visibleCanonicalJourneyCompletion\(/);
+  assert.match(dashboard, /activeCards.slice\(0, 3\)/);
+
+});
+
+test("changing the selected prebuilt Assessment refreshes its display copy", () => {
+  const fields = readFileSync(new URL("../../../components/admin/PrebuiltAssessmentFields.tsx", import.meta.url), "utf8");
+  assert.match(fields, /onChange=\{\(event\) => selectAssessment\(event\.target\.value\)\}/);
+  assert.match(fields, /setTitle\(selected\?\.name \?\? ""\)/);
+  assert.match(fields, /setDescription\(selected\?\.description \?\? ""\)/);
+  assert.match(fields, /value=\{title\}/);
+  assert.match(fields, /value=\{description\}/);
 });

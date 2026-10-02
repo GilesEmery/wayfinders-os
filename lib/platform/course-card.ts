@@ -1,4 +1,5 @@
 import { normalizeCourseConfiguration } from "@/lib/experiences/builder/course-configuration";
+import { participantCardEyebrow } from "@/lib/platform/course-card-policy";
 
 export type CourseCardDisplay = Readonly<{
   imageUrl: string | null;
@@ -6,11 +7,6 @@ export type CourseCardDisplay = Readonly<{
   supportingText: string | null;
   eyebrow: string | null;
 }>;
-
-function derivedEyebrow(experienceType: string | null | undefined) {
-  if (!experienceType) return null;
-  return experienceType.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
 
 export function resolveCourseCard(input: {
   configuration: unknown;
@@ -25,6 +21,6 @@ export function resolveCourseCard(input: {
     imageUrl: input.cardImageUrl || input.coverImageUrl || null,
     headline: card.headline || input.courseTitle,
     supportingText: card.supporting_text || input.courseDescription?.trim() || null,
-    eyebrow: card.eyebrow || derivedEyebrow(input.experienceType),
+    eyebrow: participantCardEyebrow(card.eyebrow, input.experienceType),
   };
 }

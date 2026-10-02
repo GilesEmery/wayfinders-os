@@ -8,10 +8,10 @@ import {
   Landmark, Leaf, Lightbulb, Palette, PersonStanding, Scale, ShieldCheck,
   Sparkles, Users, UsersRound,
 } from "lucide-react";
-import { savePersonalImpactStatementAction } from "@/lib/experiences/builder/personal-impact-statement-actions";
+import { finishPersonalImpactStatementAction, savePersonalImpactStatementAction } from "@/lib/experiences/builder/personal-impact-statement-actions";
 import {
-  PERSONAL_IMPACT_CAUSES, PERSONAL_IMPACT_STAGES, composeRoughDraftOne, composeRoughDraftTwo,
-  firstIncompletePersonalImpactStage, normalizePersonalImpactData, personalImpactComplete,
+  PERSONAL_IMPACT_CAUSES, PERSONAL_IMPACT_RENDERER_KEY, PERSONAL_IMPACT_STAGES, composeRoughDraftOne, composeRoughDraftTwo,
+  firstIncompletePersonalImpactStage, normalizePersonalImpactData, normalizePersonalImpactEnvelope, personalImpactComplete,
   type PersonalImpactData,
 } from "@/lib/experiences/builder/personal-impact-statement";
 
@@ -58,27 +58,32 @@ function PreviousResponses({ data, stage }: { data: PersonalImpactData; stage: n
   </details>;
 }
 
-export function PersonalImpactStatementAssessment({ initialData, route, preview = false, returnTo = null, mode = "course" }: { initialData: unknown; route: Route; preview?: boolean; returnTo?: string | null; mode?: PersonalImpactStatementMode }) {
-  const initial = normalizePersonalImpactData(initialData);
-  const [data, setData] = useState(initial);
-  const [stage, setStage] = useState(() => firstIncompletePersonalImpactStage(initial));
-  const [view, setView] = useState<View>(() => personalImpactComplete(initial) ? "result" : "intro");
+export function PersonalImpactStatementAssessment({ initialData, initialCompletedAt = null, route, preview = false, returnTo = null, mode = "course" }: { initialData: unknown; initialCompletedAt?: string | null; route: Route; preview?: boolean; returnTo?: string | null; mode?: PersonalImpactStatementMode }) {
+  const initial = normalizePersonalImpactEnvelope(initialData, initialCompletedAt);
+  const [data, setData] = useState(initial.draft);
+  const [finished, setFinished] = useState(initial.finished);
+  const [stage, setStage] = useState(() => firstIncompletePersonalImpactStage(initial.draft));
+  const [view, setView] = useState<View>(() => initial.finished ? "result" : "intro");
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [message, setMessage] = useState("");
+  const completing = useRef(false);
+  const [finishing, setFinishing] = useState(false);
+  const autosaveTimer = useRef<number | null>(null);
   const queued = useRef(Promise.resolve());
+  const lastSaved = useRef(JSON.stringify(initial.draft));
   useEffect(() => {
-    if (preview) return;
-    const timer = window.setTimeout(() => {
+    if (preview || completing.current || JSON.stringify(data) === lastSaved.current) return;
+    const timer = autosaveTimer.current = window.setTimeout(() => {
       setSaveState("saving");
       queued.current = queued.current.then(async () => {
-        try { await savePersonalImpactStatementAction(route.slug, route.moduleKey, route.lessonKey, route.sectionKey, route.blockKey, route.cohortId, data); setSaveState("saved"); }
+        try { await savePersonalImpactStatementAction(route.slug, route.moduleKey, route.lessonKey, route.sectionKey, route.blockKey, route.cohortId, data); lastSaved.current = JSON.stringify(data); setSaveState("saved"); }
         catch { setSaveState("error"); }
       });
     }, 650);
     return () => window.clearTimeout(timer);
   }, [data, preview, route]);
 
-  const update = <K extends keyof PersonalImpactData>(key: K, value: PersonalImpactData[K]) => setData((current) => ({ ...current, [key]: value }));
+  const update = <K extends keyof PersonalImpactData>(key: K, value: PersonalImpactData[K]) => { if (!completing.current) setData((current) => ({ ...current, [key]: value })); };
   const valid = [
     Boolean(data.area_of_influence.trim()),
     data.causes.length > 0 && (!data.causes.includes("Other") || Boolean(data.causes_other.trim())),
@@ -95,11 +100,36 @@ export function PersonalImpactStatementAssessment({ initialData, route, preview 
     update("causes", [...data.causes, cause]);
   }
 
-  function next() {
+  async function saveDraft() {
+    if (preview || completing.current) return;
+    if (autosaveTimer.current !== null) window.clearTimeout(autosaveTimer.current);
+    setSaveState("saving");
+    queued.current = queued.current.then(async () => {
+      try {
+        await savePersonalImpactStatementAction(route.slug, route.moduleKey, route.lessonKey, route.sectionKey, route.blockKey, route.cohortId, data);
+        lastSaved.current = JSON.stringify(data); setSaveState("saved"); setMessage("");
+      } catch { setSaveState("error"); setMessage("Unable to save your draft. Your answers remain here; please retry Save Draft."); }
+    });
+    await queued.current;
+  }
+
+  async function next() {
+    if (completing.current) return;
     if (!valid[stage]) { setMessage(stage === 1 ? "Choose at least one cause and complete Other when selected." : "Complete each required reflection before continuing."); return; }
     setMessage("");
     if (stage < 6) setStage((value) => value + 1);
-    else if (personalImpactComplete(data)) setView("result");
+    else if (personalImpactComplete(data)) {
+      if (preview) { setFinished((current) => current ?? { schemaVersion: 1, sourceVersion: PERSONAL_IMPACT_RENDERER_KEY, completedAt: new Date().toISOString(), participantMaterial: structuredClone(data) }); setView("result"); return; }
+      completing.current = true; setFinishing(true);
+      if (autosaveTimer.current !== null) window.clearTimeout(autosaveTimer.current);
+      await queued.current;
+      try {
+        const result = await finishPersonalImpactStatementAction(route.slug, route.moduleKey, route.lessonKey, route.sectionKey, route.blockKey, route.cohortId, data);
+        if (!result.completedAt) throw new Error("Completion was not confirmed.");
+        lastSaved.current = JSON.stringify(data); setSaveState("saved");
+        window.location.assign(returnTo ?? "/dashboard");
+      } catch { setSaveState("error"); setMessage("Your response could not be completed. Your answers remain here. Please retry Save my response."); completing.current = false; setFinishing(false); }
+    }
   }
 
   function shell(content: React.ReactNode) {
@@ -118,15 +148,17 @@ export function PersonalImpactStatementAssessment({ initialData, route, preview 
     <div className="pis-actions"><button className="pis-primary" type="button" onClick={() => { setStage(firstIncompletePersonalImpactStage(data)); setView("assessment"); }}>{JSON.stringify(data) === JSON.stringify(normalizePersonalImpactData({})) ? "Start My Statement" : "Continue My Statement"}</button>{returnTo && <a href={returnTo}>Return to Course</a>}</div>
   </section>);
 
-  if (view === "result") return shell(<section className="pis-experience pis-result">
-    <div className="pis-contours" aria-hidden="true"/><p className="pis-kicker">Your Personal Impact Statement</p><blockquote>{data.final_impact_statement}</blockquote>
-    <section><h2>Areas You Care About</h2><div className="pis-result-causes">{data.causes.map((cause) => <span key={cause}>{cause}</span>)}</div></section>
-    <section><h2>Area of Influence</h2><p>{data.area_of_influence}</p></section>
-    <div className="pis-actions"><button type="button" onClick={() => { setStage(6); setView("assessment"); }}>Edit Statement</button><button type="button" onClick={() => navigator.clipboard.writeText(data.final_impact_statement)}>Copy Statement</button><button type="button" onClick={() => setView("review")}>Review My Responses</button><button type="button" onClick={() => window.print()}>Print / Save as PDF</button>{returnTo && <a href={returnTo}>Return to Course</a>}</div>
+  const completedResult = finished?.participantMaterial ?? data;
+  if (view === "result" && finished) { const result = finished.participantMaterial; return shell(<section className="pis-experience pis-result">
+    <div className="pis-contours" aria-hidden="true"/><p className="pis-kicker">Your Personal Impact Statement</p><blockquote>{result.final_impact_statement}</blockquote>
+    <section><h2>Areas You Care About</h2><div className="pis-result-causes">{result.causes.map((cause) => <span key={cause}>{cause}</span>)}</div></section>
+    <section><h2>Area of Influence</h2><p>{result.area_of_influence}</p></section>
+    <div className="pis-actions"><button type="button" onClick={() => { setData(result); setStage(6); setView("assessment"); }}>Review / Edit</button><button type="button" onClick={() => navigator.clipboard.writeText(result.final_impact_statement)}>Copy Statement</button><button type="button" onClick={() => setView("review")}>Review My Responses</button><button type="button" onClick={() => window.print()}>Print / Save as PDF</button>{returnTo && <a href={returnTo}>Return to Course</a>}</div>
   </section>);
+  }
 
   if (view === "review") return shell(<section className="pis-experience pis-review"><p className="pis-kicker">Your progression</p><h1>Review My Responses</h1>
-    <dl><dt>Area of Influence</dt><dd>{data.area_of_influence}</dd><dt>Selected Causes</dt><dd>{data.causes.join(", ")}{data.causes_other ? ` — ${data.causes_other}` : ""}</dd><dt>Rough Draft #1</dt><dd>{composeRoughDraftOne(data)}</dd><dt>What’s at Stake?</dt><dd>{data.world_change}<br/><br/>{data.mission_loss}</dd><dt>Rough Draft #2</dt><dd>{composeRoughDraftTwo(data)}</dd><dt>Distilled Statement</dt><dd>{data.distilled_statement}</dd><dt>Final Statement</dt><dd>{data.final_impact_statement}</dd></dl>
+    <dl><dt>Area of Influence</dt><dd>{completedResult.area_of_influence}</dd><dt>Selected Causes</dt><dd>{completedResult.causes.join(", ")}{completedResult.causes_other ? ` — ${completedResult.causes_other}` : ""}</dd><dt>Rough Draft #1</dt><dd>{composeRoughDraftOne(completedResult)}</dd><dt>What’s at Stake?</dt><dd>{completedResult.world_change}<br/><br/>{completedResult.mission_loss}</dd><dt>Rough Draft #2</dt><dd>{composeRoughDraftTwo(completedResult)}</dd><dt>Distilled Statement</dt><dd>{completedResult.distilled_statement}</dd><dt>Final Statement</dt><dd>{completedResult.final_impact_statement}</dd></dl>
     <button className="pis-primary" type="button" onClick={() => setView("result")}>Back to My Statement</button>
   </section>);
 
@@ -145,6 +177,6 @@ export function PersonalImpactStatementAssessment({ initialData, route, preview 
     </div>
     <PreviousResponses data={data} stage={stage}/>
     <p className="pis-message" role="status" aria-live="polite">{message || (preview ? "Preview — responses are not saved" : saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved" : saveState === "error" ? "Unable to save. Your responses remain on this screen." : "")}</p>
-    <footer><button type="button" disabled={stage === 0} onClick={() => { setMessage(""); setStage((value) => Math.max(0, value - 1)); }}>Back</button><button className="pis-primary" type="button" onClick={next}>{stage === 6 ? "Complete My Statement" : "Continue"}</button></footer>
+    <footer><button type="button" disabled={stage === 0} onClick={() => { setMessage(""); setStage((value) => Math.max(0, value - 1)); }}>Back</button>{!preview && <button type="button" disabled={finishing || saveState === "saving"} onClick={() => void saveDraft()}>{saveState === "error" ? "Retry Save Draft" : "Save Draft"}</button>}<button className="pis-primary" type="button" disabled={finishing} onClick={() => void next()}>{finishing ? "Saving…" : stage === 6 ? "Save my response" : "Continue"}</button></footer>
   </section>);
 }

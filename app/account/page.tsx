@@ -26,6 +26,7 @@ export default async function AccountPage() {
   return <PlatformShell>
     {!account ? <PlatformAuthGate /> : <section className="account-page">
       <header><p className="platform-eyebrow">Purpose OS</p><h1>Account</h1><p>Manage the profile and security attached to your global Wayfinder identity.</p><Link className="account-dashboard-link" href="/dashboard">View My Dashboard →</Link></header>
+      <aside className="account-results-link"><div><p className="platform-eyebrow">Guided Experiences</p><h2>My completed results</h2><p>Revisit and print your completed Life Mapping U, Personal Impact Statement, and Start Something results.</p></div><Link href="/account/results">View My Results →</Link></aside>
       <AccountSettings account={account} hubSettings={hubSettings}/>
     </section>}
   </PlatformShell>;

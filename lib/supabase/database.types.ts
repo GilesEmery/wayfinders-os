@@ -69,6 +69,9 @@ export type Database = {
       authorization_permission_overrides: FoundationTable<{
         auth_user_id: string; permission_key: string; effect: string; scope_type: string; scope_id: string | null; granted_by: string; created_at: string; updated_at: string
       }, "auth_user_id" | "permission_key" | "effect" | "granted_by">
+      experience_password_credentials: FoundationTable<{
+        experience_id: string; password_hash: string; credential_revision: string; password_updated_at: string
+      }, "experience_id" | "password_hash">
       experiences: FoundationTable<{
         id: string; slug: string; name: string; description: string | null; experience_type: string; delivery_mode: string; status: string; accent_color: string | null; visibility: string; admission_policy: string; created_by: string | null; current_published_version_id: string | null; owner_organization_id: string | null; default_theme_id: string | null; card_configuration: Json; created_at: string; updated_at: string
       }, "slug" | "name" | "experience_type">

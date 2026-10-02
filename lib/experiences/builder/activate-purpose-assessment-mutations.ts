@@ -3,20 +3,33 @@ import "server-only";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { resolveParticipantCourse } from "./participant-runtime";
 import { ACTIVATE_PURPOSE_RENDERER_KEY, activatePurposeComplete, normalizeActivatePurposeAnswers } from "./activate-purpose-assessment";
+import { projectActivatePurposeResponse } from "./activate-purpose-completion";
+import { persistAssessmentResponse, confirmAssessmentCompletion } from "./assessment-response-save";
+import { completeParticipantSectionFromResponses } from "./progress-mutations";
 import { recordParticipantSectionVisit } from "./progress-mutations";
 
 const KEY = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-export async function saveActivatePurposeAssessment(slug: string, moduleKey: string, lessonKey: string, sectionKey: string, blockKey: string, cohortId: string | null | undefined, input: unknown) {
+export async function saveActivatePurposeAssessment(slug: string, moduleKey: string, lessonKey: string, sectionKey: string, blockKey: string, cohortId: string | null | undefined, input: unknown, finalize = false) {
   if (![slug, moduleKey, lessonKey, sectionKey, blockKey].every((value) => value.length <= 120 && KEY.test(value))) throw new Error("This assessment is unavailable.");
   const resolution = await resolveParticipantCourse(slug, cohortId ?? null);
   if (resolution.status !== "ready" || !resolution.enrollmentId) throw new Error("This assessment is unavailable.");
   const target = resolution.structure.modules.flatMap((module) => module.lessons.flatMap((lesson) => lesson.sections.map((section) => ({ module, lesson, section })))).find(({ module, lesson, section }) => module.module_key === moduleKey && lesson.lesson_key === lessonKey && section.section_key === sectionKey);
   const block = target?.section.layout?.columns.flatMap((column) => column.blocks).find((candidate) => candidate.block_key === blockKey);
   const response = block ? resolution.responses[block.id] : null;
-  if (!target || !block || block.block_type !== "custom_component" || block.custom_renderer_key !== ACTIVATE_PURPOSE_RENDERER_KEY || block.status !== "active" || block.visibility !== "visible" || !response || response.definition.response_type !== "structured_response" || !response.definition.is_required) throw new Error("This assessment is unavailable.");
+  if (!target || !block || block.block_type !== "custom_component" || block.custom_renderer_key !== ACTIVATE_PURPOSE_RENDERER_KEY || block.status !== "active" || block.visibility !== "visible" || !response || response.definition.response_type !== "structured_response") throw new Error("This assessment is unavailable.");
   const answers = normalizeActivatePurposeAnswers(input);
   const complete = activatePurposeComplete(answers);
+  if (slug === "activate-your-purpose") {
+    if (finalize && !complete) throw new Error("Answer all fifteen questions before finishing.");
+    const saved = await persistAssessmentResponse({ participantId: resolution.participantId, enrollmentId: resolution.enrollmentId, versionId: resolution.structure.version.id, definitionId: response.definition.id }, (prior, now) => projectActivatePurposeResponse(prior, answers, finalize, now));
+    await recordParticipantSectionVisit(slug, moduleKey, lessonKey, sectionKey, cohortId);
+    if (saved.completedAt) {
+      await completeParticipantSectionFromResponses(slug, moduleKey, lessonKey, sectionKey, cohortId);
+      await confirmAssessmentCompletion(resolution.participantId, resolution.enrollmentId, resolution.structure.version.id);
+    }
+    return { complete: Boolean(saved.completedAt), status: saved.completedAt ? "submitted" : "draft" } as const;
+  }
   const now = new Date().toISOString();
   const payload = { participant_id: resolution.participantId, enrollment_id: resolution.enrollmentId, experience_version_id: resolution.structure.version.id, response_definition_id: response.definition.id, response_data: { answers }, status: complete ? "submitted" : "draft", finalized_at: complete ? response.response?.finalized_at ?? now : null, updated_at: now };
   const db = createAdminSupabaseClient();
