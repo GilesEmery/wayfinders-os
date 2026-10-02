@@ -3,7 +3,7 @@ import type { CSSProperties } from "react";
 import { BuilderColumnBlocks } from "@/components/admin/BuilderBlocks";
 import type { BuilderCourseStructure, BuilderSection } from "@/lib/experiences/builder/types";
 import { getSectionLayoutWorkspace } from "@/lib/experiences/admin/layout-data";
-import { createCourseLessonAction, createModuleAction, createSectionAction, dragCurriculumAction, renameCurriculumItemAction, reorderCurriculumAction, setLessonHeroAction, updateSectionAction } from "@/app/admin/trainings/[experienceId]/versions/[versionId]/actions";
+import { createCourseLessonAction, createModuleAction, createSectionAction, deleteAction, dragCurriculumAction, renameCurriculumItemAction, reorderCurriculumAction, setLessonHeroAction, updateSectionAction } from "@/app/admin/trainings/[experienceId]/versions/[versionId]/actions";
 import { publishVersionAction } from "@/app/admin/trainings/[experienceId]/versions/[versionId]/release-actions";
 import { renameCourseAction, setCourseCoverAction, updateCourseConfigurationAction, updateCourseLayoutAction } from "@/app/admin/trainings/[experienceId]/edit-actions";
 import { GROUP_LABELS, groupLabel, normalizeCourseConfiguration } from "@/lib/experiences/builder/course-configuration";
@@ -22,6 +22,10 @@ function RenameControl({ action, title, label }: { action: (form: FormData) => v
   return <details className="course-builder-rename"><summary aria-label={`Rename ${label}`} title={`Rename ${label}`}>Edit</summary><form action={action}><label><span className="sr-only">{label} title</span><input name="title" defaultValue={title} required maxLength={200} autoFocus/></label><button type="submit">Save</button></form></details>;
 }
 
+function DeleteEmptyContainer({ action, label, title }: { action: (form: FormData) => void | Promise<void>; label: string; title: string }) {
+  return <details className="course-builder-add course-builder-delete"><summary>Delete empty {label.toLowerCase()}</summary><form action={action}><label><input type="checkbox" name="confirm_delete" value="yes" required/> Confirm deletion of “{title}”</label><button type="submit">Delete {label}</button></form></details>;
+}
+
 function PositionControls({ action, label, first, last }: { action: (direction: "up" | "down") => void | Promise<void>; label: string; first: boolean; last: boolean }) {
   return <div className="course-builder-position-controls" aria-label={`${label} position`}><form action={action.bind(null, "up")}><button type="submit" disabled={first} aria-label={`Move ${label} up`} title="Move up">↑</button></form><form action={action.bind(null, "down")}><button type="submit" disabled={last} aria-label={`Move ${label} down`} title="Move down">↓</button></form></div>;
 }
@@ -35,12 +39,12 @@ function Outline({ structure, selectedId, editable, group }: { structure: Builde
       const moduleSection = module.lessons.flatMap((lesson) => lesson.sections)[0];
       const moduleHref = moduleSection ? `${base}?section=${moduleSection.id}` : undefined;
       const moduleTitle = editable ? <InlineCurriculumTitle label={groupLabel(group)} title={module.title} action={renameCurriculumItemAction.bind(null, structure.experience.id, structure.version.id, "module", module.id, selectedId)}/> : <strong>{moduleHref ? <Link aria-current={activeModule ? "page" : undefined} href={moduleHref}>{module.title}</Link> : module.title}</strong>;
-      const moduleContent = <section className="course-builder-group"><header>{moduleTitle}</header><details open={activeModule || !selectedId && moduleIndex === 0}><summary>{activeModule ? "Hide lessons" : "Show lessons"}</summary><div>{module.lessons.map((lesson, lessonIndex) => {
+      const moduleContent = <section className="course-builder-group"><header>{moduleTitle}</header>{editable && module.lessons.length === 0 && <DeleteEmptyContainer label={groupLabel(group)} title={module.title} action={deleteAction.bind(null, structure.experience.id, structure.version.id, "module", module.id)}/>}<details open={activeModule || !selectedId && moduleIndex === 0}><summary>{activeModule ? "Hide lessons" : "Show lessons"}</summary><div>{module.lessons.map((lesson, lessonIndex) => {
         const lessonSection = lesson.sections[0];
         const activeLesson = lesson.sections.some((section) => section.id === selectedId);
         const lessonHref = lessonSection ? `${base}?section=${lessonSection.id}` : undefined;
         const lessonTitle = editable ? <InlineCurriculumTitle label="Lesson" title={lesson.title} action={renameCurriculumItemAction.bind(null, structure.experience.id, structure.version.id, "lesson", lesson.id, selectedId)}/> : <strong>{lessonHref ? <Link aria-current={activeLesson ? "page" : undefined} href={lessonHref}>{lesson.title}</Link> : lesson.title}</strong>;
-        const lessonContent = <div className="course-builder-lesson"><div className="course-builder-outline-row">{lessonTitle}</div>{lesson.sections.map((section, sectionIndex) => {
+        const lessonContent = <div className="course-builder-lesson"><div className="course-builder-outline-row">{lessonTitle}</div>{editable && lesson.sections.length === 0 && <DeleteEmptyContainer label="Lesson" title={lesson.title} action={deleteAction.bind(null, structure.experience.id, structure.version.id, "lesson", lesson.id)}/>} {lesson.sections.map((section, sectionIndex) => {
           const sectionHref = `${base}?section=${section.id}`;
           const pageContent = <><Link aria-current={section.id === selectedId ? "page" : undefined} href={sectionHref}>{section.title}</Link>{editable && <span className="course-builder-title-actions"><RenameControl label="Page" title={section.title} action={renameCurriculumItemAction.bind(null, structure.experience.id, structure.version.id, "section", section.id, selectedId)}/></span>}</>;
           const positionControls = <PositionControls action={reorderCurriculumAction.bind(null, structure.experience.id, structure.version.id, "section", section.id, selectedId)} label={section.title} first={sectionIndex === 0} last={sectionIndex === lesson.sections.length - 1}/>;

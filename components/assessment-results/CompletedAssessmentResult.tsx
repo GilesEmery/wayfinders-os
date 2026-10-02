@@ -33,7 +33,7 @@ function NativeResult({ kind, data }: { kind: AssessmentResultKind; data: unknow
   if (kind === "activate-your-purpose") return <main>{activatePurposeResults(normalizeActivatePurposeAnswers(data))?.map(({ area, score, stage }) => <section key={area.key}><h2>{area.title}</h2><strong>{score} / 20 · {stage.title}</strong><p>{stage.description}</p></section>)}</main>;
   if (kind === "wayfinders-ethos") {
     const results = ethosResults(normalizeEthosAnswers(data));
-    return <main>{results?.scores.map(({ category, score }) => <section key={category.key}><h2>{category.title}</h2><strong>{score} / 15</strong><p>{category.description}</p></section>)}</main>;
+    return <main>{results && (results.allEqual ? <section><h2>Balanced Ethos</h2><p>All five Ethos areas are tied.</p></section> : <section><h2>Highest Ethos · Strongest areas</h2><p>{results.strongest.map(({ category, score }) => `${category.title} · ${score} / 15`).join("; ")}</p><h2>Lowest Ethos · Growth areas</h2><p>{results.growth.map(({ category, score }) => `${category.title} · ${score} / 15`).join("; ")}</p></section>)}{results?.scores.map(({ category, score }) => <section key={category.key}><h2>{category.title}</h2><strong>{score} / 15</strong><p>{category.description}</p></section>)}</main>;
   }
   const result = launchingHubResult(normalizeLaunchingHubAnswers(data));
   return <main>{result && <section><h2>{result.readiness.label}</h2><strong>{result.score} / 50</strong><p>{result.readiness.description}</p><h3>Focus</h3><p>{result.readiness.focus}</p></section>}</main>;

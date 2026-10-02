@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test:cohort-responses": "node --test lib/platform/response-library-policy.test.ts",
+    "test:cohort-responses:http": "node scripts/verify-cohort-responses-http.mjs",
     "test:signup-notifications": "node --test lib/email/signup-notification.test.ts",
     "test:experience-password:http": "node scripts/verify-experience-password-http.mjs",
     "test:experience-password": "node --test lib/experiences/access/password-access.test.mjs",

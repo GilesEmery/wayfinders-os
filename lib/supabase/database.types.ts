@@ -478,6 +478,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      prepare_wayfinder_deletion: { Args: { p_actor_id: string; p_participant_id: string; p_confirmation_email: string }; Returns: Json };
+      delete_unactivated_wayfinder: { Args: { p_actor_id: string; p_participant_id: string; p_confirmation_email: string }; Returns: undefined };
       manage_authorization_foundation: {
         Args: { p_actor_auth_user_id: string; p_target_participant_id: string; p_assignment_type: string; p_key: string; p_effect?: string | null; p_scope_type?: string; p_scope_id?: string | null; p_now?: string }
         Returns: undefined
@@ -489,6 +491,10 @@ export type Database = {
       activate_admin_invitation: {
         Args: { p_auth_user_id: string; p_email: string; p_now?: string }
         Returns: { member_id: string; activated_role: string }[]
+      }
+      move_draft_experience_section: {
+        Args: { p_experience_id: string; p_experience_version_id: string; p_section_id: string; p_target_lesson_id: string; p_position?: number }
+        Returns: undefined
       }
       move_draft_experience_lesson: {
         Args: { p_experience_id: string; p_experience_version_id: string; p_lesson_id: string; p_target_module_id: string; p_position?: number }

@@ -110,3 +110,19 @@ export async function sendCompanionChatMessageAction(slug: string, moduleKey: st
   if (sent.error) redirect(appendParticipantQuery(href, "companionError", "Your message could not be sent."));
   revalidatePath(href); redirect(appendParticipantQuery(href, "companionSaved", "Message sent."));
 }
+
+export async function deleteCompanionChatMessageAction(slug: string, moduleKey: string, lessonKey: string, sectionKey: string, companionModuleId: string, cohortId: string | null | undefined, messageId: string) {
+  const { href, result, module: companionModule } = await liveContext(slug, moduleKey, lessonKey, sectionKey, companionModuleId, cohortId, "chat");
+  // Resolve the visible chat first, including messages retained from prior versions.
+  const message = companionModule.chat_messages.find((item) => item.id === messageId && item.author_participant_id === result.participantId);
+  if (!message) redirect(appendParticipantQuery(href, "companionError", "This message could not be deleted."));
+  const deleted = await createAdminSupabaseClient().from("companion_chat_messages").delete()
+    .eq("id", messageId)
+    .eq("author_participant_id", result.participantId)
+    // Historical messages retain the delivery from the version they were posted in.
+    .eq("delivery_override_id", message.delivery_override_id)
+    .select("id").maybeSingle();
+  if (deleted.error || !deleted.data) redirect(appendParticipantQuery(href, "companionError", "This message could not be deleted."));
+  revalidatePath(href);
+  redirect(appendParticipantQuery(href, "companionSaved", "Message deleted."));
+}

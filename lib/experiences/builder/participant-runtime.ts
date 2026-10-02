@@ -65,7 +65,7 @@ function filterDeliveryStructure(structure: BuilderCourseStructure, moduleRows: 
   return { ...structure, modules: structure.modules.filter((module) => modules.get(module.id)?.visibility !== "hidden").map((module) => ({ ...module, lessons: module.lessons.filter((lesson) => !hiddenLessons.has(lesson.id)).map((lesson) => ({ ...lesson, sections: lesson.sections.filter((section) => sections.get(section.id)?.visibility !== "hidden").sort((a, b) => (sections.get(a.id)?.sort_order ?? a.sort_order) - (sections.get(b.id)?.sort_order ?? b.sort_order)) })) })).sort((a, b) => (modules.get(a.id)?.sort_order ?? a.sort_order) - (modules.get(b.id)?.sort_order ?? b.sort_order)) };
 }
 
-async function effectiveDeliveryStructure(structure: BuilderCourseStructure, offering: Offering | null, db: Db) {
+export async function effectiveDeliveryStructure(structure: BuilderCourseStructure, offering: Offering | null, db: Db) {
   if (!offering) return structure;
   const plan = offering.cohort_id ? await db.from("cohort_course_plans").select("id,settings").eq("cohort_id", offering.cohort_id).eq("experience_version_id", structure.version.id).eq("status", "active").maybeSingle() : { data: null, error: null };
   if (plan.error) throw new Error(`Unable to load cohort Journey: ${plan.error.message}`);

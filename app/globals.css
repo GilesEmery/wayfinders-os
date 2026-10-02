@@ -25,6 +25,9 @@
 }
 
 /* Personal Impact Statement — canonical native Assessment */
+.companion-chat-delete{display:flex;justify-content:flex-end;margin-top:6px}
+.companion-chat-delete button{background:transparent;border:0;border-radius:3px;color:inherit;cursor:pointer;font:inherit;font-size:10px;padding:4px 6px;text-decoration:underline;text-underline-offset:2px}
+.companion-chat-delete button:focus-visible{outline:2px solid currentColor;outline-offset:2px}
 .pis-shell{--pis:#349fd5;--pis-navy:#07517b;min-height:100svh;background:#fbfaf5;color:#252b29}.pis-shell-header{align-items:center;background:var(--platform-charcoal);color:#fff;display:grid;grid-template-columns:minmax(210px,1fr) auto minmax(210px,1fr);height:74px;padding:0 clamp(24px,5vw,72px);position:sticky;top:0;z-index:150}.pis-shell-title{align-items:center;display:flex;gap:12px;justify-self:center;min-width:0}.pis-shell-title>strong{font-size:12px;letter-spacing:.16em;text-align:center;text-transform:uppercase}.pis-shell-header-logo{height:40px;max-width:112px;object-fit:contain;width:auto}.pis-shell-actions{align-items:center;display:flex;gap:clamp(14px,2vw,28px);justify-self:end}.pis-shell-actions>span{color:#a9adab;font-size:9px;font-weight:750;letter-spacing:.14em;text-transform:uppercase}.pis-shell-back{margin:0 auto;max-width:1180px;padding:18px clamp(24px,5vw,64px) 0}.pis-shell-back a{border-bottom:1px solid currentColor;color:#4f5754;font-size:9px;font-weight:800;letter-spacing:.13em;padding:8px 0;text-transform:uppercase}.pis-shell-main{padding:clamp(38px,7vw,92px) clamp(24px,6vw,76px) clamp(70px,10vw,130px)}
 .pis-experience{position:relative;isolation:isolate;overflow:hidden;max-width:1180px;margin:0 auto;color:#252b29}.pis-shell.is-course .pis-experience,.pis-shell.is-preview .pis-experience{padding:clamp(1.25rem,4vw,4rem);border:1px solid #dedbd2;border-radius:28px;background:#fbfaf5;box-shadow:0 24px 80px rgb(34 45 43/.08)}.pis-shell.is-course .pis-shell-main{background:#f1efe8;padding-block:clamp(32px,5vw,64px)}.pis-shell.is-course .pis-shell-back{max-width:1310px}.pis-shell.is-standalone .pis-intro,.pis-shell.is-standalone .pis-result{padding-block:clamp(30px,5vw,70px)}.pis-shell.is-standalone .pis-assessment,.pis-shell.is-standalone .pis-review{max-width:1000px}.pis-shell.is-standalone .pis-assessment:has(.pis-causes){max-width:1280px}
 .pis-contours{display:none}
@@ -2608,3 +2611,34 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
 .assessment-launch-card .embedded-assessment-close:focus-visible,
 .purpose-result-dialog header button:hover,.purpose-result-dialog header button:focus-visible,
 .ethos-dialog header button:hover,.ethos-dialog header button:focus-visible{background:var(--platform-page);color:var(--platform-charcoal);border-color:var(--platform-charcoal);outline:2px solid var(--platform-charcoal);outline-offset:2px}
+
+/* Saved course responses in Purpose Profile and facilitator member dialogs. */
+.cohort-member-response-name{background:none;border:0;color:var(--platform-charcoal);cursor:pointer;font:inherit;padding:0;text-align:left;text-decoration:underline;text-underline-offset:4px}
+.cohort-member-response-name:hover{opacity:.75}.cohort-member-response-name:focus-visible{outline:2px solid var(--platform-charcoal);outline-offset:4px}
+.cohort-response-dialog{background:var(--platform-page,#f7f7f3);border:1px solid #c9ceca;border-radius:16px;color:var(--platform-charcoal);margin:auto;max-height:90dvh;max-width:1000px;padding:0;width:calc(100% - 40px)}
+.cohort-response-dialog::backdrop{background:rgba(20,24,23,.65)}
+.cohort-response-dialog-content>header{align-items:center;background:#fff;border-bottom:1px solid #d4d8d5;display:flex;gap:20px;justify-content:space-between;padding:24px 30px;position:sticky;top:0;z-index:1}
+.cohort-response-dialog-content>header p{font-size:12px;margin:0;text-transform:uppercase;letter-spacing:.1em}.cohort-response-dialog-content>header h2{font-size:28px;margin:8px 0 0}
+.cohort-response-close{background:#fff;border:1px solid var(--platform-charcoal);border-radius:50%;color:var(--platform-charcoal);cursor:pointer;flex-shrink:0;font-size:30px;height:44px;width:44px;line-height:1}
+.cohort-response-close:hover,.cohort-response-close:focus-visible{background:var(--platform-page);color:var(--platform-charcoal);outline:2px solid var(--platform-charcoal);outline-offset:3px}
+.cohort-response-dialog-body{padding:24px 30px}.saved-response-course{margin:0 0 32px}.saved-response-course>header h3{font-size:24px;margin:0}.saved-response-course>header p{color:#59615b;font-size:13px;margin:8px 0 20px}
+.saved-response-week{border:1px solid #d4d8d5;background:#fff;margin:12px 0;padding:20px}.saved-response-week>summary,.saved-response-assessment>summary,.saved-response-questions>summary{cursor:pointer;overflow-wrap:anywhere}.saved-response-week>summary>span{font-size:12px;margin-left:12px;color:#59615b}
+.saved-response-question,.saved-response-assessment,.saved-response-questions{border-top:1px solid #e1e4e1;margin-top:18px;padding-top:18px}.saved-response-assessment>summary,.saved-response-questions>summary{background:var(--platform-charcoal);color:#fff;padding:18px}.saved-response-assessment>summary>span,.saved-response-questions>summary>span{display:block;font-size:13px;margin-top:8px}
+.saved-response-question h4{font-size:18px;margin:0}.saved-response-location,.saved-response-meta,.saved-response-empty{font-size:13px;color:#59615b}.saved-response-answers{margin:16px 0 0}.saved-response-answers>div{margin:0 0 20px}.saved-response-answers dt{font-weight:700;overflow-wrap:anywhere}.saved-response-answers dd{margin:8px 0 0;overflow-wrap:anywhere;white-space:pre-wrap;line-height:1.6}.purpose-profile-saved-work{margin:48px 0}
+@media(max-width:680px){.cohort-response-dialog{max-height:calc(100dvh - 20px);width:calc(100% - 20px)}.cohort-response-dialog-content>header,.cohort-response-dialog-body{padding:18px}.saved-response-week{padding:14px}.saved-response-week>summary>span{display:block;margin:8px 0 0}.cohort-response-dialog-content>header h2{font-size:23px}}
+
+.purpose-profile-experience-list{display:grid;gap:14px}.purpose-profile-experience{background:#fff;border:1px solid #d4d8d5;border-radius:10px;overflow:hidden}.purpose-profile-experience>summary{color:var(--platform-charcoal);cursor:pointer;padding:22px 24px;overflow-wrap:anywhere}.purpose-profile-experience>summary strong{font-size:20px}.purpose-profile-experience>summary span{display:block;color:#59615b;font-size:13px;margin:8px 0 0}.purpose-profile-experience>summary:hover{background:var(--platform-page)}.purpose-profile-experience>summary:focus-visible{outline:2px solid var(--platform-charcoal);outline-offset:-4px}.purpose-profile-experience-content{border-top:1px solid #d4d8d5;padding:24px}.purpose-profile-experience-content .saved-response-course:last-child{margin-bottom:0}@media(max-width:680px){.purpose-profile-experience>summary,.purpose-profile-experience-content{padding:18px}}
+
+.saved-response-results{margin:16px 0;padding:18px;border:1px solid #b9d7cd;border-left:4px solid #387b68;background:#f1f8f5}.saved-response-results h4{margin:0 0 12px}.saved-response-results .saved-response-answers{margin-bottom:0}
+
+.saved-response-unanswered{color:#777;font-style:italic}.saved-response-progress{font-weight:700;color:#387b68}
+
+.crm-delete-user { margin-top: 1.5rem; padding: 1.25rem; border: 1px solid #ddaaa2; border-radius: .75rem; }
+.crm-delete-user form { display: grid; gap: .75rem; max-width: 36rem; }
+.crm-delete-user input { padding: .65rem .8rem; border: 1px solid var(--border, #d2d5d2); border-radius: .4rem; }
+.admin-danger { background: #a83226; color: #fff; border: 0; border-radius: .4rem; padding: .65rem 1rem; cursor: pointer; }
+.admin-danger:disabled { opacity: .5; cursor: not-allowed; }
+
+.course-builder-delete>summary{border-style:solid;color:#a13e32}
+.course-builder-delete>form label{align-items:center;display:flex;gap:8px}
+.course-builder-delete>form input[type=checkbox]{flex:none;width:auto}

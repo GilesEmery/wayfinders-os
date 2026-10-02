@@ -237,36 +237,17 @@ export async function reorderItem(experienceId: string, versionId: string, kind:
   await audit(admin, `${kind}.reordered`, `experience_${kind}`, itemId, { experienceId, versionId, direction });
 }
 
-async function placeSection(sectionId: string, lessonId: string, position: number) {
-  const db = createAdminSupabaseClient();
-  const rows = await db.from("experience_sections").select("id,sort_order").eq("lesson_id", lessonId).order("sort_order").order("created_at");
-  if (rows.error) throw new Error(`Unable to load destination order: ${rows.error.message}`);
-  const ids = (rows.data ?? []).map((row) => row.id).filter((id) => id !== sectionId);
-  ids.splice(Math.min(Math.max(position, 0), ids.length), 0, sectionId);
-  const base = (rows.data ?? []).reduce((max, row) => Math.max(max, row.sort_order), -1) + ids.length + 10;
-  for (const [index, id] of ids.entries()) {
-    const parked = await db.from("experience_sections").update({ sort_order: base + index }).eq("id", id);
-    if (parked.error) throw new Error(`Unable to prepare Page order: ${parked.error.message}`);
-  }
-  for (const [index, id] of ids.entries()) {
-    const update = await db.from("experience_sections").update({ sort_order: index }).eq("id", id);
-    if (update.error) throw new Error(`Unable to save Page order: ${update.error.message}`);
-  }
-}
-
 export async function moveSection(experienceId: string, versionId: string, sectionId: string, targetLessonId: string, position: number) {
   const { admin, db } = await context(experienceId, versionId);
-  const [section, lesson] = await Promise.all([
-    db.from("experience_sections").select("id,lesson_id,module_id").eq("id", sectionId).eq("experience_version_id", versionId).maybeSingle(),
-    db.from("experience_lessons").select("id,module_id").eq("id", targetLessonId).eq("experience_version_id", versionId).maybeSingle(),
-  ]);
-  if (!section.data || !lesson.data) throw new Error("Source Section or target Lesson is outside this Version.");
-  const sourceLessonId = section.data.lesson_id;
-  const result = await db.from("experience_sections").update({ lesson_id: targetLessonId, module_id: lesson.data.module_id, sort_order: await parentMax("experience_sections", "lesson_id", targetLessonId) }).eq("id", sectionId).eq("experience_version_id", versionId);
-  if (result.error) throw new Error(`Unable to move Section: ${result.error.message}`);
-  if (sourceLessonId !== targetLessonId) await normalize("experience_sections", "lesson_id", sourceLessonId);
-  await placeSection(sectionId, targetLessonId, Number.isInteger(position) ? position : Number.MAX_SAFE_INTEGER);
-  await audit(admin, "section.moved", "experience_section", sectionId, { experienceId, versionId, sourceLessonId, targetLessonId, targetModuleId: lesson.data.module_id });
+  const result = await db.rpc("move_draft_experience_section", {
+    p_experience_id: experienceId,
+    p_experience_version_id: versionId,
+    p_section_id: sectionId,
+    p_target_lesson_id: targetLessonId,
+    p_position: Number.isInteger(position) ? Math.max(0, Math.min(position, 2147483647)) : 2147483647,
+  });
+  if (result.error) throw new Error(`Unable to move Page: ${result.error.message}`);
+  await audit(admin, "section.moved", "experience_section", sectionId, { experienceId, versionId, targetLessonId, position });
 }
 
 export async function moveLesson(experienceId: string, versionId: string, lessonId: string, targetModuleId: string, position: number) {
@@ -303,10 +284,12 @@ export async function deleteItem(experienceId: string, versionId: string, kind: 
   if (!current.data) throw new Error(`${kind} not found in this Version.`);
   if (kind === "module") {
     const children = await db.from("experience_lessons").select("id", { count: "exact", head: true }).eq("module_id", itemId);
+    if (children.error) throw new Error(`Unable to check child Lessons: ${children.error.message}`);
     if (children.count) throw new Error("This Module still contains Lessons. Delete its child curriculum explicitly first.");
   }
   if (kind === "lesson") {
     const children = await db.from("experience_sections").select("id", { count: "exact", head: true }).eq("lesson_id", itemId);
+    if (children.error) throw new Error(`Unable to check Content Pages: ${children.error.message}`);
     if (children.count) throw new Error("This Lesson still contains Sections. Delete its child curriculum explicitly first.");
   }
   const result = kind === "module" ? await db.from("experience_modules").delete().eq("id", itemId).eq("experience_version_id", versionId) : kind === "lesson" ? await db.from("experience_lessons").delete().eq("id", itemId).eq("experience_version_id", versionId) : await db.from("experience_sections").delete().eq("id", itemId).eq("experience_version_id", versionId);

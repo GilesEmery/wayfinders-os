@@ -200,7 +200,7 @@ export async function getSectionWithLayout(sectionId: string, db: Db = createAdm
   };
 }
 
-export async function getExperienceStructure(experienceId: string, versionId: string, db: Db = createAdminSupabaseClient()): Promise<BuilderCourseStructure> {
+export async function getExperienceStructure(experienceId: string, versionId: string, db: Db = createAdminSupabaseClient(), responseBlockIds?: string[]): Promise<BuilderCourseStructure> {
   const [experienceResult, versionResult, moduleResult, lessonResult, sectionResult] = await Promise.all([
     db.from("experiences").select("*").eq("id", experienceId).maybeSingle(),
     db.from("experience_versions").select("*").eq("id", versionId).eq("experience_id", experienceId).maybeSingle(),
@@ -218,9 +218,15 @@ export async function getExperienceStructure(experienceId: string, versionId: st
   const sections = (sectionResult.data ?? []).map(asSection);
   const sectionIds = sections.map((section) => section.id);
   const lessonIds = lessons.map((lesson) => lesson.id);
+  let blocksQuery = db.from("content_blocks").select("*").in("lesson_id", lessonIds).order("sort_order");
+  // Response outlines need only answerable blocks and linked assessments, not
+  // teaching text, video configuration, or other course content.
+  if (responseBlockIds) blocksQuery = responseBlockIds.length
+    ? blocksQuery.or(`id.in.(${responseBlockIds.join(",")}),block_type.eq.prebuilt_assessment`)
+    : blocksQuery.eq("block_type", "prebuilt_assessment");
   const [layoutResult, blockResult] = await Promise.all([
     sectionIds.length ? db.from("section_layouts").select("*").in("section_id", sectionIds) : Promise.resolve({ data: [], error: null }),
-    lessonIds.length ? db.from("content_blocks").select("*").in("lesson_id", lessonIds).order("sort_order") : Promise.resolve({ data: [], error: null }),
+    lessonIds.length ? blocksQuery : Promise.resolve({ data: [], error: null }),
   ]);
   if (layoutResult.error || blockResult.error) throw new Error("Unable to load the Experience content.");
   const layouts = (layoutResult.data ?? []).map(asLayout);
