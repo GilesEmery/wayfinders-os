@@ -63,7 +63,7 @@ test("runtime enforces explicit finish, ownership checks, preview safety, and ca
   assert.match(mutation, /resolveParticipantCourse/);
   assert.match(mutation, /participantId.*resolution\.participantId/);
   assert.match(mutation, /enrollmentId.*resolution\.enrollmentId/);
-  assert.match(mutation, /if \(finish\) \{\s*await completeParticipantSectionFromResponses/);
+  assert.match(mutation, /if \(finish\) \{\s*await completeSectionResponsesForAuthorizedCourse/);
   assert.match(mutation, /projectStartSomethingSave/);
   assert.match(component, /if \(preview \|\| JSON\.stringify\(snapshot\)/);
   assert.match(component, /Save my response/);

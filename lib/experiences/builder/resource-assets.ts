@@ -114,11 +114,29 @@ export async function resolveResourceIds(db: Db, ids: readonly string[]) {
   if (!ids.length) return new Map<string, ResolvedAsset>();
   const result = await db.from("resources").select("*").in("id", [...new Set(ids)]).in("status", ["active", "archived"]);
   if (result.error) throw new Error(`Unable to load course assets: ${result.error.message}`);
-  const entries = await Promise.all((result.data ?? []).map(async (resource) => {
-    const url = resource.storage_path ? await signedAssetUrl(db, resource) : resource.external_url;
-    const downloadUrl = resource.storage_path ? await signedAssetUrl(db, resource, true) : resource.external_url;
+  const resources = result.data ?? [];
+  const buckets = new Map<string, Set<string>>();
+  for (const resource of resources) {
+    if (!resource.storage_bucket || !resource.storage_path) continue;
+    const paths = buckets.get(resource.storage_bucket) ?? new Set<string>();
+    paths.add(resource.storage_path);
+    buckets.set(resource.storage_bucket, paths);
+  }
+  // Batch display signing by bucket. Downloads retain per-file original filenames.
+  const [displayUrls, downloadUrls] = await Promise.all([
+    Promise.all([...buckets].map(async ([bucket, paths]) => {
+      const signed = await db.storage.from(bucket).createSignedUrls([...paths], 15 * 60);
+      if (signed.error || signed.data?.some(item => item.error || !item.signedUrl)) throw new Error("Asset access could not be prepared.");
+      return new Map((signed.data ?? []).map(item => [item.path, item.signedUrl]));
+    })),
+    Promise.all(resources.map(resource => resource.storage_path ? signedAssetUrl(db, resource, true) : resource.external_url)),
+  ]);
+  const displays = new Map([...buckets.keys()].map((bucket, index) => [bucket, displayUrls[index]]));
+  const entries = resources.map((resource, index) => {
+    const url = resource.storage_path ? displays.get(resource.storage_bucket ?? "")?.get(resource.storage_path) : resource.external_url;
+    const downloadUrl = downloadUrls[index];
     return url && downloadUrl ? [resource.id, { id: resource.id, url, downloadUrl, title: resource.title, description: resource.description, originalFilename: resource.original_filename, mimeType: resource.mime_type, sizeBytes: resource.file_size_bytes }] as const : null;
-  }));
+  });
   return new Map(entries.filter((entry): entry is NonNullable<typeof entry> => Boolean(entry)));
 }
 

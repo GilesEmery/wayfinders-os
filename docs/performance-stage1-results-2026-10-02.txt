@@ -1,0 +1,158 @@
+Wayfinders bounded Stage 1 review — October 2, 2026
+
+Implemented locally; no commit, push, deployment, publication, migration, or production mutation.
+Original untracked docs/performance-assessment-2026-10-02.md preserved unchanged.
+Baseline commit: c7828a816e1cbbf1d1a156671871e985325c8527.
+
+Preflight and access
+Read AGENTS.md, installed Next.js route-handler and server-action documentation,
+and the Next.js, Supabase, React review, and browser verification skills.
+Working tree initially contained only the assessment document. Process inspection
+required an approved read-only sandbox escalation. Recent repository sessions and
+process names showed no duplicate Stage 1 implementation or active Next server.
+No macOS permissions/settings changed. Local edits and offline checks were allowed.
+Localhost fixture listen/connect initially returned EPERM; narrow sandbox
+escalations for the isolated fixture server and its HTTP assertions were approved.
+agent-browser was not installed. The browser connector returned "Browser is not
+available" for iab and chrome, and its browser inventory was empty. No browser
+or operating-system permission prompts were accepted.
+
+Implementation
+- Fresh shared course authorization retains identity, password gate, access,
+  explicit cohort selection, canonical version pinning and requirement bypass.
+- Mutation loaders retain authorized full curriculum and response contracts while
+  omitting progress display reads, themes, appearance assets, signing and companion.
+  Trusted server-only context is reused by progress helpers within the operation.
+  PIS, Start Something, numeric assessments and generic response saves use it.
+- Visible assessment cards receive batched metadata and canonical/embedded status
+  derived from the already-authorized runtime. Preview reads no participant status.
+- One targeted companion endpoint replaces 12-second router.refresh polling.
+  Every read authenticates and checks password, pinning, delivery visibility,
+  active cohort membership, module scope, audience and visibility. It does not
+  provision overrides or load blocks, response data, resources or signed files.
+  Hidden pages pause polling; in-flight polls do not overlap; unmount aborts them.
+  Access denial/password redirect clears local live state. Transient failures
+  retain the last successful window. Message IDs reconcile deletions, timestamp
+  cursors limit returned bodies, and missing IDs trigger a fresh window repair.
+  Call configuration/session state updates locally; live calls display Call live.
+- Chat reads take the newest 200 messages and reverse them for display, with an ID
+  tie-break. This remains a bounded combined window; older-message pagination is
+  deferred. Chat send/delete actions retain their existing authorization and
+  explicit revalidation behavior.
+- Resource metadata remains one deduplicated lookup. Display signing batches by
+  bucket; downloads sign individually in parallel to preserve original filenames.
+  Private 900-second expiry is unchanged. No cross-request asset/auth cache exists.
+- WAYFINDERS_PERFORMANCE=1 enables JSON diagnostics with fixed operation labels,
+  total elapsed milliseconds and HTTP request counts/summed duration grouped as
+  databaseHttp, storageHttp, authHttp and otherHttp. URLs, IDs, headers, tokens,
+  answers and bodies are never included. Parent scopes include child requests;
+  overlapping/nested spans must not be summed as independent requests.
+
+Comparable baseline / after evidence
+Both runs use the same offline harness, fictitious data and allowlisted mocks.
+The baseline loads real modules from git HEAD; the after run loads the working tree.
+Runtime-resolution and persistence dependencies are mocked. Progress and resource
+orchestration execute real module code; fake database calls are counted.
+
+Fixture                              Before       After
+PIS draft course resolutions         2            1
+PIS finish course resolutions        3            1
+PIS draft progress requests          8            8
+PIS finish progress requests         13           13
+Three cards: extra course resolves   3            0
+Three cards: metadata/status reads   9            3
+Eight private files, one bucket:
+  resource metadata reads            1            1
+  Storage signing requests           16           9
+
+These are fixture request/call reductions, not measured production speedups.
+The card counts exclude the requests inside their mocked course resolutions.
+The harness times are sub-millisecond orchestration noise and are deliberately
+not used to estimate database, network, browser rendering or p95 save improvements.
+Actual Postgres execution, authenticated HTTP and course render times were not
+measured: localhost is production-backed and no isolated authenticated course/save
+fixture environment was available. The earlier 9–12 second save observation and
+0.3–4.3ms database audit numbers remain leads, not comparable baseline data.
+No claimed reduction in the existing progress write count.
+Polling performs zero whole-course route refreshes per interval and one targeted
+HTTP read, with an occasional second read to repair a cursor gap; this is verified
+from the changed control flow, not an observed production network trace.
+The isolated Dashboard/My Journey server returned HTTP 200 for all tested fixture
+states. Next's warm application-code figures were 27–42ms; first requests included
+compilation. Those mocked-page figures are not a course benchmark or speedup.
+
+Checks and exact commands
+PASS: node scripts/performance/stage1-fixtures.mjs --baseline
+PASS: node scripts/performance/stage1-fixtures.mjs
+PASS: npm run test:completion-regressions — 111 tests
+PASS: node --test scripts/performance/stage1-loaders.test.mjs lib/experiences/builder/performance-measurement.test.ts lib/experiences/builder/assessment-completion.test.mjs lib/experiences/builder/companion.test.ts lib/experiences/builder/companion-live.test.ts lib/platform/response-library-policy.test.ts lib/resources/resource-library-policy.test.ts lib/experiences/lmu/server/completion.test.mjs lib/platform/journey-policy.test.ts — 87 tests
+PASS: node --test scripts/performance/stage1-loaders.test.mjs lib/experiences/builder/performance-measurement.test.ts — final relevant rerun, 7 tests
+PASS: npx tsc --noEmit
+PASS: npm run lint — no errors or warnings
+PASS: NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:9 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=fixture-public-key SUPABASE_SECRET_KEY=fixture-server-key EXPERIENCE_ACCESS_SIGNING_SECRET=fixture-only-secret-at-least-32-characters npm run build -- --webpack
+PASS: git diff --check
+PASS: node scripts/preview-journey-fixtures.mjs (isolated temporary copy), followed by node scripts/verify-journey-fixtures.mjs — Dashboard 0/1/3 cards and My Journey 0/1/3/4 active cards; history/cohort link/refresh assertions passed.
+
+Coverage and limits
+Offline tests cover save/write failure, completion-confirmation failure, repeated
+finishes, late draft/finish races, immutable results, retake policies, response
+ownership, fresh access checks, password denial, pinning, hidden delivery pages,
+preview privacy, card batching, live-module audience/scope filtering, offering
+history boundaries, tied message deduplication, deletion reconciliation, signing
+expiry/download filenames, and diagnostic privacy. Existing static test assertions
+and mock exports were updated for the new internal helper names.
+Unrun: authenticated browser course navigation/save latency; real interactive
+repeated clicks and retake flow; hidden-tab polling/reconnect behavior in a browser;
+real two-user/two-cohort endpoint and password-grant revision behavior; real Storage
+signing and expiry behavior. Tests use mocks rather than a live isolated database.
+The live loader still reads a newest bounded window in SQL before filtering bodies
+for the cursor. It retains fresh access and delivery-history queries on every poll.
+No automatic long-session private-asset renewal was introduced; expiry remains
+15 minutes. Appearance helper deduplication and broader metadata gathering remain
+future work. Published caching, broad current-page redesign, styles, indexes,
+loading-state redesign, HLS/PDF bundle changes and migrations are outside this retry.
+
+Next local review
+Review the changed files and the privacy diagnostics first. Provision a dedicated
+non-production fixture project with disposable users/cohorts, enrollments, published
+versions and password-protected courses; keep production environment files out of
+that runtime. Enable WAYFINDERS_PERFORMANCE=1 there and capture matched baseline/
+after warm navigations, draft saves, finishes and visible chat intervals. Combine
+numeric server spans with redacted browser request counts/TTFB/render measurements;
+HTTP duration includes Postgres plus transport and must not be labeled DB execution.
+Exercise the unrun user stories and private expiry before any separate rollout.
+
+Servers
+The isolated fixture server was stopped with SIGINT; its process session exited 0.
+No test server started by this run remains running. Production build is not served.
+
+Exact files changed or added by this run
+app/api/experiences/[slug]/companion/route.ts
+components/experiences/builder/LiveCompanionInteractions.tsx
+components/experiences/builder/ParticipantBlockRenderer.tsx
+components/experiences/builder/ParticipantCompanion.tsx
+components/experiences/builder/ParticipantCourseRuntime.tsx
+components/experiences/builder/PrebuiltAssessmentBlock.tsx
+docs/performance-stage1-results-2026-10-02.txt
+lib/experiences/builder/activate-purpose-assessment-mutations.ts
+lib/experiences/builder/assessment-completion.test.mjs
+lib/experiences/builder/companion-data.ts
+lib/experiences/builder/companion-incremental.ts
+lib/experiences/builder/companion-updates.ts
+lib/experiences/builder/ethos-assessment-mutations.ts
+lib/experiences/builder/launching-wayfinders-hub-assessment-mutations.ts
+lib/experiences/builder/participant-runtime.ts
+lib/experiences/builder/performance-measurement.test.ts
+lib/experiences/builder/performance-measurement.ts
+lib/experiences/builder/personal-impact-statement-mutations.ts
+lib/experiences/builder/prebuilt-assessment.test.ts
+lib/experiences/builder/progress-mutations.ts
+lib/experiences/builder/resource-assets.ts
+lib/experiences/builder/response-mutations.ts
+lib/experiences/builder/start-something-mutations.ts
+lib/experiences/builder/start-something.test.ts
+lib/supabase/admin.ts
+lib/supabase/server.ts
+scripts/performance/offline-module.mjs
+scripts/performance/stage1-fixtures.mjs
+scripts/performance/stage1-loaders.test.mjs

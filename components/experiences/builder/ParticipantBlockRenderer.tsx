@@ -12,7 +12,7 @@ import { ACTIVATE_PURPOSE_RENDERER_KEY } from "@/lib/experiences/builder/activat
 import { ActivatePurposeAssessment } from "./ActivatePurposeAssessment";
 import { LAUNCHING_WAYFINDERS_HUB_RENDERER_KEY } from "@/lib/experiences/builder/launching-wayfinders-hub-assessment";
 import { LaunchingWayfindersHubAssessment } from "./LaunchingWayfindersHubAssessment";
-import { PrebuiltAssessmentBlock } from "./PrebuiltAssessmentBlock";
+import { PrebuiltAssessmentBlock, type AssessmentCardData } from "./PrebuiltAssessmentBlock";
 import { PREBUILT_ASSESSMENT_BLOCK_TYPE } from "@/lib/experiences/builder/prebuilt-assessment";
 import { PERSONAL_IMPACT_RENDERER_KEY } from "@/lib/experiences/builder/personal-impact-statement";
 import { PersonalImpactStatementAssessment } from "./PersonalImpactStatementAssessment";
@@ -28,7 +28,7 @@ function Unavailable({ block }: { block: BuilderContentBlock }) {
   return <div className="participant-block-unavailable" role="status">Content unavailable</div>;
 }
 
-export function ParticipantBlockRenderer({ block, response, asset, route, preview = false, requirementsBypassed = false }: { block: BuilderContentBlock; response?: ParticipantResponseContext; asset?: ResolvedAsset; route: { slug: string; moduleKey: string; lessonKey: string; sectionKey: string; cohortId?: string | null }; preview?: boolean; requirementsBypassed?: boolean }) {
+export function ParticipantBlockRenderer({ block, response, asset, route, preview = false, requirementsBypassed = false, assessmentCard }: { block: BuilderContentBlock; response?: ParticipantResponseContext; asset?: ResolvedAsset; route: { slug: string; moduleKey: string; lessonKey: string; sectionKey: string; cohortId?: string | null }; preview?: boolean; requirementsBypassed?: boolean; assessmentCard?: AssessmentCardData }) {
   if (block.status !== "active" || block.visibility !== "visible") return null;
   const definition = getParticipantBlockDefinition(block.block_type, block.custom_renderer_key);
   if (!definition) return <Unavailable block={block}/>;
@@ -56,7 +56,7 @@ export function ParticipantBlockRenderer({ block, response, asset, route, previe
   if (!parsed.ok) return <Unavailable block={block}/>;
   const configuration = parsed.value;
 
-  if (block.block_type === PREBUILT_ASSESSMENT_BLOCK_TYPE) return <PrebuiltAssessmentBlock blockId={block.id} configuration={configuration as never} route={route} preview={preview}/>;
+  if (block.block_type === PREBUILT_ASSESSMENT_BLOCK_TYPE) return <PrebuiltAssessmentBlock blockId={block.id} configuration={configuration as never} route={route} preview={preview} card={assessmentCard}/>;
 
   if (definition.previewKey === "response") {
     if (!response || response.definition.response_type !== definition.response?.responseType) return <Unavailable block={block}/>;

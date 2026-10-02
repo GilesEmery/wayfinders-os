@@ -2,15 +2,15 @@ import "server-only";
 
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { getBlockDefinition } from "./block-registry";
-import { resolveParticipantCourse } from "./participant-runtime";
-import { recordParticipantSectionVisit } from "./progress-mutations";
+import { resolveParticipantCourseForMutation } from "./participant-runtime";
+import { recordSectionVisitForAuthorizedCourse } from "./progress-mutations";
 import { responseDataJson, validateResponseData } from "./response-registry";
 
 const KEY = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 async function context(slug: string, moduleKey: string, lessonKey: string, sectionKey: string, blockKey: string, cohortId?: string | null) {
   if (![slug, moduleKey, lessonKey, sectionKey, blockKey].every((value) => value.length <= 120 && KEY.test(value))) return null;
-  const resolution = await resolveParticipantCourse(slug, cohortId ?? null);
+  const resolution = await resolveParticipantCourseForMutation(slug, cohortId ?? null);
   if (resolution.status !== "ready" || !resolution.enrollmentId) return null;
   const target = resolution.structure.modules.flatMap((module) => module.lessons.flatMap((lesson) => lesson.sections.map((section) => ({ module, lesson, section })))).find(({ module, lesson, section }) => module.module_key === moduleKey && lesson.lesson_key === lessonKey && section.section_key === sectionKey);
   if (!target || target.section.legacy || target.section.renderer_mode === "custom" || target.section.renderer_mode === "route_handoff" || target.section.custom_renderer_key) return null;
@@ -47,7 +47,7 @@ async function mutate(mode: "draft" | "final", slug: string, moduleKey: string, 
     ? replacingFinalResponse ? await updateQuery : await updateQuery.eq("status", "draft")
     : await db.from("participant_responses").insert(payload);
   if (result.error) throw new Error(`Unable to ${mode === "final" ? "submit" : "save"} the response: ${result.error.message}`);
-  await recordParticipantSectionVisit(slug, moduleKey, lessonKey, sectionKey, cohortId);
+  await recordSectionVisitForAuthorizedCourse(authorized.resolution, moduleKey, lessonKey, sectionKey);
 }
 
 export const saveParticipantResponseDraft = mutate.bind(null, "draft");

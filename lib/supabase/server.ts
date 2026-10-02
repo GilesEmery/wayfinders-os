@@ -1,3 +1,4 @@
+import { measuredSupabaseFetch } from "@/lib/experiences/builder/performance-measurement";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import type { Database } from "./database.types";
@@ -8,6 +9,7 @@ export async function createServerSupabaseClient() {
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (!url || !key) throw new Error("Supabase public environment variables are not configured.");
   return createServerClient<Database>(url, key, {
+    global: { fetch: measuredSupabaseFetch },
     cookies: {
       getAll: () => cookieStore.getAll(),
       setAll(cookiesToSet) {

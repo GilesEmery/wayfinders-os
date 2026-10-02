@@ -1,21 +1,25 @@
 import "server-only";
 
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
-import { resolveParticipantCourse } from "./participant-runtime";
+import { resolveParticipantCourseForMutation } from "./participant-runtime";
 import { normalizeSectionProgress, summarizeParticipantProgress } from "./progress";
 import type { BuilderSection } from "./types";
 import { getBlockDefinition } from "./block-registry";
 import { sharedAssessmentCompleted } from "./shared-assessment-completion";
 import { PREBUILT_ASSESSMENT_BLOCK_TYPE, parsePrebuiltAssessmentConfiguration } from "./prebuilt-assessment";
 
-type ReadyCourse = Extract<Awaited<ReturnType<typeof resolveParticipantCourse>>, { status: "ready" }>;
+type ReadyCourse = Extract<Awaited<ReturnType<typeof resolveParticipantCourseForMutation>>, { status: "ready" }>;
 type ProgressTarget = Readonly<{ moduleKey: string; lessonKey: string; section: BuilderSection }>;
 type AuthorizedTarget = Readonly<{ participantId: string; enrollmentId: string; versionId: string; experienceId: string; requirementsBypassed: boolean; target: ProgressTarget; structure: ReadyCourse["structure"] }>;
 const KEY = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 async function authorizeTarget(slug: string, moduleKey: string, lessonKey: string, sectionKey: string, cohortId?: string | null): Promise<AuthorizedTarget | null> {
   if (![slug, moduleKey, lessonKey, sectionKey].every((value) => value.length <= 120 && KEY.test(value))) return null;
-  const resolution = await resolveParticipantCourse(slug, cohortId ?? null);
+  const resolution = await resolveParticipantCourseForMutation(slug, cohortId ?? null);
+  return authorizedTargetFromCourse(resolution, moduleKey, lessonKey, sectionKey);
+}
+
+function authorizedTargetFromCourse(resolution: Awaited<ReturnType<typeof resolveParticipantCourseForMutation>>, moduleKey: string, lessonKey: string, sectionKey: string): AuthorizedTarget | null {
   if (resolution.status !== "ready" || !resolution.enrollmentId) return null;
   const target = resolution.structure.modules.flatMap((module) => module.lessons.flatMap((lesson) => lesson.sections.map((section) => ({ moduleKey: module.module_key, lessonKey: lesson.lesson_key, section })))).find((item) => item.moduleKey === moduleKey && item.lessonKey === lessonKey && item.section.section_key === sectionKey);
   const genericSection = target && !target.section.legacy && (target.section.renderer_mode === "builder" || (target.section.renderer_mode === "hybrid" && !target.section.custom_renderer_key));
@@ -87,6 +91,10 @@ async function persistSectionCompletion(context: AuthorizedTarget, now: string) 
 export async function recordParticipantSectionVisit(slug: string, moduleKey: string, lessonKey: string, sectionKey: string, cohortId?: string | null) {
   const context = await authorizeTarget(slug, moduleKey, lessonKey, sectionKey, cohortId);
   if (!context) return { ok: false, progressAvailable: false } as const;
+  return recordAuthorizedSectionVisit(context);
+}
+
+async function recordAuthorizedSectionVisit(context: AuthorizedTarget) {
   const db = createAdminSupabaseClient();
   const now = new Date().toISOString();
   const experienceInsert = await db.from("experience_progress").upsert({ enrollment_id: context.enrollmentId, participant_id: context.participantId, experience_id: context.experienceId, experience_version_id: context.versionId, status: "in_progress", current_module_id: context.target.section.module_id, current_lesson_id: context.target.section.lesson_id, current_section_id: context.target.section.id, started_at: now, updated_at: now }, { onConflict: "enrollment_id", ignoreDuplicates: true });
@@ -125,9 +133,9 @@ export async function completeParticipantSectionForForwardNavigation(slug: strin
 }
 
 export async function completeParticipantSection(slug: string, moduleKey: string, lessonKey: string, sectionKey: string, cohortId?: string | null) {
-  const visit = await recordParticipantSectionVisit(slug, moduleKey, lessonKey, sectionKey, cohortId);
-  if (!visit.ok) return { ok: false } as const;
   const context = await authorizeTarget(slug, moduleKey, lessonKey, sectionKey, cohortId);
+  if (!context) return { ok: false } as const;
+  await recordAuthorizedSectionVisit(context);
   if (!context || context.target.section.completion_rule !== "manual") return { ok: false } as const;
   const summary = await persistSectionCompletion(context, new Date().toISOString());
   return { ok: true, status: summary.status } as const;
@@ -135,6 +143,10 @@ export async function completeParticipantSection(slug: string, moduleKey: string
 
 export async function completeParticipantSectionFromResponses(slug: string, moduleKey: string, lessonKey: string, sectionKey: string, cohortId?: string | null) {
   const context = await authorizeTarget(slug, moduleKey, lessonKey, sectionKey, cohortId);
+  return completeAuthorizedSectionFromResponses(context);
+}
+
+async function completeAuthorizedSectionFromResponses(context: AuthorizedTarget | null) {
   if (!context || !["response_submitted", "all_required_blocks"].includes(context.target.section.completion_rule)) return { ok: false } as const;
   const blocks = context.target.section.layout?.columns.flatMap((column) => column.blocks).filter((block) => block.status === "active" && block.visibility === "visible" && block.requirement_level === "required") ?? [];
   const responseBlocks = blocks.filter((block) => Boolean(getBlockDefinition(block.block_type)?.response));
@@ -150,4 +162,14 @@ export async function completeParticipantSectionFromResponses(slug: string, modu
   if (new Set((submittedResult.data ?? []).map((response) => response.response_definition_id)).size !== requiredDefinitions.length) return { ok: true, completed: false } as const;
   const summary = await persistSectionCompletion(context, new Date().toISOString());
   return { ok: true, completed: true, status: summary.status } as const;
+}
+
+// Server-internal context reuse only. No Server Action accepts this context from a client.
+export async function recordSectionVisitForAuthorizedCourse(course: ReadyCourse, moduleKey: string, lessonKey: string, sectionKey: string) {
+  const context = authorizedTargetFromCourse(course, moduleKey, lessonKey, sectionKey);
+  return context ? recordAuthorizedSectionVisit(context) : { ok: false, progressAvailable: false } as const;
+}
+
+export async function completeSectionResponsesForAuthorizedCourse(course: ReadyCourse, moduleKey: string, lessonKey: string, sectionKey: string) {
+  return completeAuthorizedSectionFromResponses(authorizedTargetFromCourse(course, moduleKey, lessonKey, sectionKey));
 }

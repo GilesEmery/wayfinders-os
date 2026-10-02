@@ -93,10 +93,10 @@ test("Course blocks and My Trainings share one canonical Assessment journey", ()
   const block = readFileSync(new URL("../../../components/experiences/builder/PrebuiltAssessmentBlock.tsx", import.meta.url), "utf8");
   const dashboard = readFileSync(new URL("../../../app/dashboard/page.tsx", import.meta.url), "utf8");
   assert.match(block, /experience_enrollments/);
-  assert.match(block, /participant_id.*course\.participantId/);
-  assert.match(block, /experience_id.*configuration\.assessmentExperienceId/);
-  assert.match(block, /canonicalEnrollment\.data\?\.status === "completed"/);
-  assert.match(block, /canonicalEnrollment\.data\?\.status === "in_progress"/);
+  assert.match(block, /participant_id.*, participantId/);
+  assert.match(block, /experience_id.*, ids/);
+  assert.match(block, /enrollment\?\.status === "completed"/);
+  assert.match(block, /enrollment\?\.status === "in_progress"/);
   const library = readFileSync(new URL("../../platform/active-journey.ts", import.meta.url), "utf8");
   assert.match(library, /activeCanonicalJourneyEnrollment\(enrollment, experience.slug, Boolean\(lmu\)\)/);
   assert.match(dashboard, /activeJourneyCards\(data\)/);

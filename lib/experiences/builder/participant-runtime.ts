@@ -1,4 +1,5 @@
 import "server-only";
+import { measureOperation } from "./performance-measurement";
 import { requireExperiencePassword } from "@/lib/experiences/access/server";
 
 import type { User } from "@supabase/supabase-js";
@@ -43,6 +44,8 @@ export type ParticipantCourseResolution =
   | { status: "invalid_context"; experience: Tables<"experiences">; reason: "invalid" | "ambiguous_delivery" | "version_mismatch" }
   | { status: "unavailable"; experience: Tables<"experiences">; reason: "runtime" | "version" | "curriculum" }
   | { status: "ready"; structure: BuilderCourseStructure; courseTemplate: CourseTemplate; themeConfiguration: unknown; coverUrl: string | null; logoUrl: string | null; headerLogoUrl: string | null; assets: { blocks: Record<string, ResolvedAsset>; heroes: Record<string, ResolvedAsset> }; companion: CompanionRuntimeData; accessSource: ParticipantExperienceAccess["source"]; participantId: string; enrollmentId: string | null; cohortId: string | null; requirementsBypassed: boolean; progress: ParticipantProgressSnapshot; responses: Readonly<Record<string, ParticipantResponseContext>> };
+
+export type ParticipantMutationResolution = Exclude<ParticipantCourseResolution, { status: "ready" }> | Pick<Extract<ParticipantCourseResolution, { status: "ready" }>, "status" | "structure" | "accessSource" | "participantId" | "enrollmentId" | "cohortId" | "requirementsBypassed" | "responses">;
 
 const ENROLLMENT_ACCESS = new Set(["enrolled", "in_progress", "completed"]);
 
@@ -131,7 +134,11 @@ async function participantFor(user: User, db: Db) {
   return result.data;
 }
 
-export async function resolveParticipantCourse(slug: string, requestedCohortId: string | null = null): Promise<ParticipantCourseResolution> {
+type AuthorizedCourse = { status: "ready"; experience: Tables<"experiences">; version: Pick<Tables<"experience_versions">, "id" | "status" | "experience_id" | "theme_id">; access: ParticipantExperienceAccess; participantId: string; requirementsBypassed: boolean };
+type CourseAccessResolution = Exclude<ParticipantCourseResolution, { status: "ready" }> | AuthorizedCourse;
+
+// Fresh authorization for every operation; never shared across users or requests.
+export async function authorizeParticipantCourse(slug: string, requestedCohortId: string | null = null): Promise<CourseAccessResolution> {
   const db = createAdminSupabaseClient();
   const [user, experienceResult] = await Promise.all([
     getPlatformUser(),
@@ -176,16 +183,36 @@ export async function resolveParticipantCourse(slug: string, requestedCohortId: 
   if (versionResult.error) throw new Error(`Unable to resolve the published Experience Version: ${versionResult.error.message}`);
   if (!versionResult.data) return { status: "unavailable", experience, reason: "version" };
 
+  return { status: "ready", experience, version: versionResult.data, access, participantId: participant.id, requirementsBypassed };
+}
+
+export async function resolveParticipantCourse(slug: string, requestedCohortId: string | null = null): Promise<ParticipantCourseResolution> {
+  return measureOperation("course-render-data", () => loadParticipantCourse(slug, requestedCohortId, false));
+}
+
+// Mutation callers need authorized curriculum/contracts, not appearance, assets or chat.
+export async function resolveParticipantCourseForMutation(slug: string, requestedCohortId: string | null = null) {
+  return measureOperation("course-mutation-data", () => loadParticipantCourse(slug, requestedCohortId, true));
+}
+
+function loadParticipantCourse(slug: string, requestedCohortId: string | null, mutation: true): Promise<ParticipantMutationResolution>;
+function loadParticipantCourse(slug: string, requestedCohortId: string | null, mutation: false): Promise<ParticipantCourseResolution>;
+async function loadParticipantCourse(slug: string, requestedCohortId: string | null, mutation: boolean): Promise<ParticipantCourseResolution | ParticipantMutationResolution> {
+  const context = await authorizeParticipantCourse(slug, requestedCohortId);
+  if (context.status !== "ready") return context;
+  const db = createAdminSupabaseClient();
+  const { experience, access, requirementsBypassed } = context;
+  const participant = { id: context.participantId };
+  const versionResult = { data: context.version };
   const themeId = versionResult.data.theme_id ?? experience.default_theme_id;
   const [canonicalStructure, themeResult] = await Promise.all([
     getExperienceStructure(experience.id, versionResult.data.id, db),
-    themeId ? db.from("experience_themes").select("configuration").eq("id", themeId).maybeSingle() : Promise.resolve({ data: null, error: null }),
+    !mutation && themeId ? db.from("experience_themes").select("configuration").eq("id", themeId).maybeSingle() : Promise.resolve({ data: null, error: null }),
   ]);
   if (themeResult.error) throw new Error(`Unable to load the Experience theme: ${themeResult.error.message}`);
   const structure = await effectiveDeliveryStructure(canonicalStructure, access.offering, db);
   // Progress foreign keys require the enrollment itself to be pinned to this Version.
   const enrollmentId = access.enrollment?.experience_version_id === versionResult.data.id ? access.enrollment.id : null;
-  const progress = await loadParticipantProgress({ enrollmentId, participantId: participant.id, versionId: versionResult.data.id, structure, db });
   const blockIds = structure.modules.flatMap((module) => module.lessons.flatMap((lesson) => lesson.sections.flatMap((section) => section.layout?.columns.flatMap((column) => column.blocks.map((block) => block.id)) ?? [])));
   const definitionResult = blockIds.length ? await db.from("response_definitions").select("*").eq("experience_version_id", versionResult.data.id).in("block_id", blockIds) : { data: [], error: null };
   if (definitionResult.error) throw new Error(`Unable to load response definitions: ${definitionResult.error.message}`);
@@ -194,6 +221,8 @@ export async function resolveParticipantCourse(slug: string, requestedCohortId: 
   if (participantResponseResult.error) throw new Error(`Unable to load participant responses: ${participantResponseResult.error.message}`);
   const participantResponses = new Map((participantResponseResult.data ?? []).map((response) => [response.response_definition_id, response]));
   const responses = Object.fromEntries((definitionResult.data ?? []).filter((definition) => definition.block_id).map((definition) => [definition.block_id!, { definition, response: participantResponses.get(definition.id) ?? null }]));
+  if (mutation) return { status: "ready", structure, accessSource: access.source, participantId: participant.id, enrollmentId, cohortId: access.cohortId, requirementsBypassed, responses };
+  const progress = await loadParticipantProgress({ enrollmentId, participantId: participant.id, versionId: versionResult.data.id, structure, db });
   const themeConfiguration = themeResult.data?.configuration ?? null;
   const [coverUrl, logoUrl, headerLogoUrl] = await Promise.all([resolveCourseCoverUrl(structure.version.course_configuration, themeConfiguration, db), resolveCourseLogoUrl(structure.version.course_configuration, themeConfiguration, db), resolveCourseHeaderLogoUrl(structure.version.course_configuration, themeConfiguration, db)]);
   const sections = structure.modules.flatMap((module) => module.lessons.flatMap((lesson) => lesson.sections));
