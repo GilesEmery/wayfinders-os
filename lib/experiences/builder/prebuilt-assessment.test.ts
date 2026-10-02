@@ -113,3 +113,19 @@ test("changing the selected prebuilt Assessment refreshes its display copy", () 
   assert.match(fields, /value=\{title\}/);
   assert.match(fields, /value=\{description\}/);
 });
+
+
+test("Course launches bypass the second launch card and nested focus dialog", () => {
+  for (const [slug, component] of [
+    ["wayfinders-ethos", "EthosAssessment"],
+    ["activate-your-purpose", "ActivatePurposeAssessment"],
+    ["launching-your-wayfinders-hub", "LaunchingWayfindersHubAssessment"],
+  ]) {
+    const page = readFileSync(new URL(`../../../app/experiences/${slug}/page.tsx`, import.meta.url), "utf8");
+    const runtime = readFileSync(new URL(`../../../components/experiences/builder/${component}.tsx`, import.meta.url), "utf8");
+    assert.match(page, /autoStart=\{Boolean\(returnTo\)\}/);
+    assert.match(runtime, /useState\(autoStart\)/);
+    assert.match(runtime, /if \(!focused && !autoStart\) return <AssessmentLaunchCard/);
+    assert.match(runtime, /active=\{focused && !autoStart\}/);
+  }
+});

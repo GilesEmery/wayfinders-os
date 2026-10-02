@@ -24,12 +24,12 @@ function ResultBox({ kind, items, onExplore }: { kind: "strength" | "growth"; it
   return <article className={`ethos-result-box is-${kind}`}><p>{heading}</p>{items.map(({ category, score }) => <div key={category.key}><h3>{category.title}</h3><strong>{score} / 15</strong></div>)}<span>{kind === "strength" ? "This appears to be an area of strength in your current context." : "This may be an area to intentionally develop as you continue through the Hub Leader Cohort."}</span><button aria-haspopup="dialog" onClick={onExplore} type="button">Explore +</button></article>;
 }
 
-export function EthosAssessment({ initialData, route, preview = false, standalone = false }: { initialData: unknown; route: Route; preview?: boolean; standalone?: boolean }) {
+export function EthosAssessment({ initialData, route, preview = false, standalone = false, autoStart = false }: { initialData: unknown; route: Route; preview?: boolean; standalone?: boolean; autoStart?: boolean }) {
   const initialAnswers = normalizeEthosAnswers(initialData);
   const [answers, setAnswers] = useState<Record<string, number>>(initialAnswers);
   const [step, setStep] = useState(() => firstIncomplete(initialAnswers));
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  const [focused, setFocused] = useState(false);
+  const [focused, setFocused] = useState(autoStart);
   const [dialog, setDialog] = useState<"strength" | "growth" | null>(null);
   const [finalized, setFinalized] = useState(() => Boolean((initialData as { finished?: unknown } | null)?.finished));
   const queue = useRef(Promise.resolve());
@@ -61,9 +61,9 @@ export function EthosAssessment({ initialData, route, preview = false, standalon
   const answeredCount = Object.keys(answers).length;
   const launchStatus: AssessmentLaunchStatus = (standalone ? finalized : ethosComplete(answers)) ? "completed" : answeredCount ? "in_progress" : "not_started";
 
-  if (!focused) return <AssessmentLaunchCard eyebrow="Wayfinders Assessment" title="Wayfinders Ethos Reflection" description="Reflect on how the Wayfinders Ethos is currently expressed in your leadership and identify your strongest opportunities for growth." status={launchStatus} action={<button aria-label="Open Wayfinders Ethos Assessment" type="button" onClick={() => setFocused(true)}>{preview ? "Preview Assessment" : assessmentLaunchLabel(launchStatus)}</button>}/>;
+  if (!focused && !autoStart) return <AssessmentLaunchCard eyebrow="Wayfinders Assessment" title="Wayfinders Ethos Reflection" description="Reflect on how the Wayfinders Ethos is currently expressed in your leadership and identify your strongest opportunities for growth." status={launchStatus} action={<button aria-label="Open Wayfinders Ethos Assessment" type="button" onClick={() => setFocused(true)}>{preview ? "Preview Assessment" : assessmentLaunchLabel(launchStatus)}</button>}/>;
 
-  return <AssessmentFocusFrame active={focused} label="Wayfinders Ethos Assessment in progress" onClose={() => setFocused(false)}><section className="ethos-assessment" aria-label="Wayfinders Ethos Assessment">
+  return <AssessmentFocusFrame active={focused && !autoStart} label="Wayfinders Ethos Assessment in progress" onClose={() => setFocused(false)}><section className="ethos-assessment" aria-label="Wayfinders Ethos Assessment">
     <header className="ethos-intro">
       <div className="ethos-intro-meta"><p>Wayfinders Ethos</p><span>Guided assessment</span></div>
       <h2>Discover how you lead</h2>
