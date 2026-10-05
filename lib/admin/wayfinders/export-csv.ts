@@ -18,6 +18,9 @@ export function csvCell(value: unknown): string {
 }
 function fields(value: unknown, path: string): Array<[string, unknown]> {
   if (value === null || typeof value !== "object") return [[path, value]];
+  if (Array.isArray(value) && value.length && value.every(item => item && typeof item.question === "string" && typeof item.response === "string")) {
+    return value.map(item => [`${path === "results" ? "Result · " : ""}${item.question || "Response"}`, item.response]);
+  }
   const entries = Array.isArray(value) ? value.map((item, index) => [String(index), item] as const) : Object.entries(value);
   if (!entries.length) return [[path, Array.isArray(value) ? "[]" : "{}"]];
   return entries.flatMap(([key, item]) => fields(item, path ? `${path}.${key}` : key));

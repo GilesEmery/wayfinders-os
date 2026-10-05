@@ -21,7 +21,7 @@ export default async function Page({ params }: { params: Promise<{ userId: strin
   const defaultHub = data.preferences?.default_hub_id ? hubNames.get(data.preferences.default_hub_id) : null;
   return <AdminShell admin={identity}>
     <nav aria-label="Wayfinder navigation" className="admin-page-actions">
-      <Link className="admin-secondary-link" href="/admin/users"><span aria-hidden="true">←</span> Back to Wayfinders</Link>
+      <Link className="admin-secondary-button" href="/admin/users"><span aria-hidden="true">←</span> Back to Wayfinders</Link>
     </nav>
     <header className="crm-wayfinder-header"><div className="crm-avatar" aria-hidden="true">{initials}</div><div><p className="admin-kicker">Wayfinder CRM</p><h1>{user.full_name ?? user.first_name}</h1><p>{user.email}</p><div className="crm-context-chips"><span>{data.accountLinkingIssue ? "Account-linking issue" : user.auth_user_id ? "Account active" : "Account not yet activated"}</span>{defaultHub && <span>{defaultHub}</span>}{data.adminMember && <span>{humanize(data.adminMember.role)}</span>}{data.roles.slice(0, 2).map((role) => <span key={role.id}>{humanize(role.role)}</span>)}</div></div></header>
     <WayfinderWorkspaceTabs/>

@@ -20,15 +20,16 @@ export async function exportWayfinder(participantId: string) {
   const identity = await getAdmin();
   if (!identity) throw new WayfinderExportError(403, "Admin access is required.");
   const db = createAdminSupabaseClient();
-  const person = await db.from("participants").select("id,full_name,email").eq("id", participantId).maybeSingle();
+  const person = await db.from("participants").select("id,full_name").eq("id", participantId).maybeSingle();
   if (person.error) throw new Error("Unable to load Wayfinder.");
   if (!person.data) throw new WayfinderExportError(404, "Wayfinder not found.");
-  const records: ExportRecord[] = [{ section: "Profile", source: "participants", record: person.data }];
+  const records: ExportRecord[] = [];
   const groups = await Promise.all(participantSources.map(async ([table, section]) => {
     const order = "id";
     const rows = await readExportPages((from, to) => db.from(table).select("*").eq("participant_id", participantId).order(order).range(from, to));
     return rows.flatMap<ExportRecord>(row => {
       const record: Record<string, unknown> = row;
+      if (table === "lmu_assessments") return [{ section, source: table, record: { id: record.id } }];
       if (table !== "experience_enrollment_version_history") return [{ section, source: table, record }];
       // Publish-forward archives answers alongside progress and transition metadata.
       // Retain the answers without turning the export into an activity history.
@@ -38,7 +39,7 @@ export async function exportWayfinder(participantId: string) {
       if (!responses.length && !companionEntries.length) return [];
       return [{ section, source: table, record: {
         id: record.id, enrollment_id: record.enrollment_id, experience_id: record.experience_id,
-        experience_version_id: record.experience_version_id, responses, companion_entries: companionEntries,
+        experience_version_id: record.experience_version_id, responses: responses.map(value => { const response = value as Record<string, unknown>; return { response_definition_id: response.response_definition_id, response_data: response.response_data }; }), companion_entries: companionEntries.map(value => { const entry = value as Record<string, unknown>; return { entry_data: entry.entry_data }; }),
       } }];
     });
   }));
@@ -51,6 +52,14 @@ export async function exportWayfinder(participantId: string) {
       return rows.map(record => ({ section: "Life Mapping U", source: table, record }));
     }));
     records.push(...groups.flat());
+  }
+  // Resolve course context without exporting enrollment or progress records.
+  const enrollmentIds = [...new Set(records.flatMap(entry => typeof entry.record.enrollment_id === "string" ? [entry.record.enrollment_id] : []))];
+  for (let offset = 0; offset < enrollmentIds.length; offset += 100) {
+    const chunk = enrollmentIds.slice(offset, offset + 100);
+    const enrollments = await readExportPages((from, to) => db.from("experience_enrollments").select("id,experience_id").eq("participant_id", participantId).in("id", chunk).order("id").range(from, to));
+    const byId = new Map(enrollments.map(row => [row.id, row.experience_id]));
+    for (const entry of records) if (typeof entry.record.enrollment_id === "string" && byId.has(entry.record.enrollment_id)) entry.record.experience_id = byId.get(entry.record.enrollment_id);
   }
   // Add names and authored question labels using only referenced IDs.
   const references = [
@@ -78,9 +87,30 @@ export async function exportWayfinder(participantId: string) {
     const key = String(definition.response_key);
     const answers = activityResponseItems(key, entry.record.response_data, definition.configuration);
     const results = activityResultItems(key, entry.record.response_data, String(entry.record.status), typeof entry.record.finalized_at === "string" ? entry.record.finalized_at : null);
-    if (answers.length || results.length) records.push({ section: "Readable answers & assessment results", source: "participant_responses", label: entry.label, record: { id: entry.record.id, enrollment_id: entry.record.enrollment_id, experience_version_id: entry.record.experience_version_id, answers, results } });
+    if (answers.length || results.length) {
+      // Replace storage payloads with readable answers rather than exporting both.
+      entry.record = { id: entry.record.id, enrollment_id: entry.record.enrollment_id, experience_version_id: entry.record.experience_version_id, answers, results };
+    }
   }
+  const contentKeys: Record<string, string[]> = {
+    participant_responses: ["response_data", "answers", "results"],
+    experience_enrollment_version_history: ["responses", "companion_entries"],
+    lmu_responses: ["section_key", "response_data"],
+    lmu_results: ["section_key", "result_data"],
+    participant_companion_entries: ["entry_data"],
+    participant_personal_notes: ["content", "curriculum_context"],
+  };
+  const cleanRecords = records.flatMap<ExportRecord>(entry => {
+    const keys = contentKeys[entry.source];
+    if (!keys) return [];
+    const record: Record<string, unknown> = { id: entry.record.id };
+    for (const key of keys) if (entry.record[key] !== undefined) record[key] = entry.record[key];
+    if (Object.keys(record).length === 1) return [];
+    return [{ ...entry, record }];
+  });
+  // A single identity row keeps multiple people's exports distinguishable without account data.
+  cleanRecords.unshift({ section: "Person", source: "participants", record: { name: person.data.full_name } });
   const exportedAt = new Date().toISOString();
-  await auditSecurityEvent(identity, "wayfinder.responses_csv_exported", "participant", participantId, { recordCount: records.length });
-  return { csv: wayfinderCsv(participantId, records, exportedAt), filename: `wayfinder-${participantId}-${exportedAt.slice(0, 10)}.csv` };
+  await auditSecurityEvent(identity, "wayfinder.responses_csv_exported", "participant", participantId, { recordCount: cleanRecords.length });
+  return { csv: wayfinderCsv(participantId, cleanRecords, exportedAt), filename: `wayfinder-${participantId}-${exportedAt.slice(0, 10)}.csv` };
 }

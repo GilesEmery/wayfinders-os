@@ -23,5 +23,5 @@ export function WayfinderCsvDownload({ participantId }: { participantId: string 
       setError(failure instanceof Error ? failure.message : "Unable to download these responses.");
     } finally { setLoading(false); }
   }
-  return <div><button type="button" className="admin-secondary-link" disabled={loading} onClick={() => void download()}>{loading ? "Preparing CSV…" : "Download responses (CSV)"}</button>{loading && <span role="status" className="sr-only">Preparing Wayfinder responses</span>}{error && <p role="alert">{error}</p>}</div>;
+  return <div><button type="button" className="admin-secondary-button" disabled={loading} onClick={() => void download()}>{loading ? "Preparing CSV…" : "Download responses (CSV)"}</button>{loading && <span role="status" className="sr-only">Preparing Wayfinder responses</span>}{error && <p role="alert">{error}</p>}</div>;
 }

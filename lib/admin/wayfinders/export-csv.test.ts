@@ -28,3 +28,10 @@ test("exports read every page, including exact page-size boundaries", async () =
 test("a failed later page fails the export instead of returning a partial CSV", async () => {
   await assert.rejects(readExportPages(async from => ({ data: from === 0 ? [{ id: 1 }] : null, error: from === 0 ? null : new Error("database error") }), 1), /complete Wayfinder export/);
 });
+
+test("readable questions and results export as individual question-answer rows", () => {
+  const csv = wayfinderCsv("person", [{ section: "Responses", source: "participant_responses", label: "Course · Reflection", record: { id: "answer", answers: [{ question: "What matters to you?", response: "Family" }], results: [{ question: "Purpose", response: "Strong" }] } }], "2026-10-05");
+  assert.ok(csv.includes('"What matters to you?","Family"'));
+  assert.ok(csv.includes('"Result · Purpose","Strong"'));
+  assert.ok(!csv.includes("answers.0.question"));
+});
