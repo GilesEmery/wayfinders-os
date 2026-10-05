@@ -276,3 +276,39 @@ export async function loadOwnResponseLibrary(): Promise<ResponseLibraryData | nu
   }
   return { name: person.data.full_name || person.data.first_name || "Your saved work", courses };
 }
+
+// CRM access is global-admin-only, independent of cohort facilitator access.
+export async function loadAdminJourneyResponses(participantId: string, selection: { enrollmentId?: string; versionId?: string; assessmentId?: string }): Promise<ResponseLibraryData> {
+  const { getAdmin } = await import("@/lib/admin/auth");
+  if (!await getAdmin()) throw new ResponseLibraryAccessError(403);
+  const db = dbClient();
+  if (selection.assessmentId) {
+    const assessment = await db.from("lmu_assessments").select("id").eq("id", selection.assessmentId).eq("participant_id", participantId).maybeSingle();
+    if (assessment.error) throw new Error("Unable to load assessment.");
+    if (!assessment.data) throw new ResponseLibraryAccessError(404);
+    return { name: "Journey", courses: [{ id: selection.assessmentId, title: "Life Mapping U", version: "Assessment responses", weeks: [{ id: "lmu", title: "Assessment", activities: await lmuActivities(participantId, selection.assessmentId) }] }] };
+  }
+  if (!selection.enrollmentId) throw new ResponseLibraryAccessError(404);
+  const result = await db.from("experience_enrollments").select("*").eq("participant_id", participantId).eq("id", selection.enrollmentId).maybeSingle();
+  if (result.error) throw new Error("Unable to load enrollment.");
+  if (!result.data) throw new ResponseLibraryAccessError(404);
+  const enrollment = result.data;
+  const history = await db.from("experience_enrollment_version_history").select("experience_version_id").eq("participant_id", participantId).eq("enrollment_id", enrollment.id).eq("experience_id", enrollment.experience_id);
+  if (history.error) throw new Error("Unable to verify saved versions.");
+  const allowed = new Set([enrollment.experience_version_id, ...(history.data ?? []).map(row => row.experience_version_id)]);
+  if (selection.versionId && !allowed.has(selection.versionId)) throw new ResponseLibraryAccessError(404);
+  const versions = selection.versionId ? [selection.versionId] : await enrollmentVersions(participantId, enrollment);
+  let offering: Offering | null = null;
+  if (enrollment.offering_id) {
+    const saved = await db.from("experience_offerings").select("*").eq("id", enrollment.offering_id).eq("experience_id", enrollment.experience_id).maybeSingle();
+    if (saved.error) throw new Error("Unable to load course delivery.");
+    offering = saved.data;
+  } else if (enrollment.cohort_id) {
+    const saved = await db.from("experience_offerings").select("*").eq("cohort_id", enrollment.cohort_id).eq("experience_id", enrollment.experience_id);
+    if (saved.error) throw new Error("Unable to load cohort delivery.");
+    const matches = (saved.data ?? []).filter(row => !row.experience_version_id || row.experience_version_id === enrollment.experience_version_id);
+    if (matches.length === 1) offering = matches[0];
+  }
+  const context = responseLoadContext();
+  return { name: "Journey", courses: await Promise.all(versions.map(version => loadCourse(participantId, enrollment, version, offering, false, context))) };
+}
