@@ -43,15 +43,13 @@ export function EthosAssessment({ initialData, route, preview = false, standalon
     setAnswers(next);
     setFocused(true);
     if (preview) {
-      if (!standalone && ethosComplete(next)) setFocused(false);
       return;
     }
     setSaveState("saving");
     queue.current = queue.current.then(async () => {
       try {
-        const result = await saveEthosAssessmentAction(route.slug, route.moduleKey, route.lessonKey, route.sectionKey, route.blockKey, route.cohortId, next);
+        await saveEthosAssessmentAction(route.slug, route.moduleKey, route.lessonKey, route.sectionKey, route.blockKey, route.cohortId, next);
         setSaveState("saved");
-        if (!standalone && result.complete) setFocused(false);
       } catch {
         setSaveState("error");
       }
@@ -83,7 +81,7 @@ export function EthosAssessment({ initialData, route, preview = false, standalon
         const questionLabelId = `ethos-question-${question.key}`;
         return <fieldset aria-labelledby={questionLabelId} className={answers[question.key] ? "is-answered" : ""} key={question.key}><div className="ethos-question-prompt" id={questionLabelId}><span>{String(step * 3 + index + 1).padStart(2, "0")}</span><strong>{question.text}</strong></div><div className="ethos-ratings">{[1, 2, 3, 4, 5].map((score) => <label className={answers[question.key] === score ? "is-selected" : ""} key={score}><input disabled={standalone && finalized} aria-label={`${score} out of 5`} checked={answers[question.key] === score} name={question.key} onChange={() => select(question.key, score)} type="radio" value={score}/><span>{score}</span></label>)}</div></fieldset>;
       })}</div>
-      <footer><button disabled={step === 0} onClick={() => setStep((value) => Math.max(0, value - 1))} type="button">← Back</button><span aria-live="polite">{preview ? "Preview only · responses are not saved" : saveState === "saving" ? "Saving…" : saveState === "error" ? "Could not save. Try again." : saveState === "saved" ? standalone && !finalized ? "Draft saved · Finish to complete" : "Saved ✓" : ""}</span>{step < 4 ? <button className="is-primary" disabled={!stepComplete} onClick={() => setStep((value) => Math.min(4, value + 1))} type="button">Continue →</button> : <span className={`ethos-completion${ethosComplete(answers) ? " is-complete" : ""}`}>{(standalone ? finalized : ethosComplete(answers)) ? "Assessment complete ✓" : ethosComplete(answers) ? "Ready to finish" : "Answer all three to continue"}</span>}</footer>
+      <footer><button disabled={step === 0} onClick={() => setStep((value) => Math.max(0, value - 1))} type="button">← Back</button><span aria-live="polite">{preview ? "Preview only · responses are not saved" : saveState === "saving" ? "Saving…" : saveState === "error" ? "Could not save. Try again." : saveState === "saved" ? standalone && !finalized ? "Draft saved · Finish to complete" : "Saved ✓" : ""}</span>{step < 4 ? <button className="is-primary" disabled={!stepComplete} onClick={() => setStep((value) => Math.min(4, value + 1))} type="button">Next section →</button> : <span className={`ethos-completion${ethosComplete(answers) ? " is-complete" : ""}`}>{(standalone ? finalized : ethosComplete(answers)) ? "Assessment complete ✓" : ethosComplete(answers) ? "Ready to finish" : "Answer all three to continue"}</span>}</footer>
     </div>
     {standalone && results && !finalized && <button className="button button-primary" disabled={saveState === "saving"} onClick={async () => { setSaveState("saving"); try { await queue.current; if (!preview) await saveEthosAssessmentAction(route.slug, route.moduleKey, route.lessonKey, route.sectionKey, route.blockKey, route.cohortId, answers, true); setFinalized(true); setSaveState("saved"); } catch { setSaveState("error"); } }} type="button">Finish assessment</button>}
     {results && (results.allEqual ? <section className="ethos-balanced-result"><p>Balanced result</p><h3>Your scores are currently even across all five Wayfinders Ethos areas.</h3><ul>{results.scores.map(({ category: item, score }) => <li key={item.key}><span>{item.title}</span><strong>{score} / 15</strong></li>)}</ul></section> : <section className="ethos-results" aria-label="Ethos Assessment results"><ResultBox kind="strength" items={results.strongest} onExplore={() => setDialog("strength")}/><ResultBox kind="growth" items={results.growth} onExplore={() => setDialog("growth")}/></section>)}

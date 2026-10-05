@@ -177,6 +177,6 @@ export function PersonalImpactStatementAssessment({ initialData, initialComplete
     </div>
     <PreviousResponses data={data} stage={stage}/>
     <p className="pis-message" role="status" aria-live="polite">{message || (preview ? "Preview — responses are not saved" : saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved" : saveState === "error" ? "Unable to save. Your responses remain on this screen." : "")}</p>
-    <footer><button type="button" disabled={stage === 0} onClick={() => { setMessage(""); setStage((value) => Math.max(0, value - 1)); }}>Back</button>{!preview && <button type="button" disabled={finishing || saveState === "saving"} onClick={() => void saveDraft()}>{saveState === "error" ? "Retry Save Draft" : "Save Draft"}</button>}<button className="pis-primary" type="button" disabled={finishing} onClick={() => void next()}>{finishing ? "Saving…" : stage === 6 ? "Save my response" : "Continue"}</button></footer>
+    <footer><button type="button" disabled={stage === 0} onClick={() => { setMessage(""); setStage((value) => Math.max(0, value - 1)); }}>Back</button>{!preview && <button type="button" disabled={finishing || saveState === "saving"} onClick={() => void saveDraft()}>{saveState === "error" ? "Retry Save Draft" : "Save Draft"}</button>}<button className="pis-primary" type="button" disabled={finishing} onClick={() => void next()}>{finishing ? "Saving…" : stage === 6 ? "Save my response" : "Next step →"}</button></footer>
   </section>);
 }

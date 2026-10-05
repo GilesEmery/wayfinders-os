@@ -60,8 +60,6 @@ export function ActivatePurposeAssessment({ initialData, route, preview = false,
   const [focused, setFocused] = useState(autoStart);
   const [dialog, setDialog] = useState<Result | null>(null);
   const queue = useRef(Promise.resolve());
-  const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => { if (advanceTimer.current) clearTimeout(advanceTimer.current); }, []);
 
   const question = ACTIVATE_PURPOSE_QUESTIONS[questionIndex];
   const area = ACTIVATE_PURPOSE_AREAS.find((candidate) => candidate.questions.some((item) => item.key === question.key))!;
@@ -77,35 +75,21 @@ export function ActivatePurposeAssessment({ initialData, route, preview = false,
     if (!preview) {
       queue.current = queue.current.then(async () => {
         try {
-          const result = await saveActivatePurposeAssessmentAction(route.slug, route.moduleKey, route.lessonKey, route.sectionKey, route.blockKey, route.cohortId, next);
+          await saveActivatePurposeAssessmentAction(route.slug, route.moduleKey, route.lessonKey, route.sectionKey, route.blockKey, route.cohortId, next);
           setSaveState("saved");
-          if (result.complete) {
-            setShowResults(true);
-            setFocused(false);
-          }
         } catch {
           setSaveState("error");
         }
       });
     }
-    if (advanceTimer.current) clearTimeout(advanceTimer.current);
-    advanceTimer.current = setTimeout(() => {
-      if (questionIndex === ACTIVATE_PURPOSE_QUESTIONS.length - 1 && activatePurposeComplete(next)) {
-        setShowResults(true);
-        if (preview) setFocused(false);
-      }
-      else setQuestionIndex((current) => Math.min(current + 1, ACTIVATE_PURPOSE_QUESTIONS.length - 1));
-    }, 420);
   }
 
   function back() {
-    if (advanceTimer.current) clearTimeout(advanceTimer.current);
     setQuestionIndex((current) => Math.max(0, current - 1));
   }
 
   function retake() {
     if (standalone) return;
-    if (advanceTimer.current) clearTimeout(advanceTimer.current);
     setAnswers({});
     setQuestionIndex(0);
     setShowResults(false);
@@ -119,7 +103,7 @@ export function ActivatePurposeAssessment({ initialData, route, preview = false,
   if (showResults && results) return <AssessmentFocusFrame active={focused && !autoStart} label="Activate Your Purpose Assessment in progress" onClose={() => setFocused(false)}><section aria-label="Activate Your Purpose Assessment results" className="purpose-assessment purpose-results-view">
     <header className="purpose-assessment-header"><div><p>Activate Your Purpose</p><span>{standalone && !finalized ? "Ready to finish" : "Assessment complete"}</span></div><h2>Your growth stages</h2><p>Each area reflects where you are today. Explore a result for its stage description and development context.</p></header>
     <div className="purpose-results-grid">{results.map((result) => <ResultCard key={result.area.key} result={result} onExplore={() => setDialog(result)}/>)}</div>
-    <footer className="purpose-results-footer">{!standalone && <button onClick={retake} type="button">Retake assessment</button>}{standalone && results && !finalized && <button disabled={saveState === "saving"} onClick={async () => { setSaveState("saving"); try { await queue.current; if (!preview) await saveActivatePurposeAssessmentAction(route.slug, route.moduleKey, route.lessonKey, route.sectionKey, route.blockKey, route.cohortId, answers, true); setFinalized(true); setSaveState("saved"); } catch { setSaveState("error"); } }} type="button">{saveState === "saving" ? "Saving…" : "Finish assessment"}</button>}<span aria-live="polite">{preview ? "Preview only · responses are not saved" : saveState === "saving" ? "Saving…" : saveState === "error" ? "Could not save. Choose the answer again." : standalone && !finalized ? "Draft saved · Finish to complete" : "Assessment saved ✓"}</span></footer>
+    <footer className="purpose-results-footer"><button onClick={() => { setShowResults(false); setQuestionIndex(0); }} type="button">Review answers</button>{!standalone && <button onClick={retake} type="button">Retake assessment</button>}{standalone && results && !finalized && <button disabled={saveState === "saving"} onClick={async () => { setSaveState("saving"); try { await queue.current; if (!preview) await saveActivatePurposeAssessmentAction(route.slug, route.moduleKey, route.lessonKey, route.sectionKey, route.blockKey, route.cohortId, answers, true); setFinalized(true); setSaveState("saved"); } catch { setSaveState("error"); } }} type="button">{saveState === "saving" ? "Saving…" : "Finish assessment"}</button>}<span aria-live="polite">{preview ? "Preview only · responses are not saved" : saveState === "saving" ? "Saving…" : saveState === "error" ? "Could not save. Retry your save." : standalone && !finalized ? "Draft saved · Finish to complete" : "Assessment saved ✓"}</span></footer>
     {dialog && <AreaDialog answers={answers} result={dialog} onClose={() => setDialog(null)}/>} 
   </section></AssessmentFocusFrame>;
 
@@ -137,7 +121,7 @@ export function ActivatePurposeAssessment({ initialData, route, preview = false,
         <h3 id={`purpose-question-${question.key}`}>{question.prompt}</h3>
         <div className="purpose-options">{(["A", "B", "C", "D"] as const).map((answer) => <label className={selected === answer ? "is-selected" : ""} key={answer}><input disabled={standalone && finalized} checked={selected === answer} name={question.key} onChange={() => select(answer)} type="radio" value={answer}/><b aria-hidden="true">{answer}</b><span>{question.options[answer]}</span><i aria-hidden="true">✓</i></label>)}</div>
       </fieldset>
-      <footer><button disabled={questionIndex === 0} onClick={back} type="button">← Back</button><span aria-live="polite">{preview ? "Preview only · responses are not saved" : saveState === "saving" ? "Saving…" : saveState === "error" ? "Could not save. Choose the answer again." : saveState === "saved" ? "Saved ✓" : "Select an answer to continue"}</span>{results && <button className="is-primary" onClick={() => setShowResults(true)} type="button">View results</button>}</footer>
+      <footer><button disabled={questionIndex === 0} onClick={back} type="button">← Back</button><span aria-live="polite">{preview ? "Preview only · responses are not saved" : saveState === "saving" ? "Saving…" : saveState === "error" ? "Could not save. Retry your save." : saveState === "saved" ? "Saved ✓" : "Select an answer to continue"}</span>{saveState === "error" && selected && <button onClick={() => select(selected)} type="button">Retry save</button>}<button className="is-primary" disabled={!selected || (questionIndex === ACTIVATE_PURPOSE_QUESTIONS.length - 1 && !results)} onClick={() => { if (questionIndex === ACTIVATE_PURPOSE_QUESTIONS.length - 1) setShowResults(true); else setQuestionIndex(current => Math.min(current + 1, ACTIVATE_PURPOSE_QUESTIONS.length - 1)); }} type="button">{questionIndex === ACTIVATE_PURPOSE_QUESTIONS.length - 1 ? "View results" : "Next question →"}</button></footer>
     </div>
   </section></AssessmentFocusFrame>;
 }
