@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 
-const tabs = [["overview","Overview"],["profile","Profile"],["journey","Journey"],["communities","Communities"],["access","Access & Leadership"],["engagement","Engagement"],["relationships","Relationships"],["crm","CRM"],["activity","Activity"],["files","Files & Records"]] as const;
+const tabs = [["overview","Overview"],["profile","Profile"],["journey","Journey"],["communities","Communities"],["access","Access & Leadership"],["engagement","Engagement"],["relationships","Relationships"],["crm","CRM"],["activity","Activity"],["files","Files & Records"],["full-record","Full Record"]] as const;
 
 export function WayfinderWorkspaceTabs(){const[active,setActive]=useState("overview");useEffect(()=>{const sections=tabs.flatMap(([id])=>{const element=document.getElementById(id);return element?[element]:[]});const update=()=>{const visible=sections.filter(section=>section.getBoundingClientRect().top<=190);const current=visible.reduce<HTMLElement|undefined>((latest,section)=>!latest||section.getBoundingClientRect().top>latest.getBoundingClientRect().top?section:latest,undefined)??sections[0];if(current)setActive(current.id)};update();window.addEventListener("scroll",update,{passive:true});window.addEventListener("hashchange",update);return()=>{window.removeEventListener("scroll",update);window.removeEventListener("hashchange",update)}},[]);return <nav className="crm-workspace-tabs" aria-label="Wayfinder workspace sections">{tabs.map(([id,label])=><a aria-current={active===id?"location":undefined} className={active===id?"is-active":undefined} href={`#${id}`} key={id}>{label}</a>)}</nav>}
 

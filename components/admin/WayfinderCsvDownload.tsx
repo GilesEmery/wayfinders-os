@@ -11,7 +11,7 @@ export function WayfinderCsvDownload({ participantId }: { participantId: string 
       const response = await fetch(`/api/admin/wayfinders/${encodeURIComponent(participantId)}/export`, { cache: "no-store" });
       if (!response.ok) {
         const body = await response.json();
-        throw new Error(body.error || "Unable to download this record.");
+        throw new Error(body.error || "Unable to download these responses.");
       }
       const url = URL.createObjectURL(await response.blob());
       const link = document.createElement("a");
@@ -20,8 +20,8 @@ export function WayfinderCsvDownload({ participantId }: { participantId: string 
       document.body.appendChild(link); link.click(); link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 10000);
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "Unable to download this record.");
+      setError(failure instanceof Error ? failure.message : "Unable to download these responses.");
     } finally { setLoading(false); }
   }
-  return <div><button type="button" className="admin-secondary-link" disabled={loading} onClick={() => void download()}>{loading ? "Preparing CSV…" : "Download full record (CSV)"}</button>{loading && <span role="status" className="sr-only">Preparing full Wayfinder record</span>}{error && <p role="alert">{error}</p>}</div>;
+  return <div><button type="button" className="admin-secondary-link" disabled={loading} onClick={() => void download()}>{loading ? "Preparing CSV…" : "Download responses (CSV)"}</button>{loading && <span role="status" className="sr-only">Preparing Wayfinder responses</span>}{error && <p role="alert">{error}</p>}</div>;
 }
