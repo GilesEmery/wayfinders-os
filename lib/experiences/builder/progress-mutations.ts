@@ -127,7 +127,12 @@ export async function completeParticipantSectionForForwardNavigation(slug: strin
   } else if (currentIndex !== sections.length - 1) return { ok: false, reason: "Only the final Page can finish the Course." } as const;
   if (context.requirementsBypassed) return { ok: true, courseCompleted: false, bypassed: true } as const;
   const eligibility = await requiredContentSatisfied(context);
-  if (!eligibility.ok) return eligibility;
+  if (!eligibility.ok) {
+    // This Course allows browsing ahead, but unfinished activities must never
+    // become completed progress. Final-course completion keeps the same gate.
+    if (target && context.structure.experience.slug === "hub-leader-cohort") return { ok: true, courseCompleted: false } as const;
+    return eligibility;
+  }
   const summary = await persistSectionCompletion(context, new Date().toISOString());
   return { ok: true, courseCompleted: summary.status === "completed" } as const;
 }
