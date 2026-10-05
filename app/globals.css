@@ -2644,3 +2644,16 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
 .course-builder-delete>summary{border-style:solid;color:#a13e32}
 .course-builder-delete>form label{align-items:center;display:flex;gap:8px}
 .course-builder-delete>form input[type=checkbox]{flex:none;width:auto}
+
+/* Directional course navigation follows the course's primary color. */
+.participant-course .participant-section-pagination :is(.participant-page-previous,.participant-page-next){background:transparent;border:0;border-radius:0;color:#fff;cursor:pointer;display:grid;font:inherit;gap:6px;isolation:isolate;min-height:76px;min-width:0;padding:16px 24px;position:relative;text-decoration:none;width:100%}
+.participant-course .participant-section-pagination .participant-page-previous{padding-left:40px;text-align:left}
+.participant-course .participant-section-pagination .participant-page-next{padding-right:40px;text-align:right}
+.participant-course .participant-section-pagination :is(.participant-page-previous,.participant-page-next)::before{background:var(--experience-accent);content:"";inset:0;position:absolute;z-index:-1}
+.participant-course .participant-section-pagination .participant-page-previous::before{clip-path:polygon(22px 0,100% 0,100% 100%,22px 100%,0 50%)}
+.participant-course .participant-section-pagination .participant-page-next::before{clip-path:polygon(0 0,calc(100% - 22px) 0,100% 50%,calc(100% - 22px) 100%,0 100%)}
+.participant-course .participant-section-pagination :is(.participant-page-previous,.participant-page-next) :is(small,strong){color:#fff;line-height:1.5;overflow-wrap:anywhere}
+.participant-course .participant-section-pagination :is(.participant-page-previous,.participant-page-next) small{font-size:10px;font-weight:800}
+.participant-course .participant-section-pagination :is(.participant-page-previous,.participant-page-next) strong{font-size:14px}
+.participant-course .participant-section-pagination :is(.participant-page-previous,.participant-page-next):hover::before{background:color-mix(in srgb,var(--experience-accent) 86%,#000)}
+.participant-course .participant-section-pagination :is(.participant-page-previous,.participant-page-next):focus-visible{outline:3px solid var(--experience-accent);outline-offset:4px}
