@@ -101,3 +101,21 @@ export function projectStartSomethingSave(priorInput: unknown, draftInput: unkno
   const finished = prior.finished ?? (finish ? createStartSomethingFinished(draft, now) : null);
   return { schemaVersion: 1, draft, finished };
 }
+
+/** Populate selected circles and keep each setting's names together when selections change. */
+export function syncStartSomethingPlaces(network: StartSomethingData["network"], places: string[], other = network.other): StartSomethingData["network"] {
+  const used = new Set<number>();
+  const locations = places.map(place => {
+    let index = network.places.indexOf(place);
+    if (index < 0) index = network.locations.findIndex((row, index) => !used.has(index) && row.location === place);
+    const prior = index >= 0 ? network.locations[index] : undefined;
+    if (index >= 0) used.add(index);
+    const label = place === "Other" ? other.trim() || "Other" : place;
+    const previousLabel = place === "Other" ? network.other.trim() || "Other" : place;
+    return { location: !prior?.location.trim() || prior.location === previousLabel ? label : prior.location, names: prior ? [...prior.names] : ["", "", "", "", ""] };
+  });
+  // Retain removed settings' existing work in unused slots instead of discarding it.
+  const retained = network.locations.filter((row, index) => !used.has(index) && (row.location || row.names.some(Boolean)));
+  while (locations.length < 5) locations.push(retained.shift() ?? { location: "", names: ["", "", "", "", ""] });
+  return { ...network, places, other, locations };
+}

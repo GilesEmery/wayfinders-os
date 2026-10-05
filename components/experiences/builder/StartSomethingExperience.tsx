@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Check, CircleDot, Lightbulb, Network, Printer, Sparkles, Target } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { finishStartSomethingAction, saveStartSomethingDraftAction } from "@/lib/experiences/builder/start-something-actions";
-import { normalizeStartSomethingEnvelope, START_SOMETHING_NETWORK_PLACES, START_SOMETHING_PROMPTS, START_SOMETHING_STAGES, START_SOMETHING_TIMELINE, type StartSomethingData } from "@/lib/experiences/builder/start-something";
+import { normalizeStartSomethingEnvelope, syncStartSomethingPlaces, START_SOMETHING_NETWORK_PLACES, START_SOMETHING_PROMPTS, START_SOMETHING_STAGES, START_SOMETHING_TIMELINE, type StartSomethingData } from "@/lib/experiences/builder/start-something";
 
 type Route = { slug: string; moduleKey: string; lessonKey: string; sectionKey: string; blockKey: string; cohortId?: string | null };
 type View = "workflow" | "result";
@@ -20,7 +20,7 @@ type GuidedPage =
   | { stage: 4; kind: "network_circle"; circle: number }
   | { stage: 5; kind: "timeline" | "two_week_plan" };
 
-const guidedPages: GuidedPage[] = [
+const allGuidedPages: GuidedPage[] = [
   ...ideaKeys.map((key) => ({ stage: 0 as const, kind: "idea" as const, key })),
   ...inventoryKeys.map((key) => ({ stage: 1 as const, kind: "inventory" as const, key })),
   { stage: 2, kind: "vision", key: "method_strategy" },
@@ -34,13 +34,12 @@ const guidedPages: GuidedPage[] = [
   { stage: 5, kind: "timeline" },
   { stage: 5, kind: "two_week_plan" },
 ];
-const firstPageByStage = START_SOMETHING_STAGES.map((_, stage) => guidedPages.findIndex((page) => page.stage === stage));
 
 function TextField({ label, value, onChange, rows = 4 }: { label: string; value: string; onChange: (value: string) => void; rows?: number }) {
   return <label className="start-something-field"><strong>{label}</strong><textarea rows={rows} value={value} onChange={(event) => onChange(event.target.value)}/></label>;
 }
 
-function AnswerSummary({ data, currentPage }: { data: StartSomethingData; currentPage: number }) {
+function AnswerSummary({ data, currentPage, guidedPages }: { data: StartSomethingData; currentPage: number; guidedPages: GuidedPage[] }) {
   if (!currentPage) return null;
   const answer = (value: string) => value.trim() || "Not answered";
   const previous = guidedPages.slice(0, currentPage);
@@ -65,7 +64,9 @@ function AnswerSummary({ data, currentPage }: { data: StartSomethingData; curren
 
 export function StartSomethingExperience({ initialData, route, preview = false, returnTo = null, mode = "course" }: { initialData: unknown; route: Route; preview?: boolean; returnTo?: string | null; mode?: "standalone" | "course" }) {
   const initial = normalizeStartSomethingEnvelope(initialData);
-  const [data, setData] = useState(initial.draft);
+  const [data, setData] = useState(() => ({ ...initial.draft, network: syncStartSomethingPlaces(initial.draft.network, initial.draft.network.places) }));
+  const guidedPages = allGuidedPages.filter(page => page.kind !== "network_circle" || page.circle < data.network.places.length);
+  const firstPageByStage = START_SOMETHING_STAGES.map((_, stage) => guidedPages.findIndex(page => page.stage === stage));
   const [finished, setFinished] = useState(initial.finished);
   const [currentPage, setCurrentPage] = useState(0);
   const [view, setView] = useState<View>(initial.finished ? "result" : "workflow");
@@ -108,7 +109,8 @@ export function StartSomethingExperience({ initialData, route, preview = false, 
   function togglePlace(place: string) {
     const selected = data.network.places.includes(place);
     if (!selected && data.network.places.length >= 5) { setMessage("Choose up to 5 different places that you have connections."); return; }
-    setMessage(""); change("network", "places", selected ? data.network.places.filter((item) => item !== place) : [...data.network.places, place]);
+    setMessage("");
+    if (!completing.current) setData(current => ({ ...current, network: syncStartSomethingPlaces(current.network, selected ? current.network.places.filter(item => item !== place) : [...current.network.places, place]) }));
   }
   function updateLocation(index: number, key: "location" | "name", value: string, nameIndex = 0) {
     const locations = data.network.locations.map((location, row) => row !== index ? location : key === "location" ? { ...location, location: value } : { ...location, names: location.names.map((name, column) => column === nameIndex ? value : name) });
@@ -138,7 +140,7 @@ export function StartSomethingExperience({ initialData, route, preview = false, 
   const shell = (content: React.ReactNode) => <div className={`start-something-shell is-${mode}${preview ? " is-preview" : ""}`}>{!preview && <nav className="start-something-context"><Link onClick={confirmLeave} href={returnTo ?? "/dashboard"}>← {returnTo ? "Return to Course" : "My Dashboard"}</Link></nav>}{content}</div>;
   if (view === "result" && finished) {
     const result = finished.participantMaterial;
-    return shell(<main className="start-something-result"><header><p>Start Something</p><h1>Your idea has a direction.</h1><blockquote>{result.vision.vision_statement || result.idea.idea_summary || "Your finished workbook"}</blockquote></header><section className="start-something-result-grid"><article><Lightbulb/><h2>The Idea</h2><p>{result.idea.idea_summary || "Not answered"}</p><p>{result.idea.people_location}</p></article><article><Target/><h2>Vision & Strategy</h2><p>{result.vision.method_strategy || "Not answered"}</p><div className="start-something-keywords">{result.vision.keywords.filter(Boolean).map((word) => <span key={word}>{word}</span>)}</div></article><article><CircleDot/><h2>What You See</h2><p><strong>Needs</strong><br/>{result.inventory.needs || "Not answered"}</p><p><strong>Underlying causes</strong><br/>{result.inventory.causes || "Not answered"}</p><p><strong>Possible responses</strong><br/>{result.inventory.responses || "Not answered"}</p></article><article><Sparkles/><h2>How You’ll Move</h2><p><strong>Where the vision is now</strong><br/>{result.strategy.current_vision || "Not answered"}</p><p><strong>Desired future</strong><br/>{result.strategy.desired_future || "Not answered"}</p><p><strong>Needed elements</strong><br/>{result.strategy.needed_elements || "Not answered"}</p></article><article className="is-wide"><Network/><h2>Your Network</h2><p>{result.network.places.length ? result.network.places.join(" · ") : "No settings selected"}</p><div className="start-something-network-result">{result.network.locations.filter((item) => item.location || item.names.some(Boolean)).map((item, index) => <div key={`${item.location}-${index}`}><strong>{item.location || `Location ${index + 1}`}</strong><ul>{item.names.filter(Boolean).map((name) => <li key={name}>{name}</li>)}</ul></div>)}</div>{result.network.additional_locations && <p><strong>Additional locations</strong><br/>{result.network.additional_locations}</p>}{result.network.indirect_connections && <p><strong>Indirect connections</strong><br/>{result.network.indirect_connections}</p>}</article><article><CircleDot/><h2>Current Stage</h2><p>{result.next_steps.timeline_stage || "Not selected"}</p></article><article><Sparkles/><h2>The Next Two Weeks</h2><p>{result.next_steps.two_week_plan || "Not answered"}</p></article></section><footer className="start-something-result-actions"><button type="button" onClick={() => { setData(result); setCurrentPage(0); setView("workflow"); }}>Review / Edit</button><button type="button" onClick={() => window.print()}><Printer/> Print / Save as PDF</button>{returnTo && <a onClick={confirmLeave} href={returnTo}>Return to Course</a>}</footer></main>);
+    return shell(<main className="start-something-result"><header><p>Start Something</p><h1>Your idea has a direction.</h1><blockquote>{result.vision.vision_statement || result.idea.idea_summary || "Your finished workbook"}</blockquote></header><section className="start-something-result-grid"><article><Lightbulb/><h2>The Idea</h2><p>{result.idea.idea_summary || "Not answered"}</p><p>{result.idea.people_location}</p></article><article><Target/><h2>Vision & Strategy</h2><p>{result.vision.method_strategy || "Not answered"}</p><div className="start-something-keywords">{result.vision.keywords.filter(Boolean).map((word) => <span key={word}>{word}</span>)}</div></article><article><CircleDot/><h2>What You See</h2><p><strong>Needs</strong><br/>{result.inventory.needs || "Not answered"}</p><p><strong>Underlying causes</strong><br/>{result.inventory.causes || "Not answered"}</p><p><strong>Possible responses</strong><br/>{result.inventory.responses || "Not answered"}</p></article><article><Sparkles/><h2>How You’ll Move</h2><p><strong>Where the vision is now</strong><br/>{result.strategy.current_vision || "Not answered"}</p><p><strong>Desired future</strong><br/>{result.strategy.desired_future || "Not answered"}</p><p><strong>Needed elements</strong><br/>{result.strategy.needed_elements || "Not answered"}</p></article><article className="is-wide"><Network/><h2>Your Network</h2><p>{result.network.places.length ? result.network.places.join(" · ") : "No settings selected"}</p><div className="start-something-network-result">{result.network.locations.filter((item) => item.location || item.names.some(Boolean)).map((item, index) => <div key={`${item.location}-${index}`}><strong>{item.location || `Location ${index + 1}`}</strong><ul>{item.names.filter(Boolean).map((name) => <li key={name}>{name}</li>)}</ul></div>)}</div>{result.network.additional_locations && <p><strong>Additional locations</strong><br/>{result.network.additional_locations}</p>}{result.network.indirect_connections && <p><strong>Indirect connections</strong><br/>{result.network.indirect_connections}</p>}</article><article><CircleDot/><h2>Current Stage</h2><p>{result.next_steps.timeline_stage || "Not selected"}</p></article><article><Sparkles/><h2>The Next Two Weeks</h2><p>{result.next_steps.two_week_plan || "Not answered"}</p></article></section><footer className="start-something-result-actions"><button type="button" onClick={() => { setData({ ...result, network: syncStartSomethingPlaces(result.network, result.network.places) }); setCurrentPage(0); setView("workflow"); }}>Review / Edit</button><button type="button" onClick={() => window.print()}><Printer/> Print / Save as PDF</button>{returnTo && <a onClick={confirmLeave} href={returnTo}>Return to Course</a>}</footer></main>);
   }
 
   const activePage = guidedPages[currentPage];
@@ -158,7 +160,7 @@ export function StartSomethingExperience({ initialData, route, preview = false, 
   } else if (activePage.kind === "strategy") {
     pageContent = <TextField label={START_SOMETHING_PROMPTS[activePage.key]} value={data.strategy[activePage.key]} onChange={(value) => change("strategy", activePage.key, value)} rows={7}/>;
   } else if (activePage.kind === "network_places") {
-    pageContent = <><fieldset className="start-something-place-picker"><legend>Choose up to 5 different places where you have connections.</legend><p>{data.network.places.length} of 5 selected</p><div>{START_SOMETHING_NETWORK_PLACES.map((place) => <button type="button" role="checkbox" aria-checked={data.network.places.includes(place)} className={data.network.places.includes(place) ? "is-selected" : ""} onClick={() => togglePlace(place)} key={place}>{data.network.places.includes(place) && <Check/>}{place}</button>)}</div></fieldset>{data.network.places.includes("Other") && <TextField label="Other location" value={data.network.other} onChange={(value) => change("network", "other", value)}/>}</>;
+    pageContent = <><fieldset className="start-something-place-picker"><legend>Choose up to 5 different places where you have connections.</legend><p>{data.network.places.length} of 5 selected</p><div>{START_SOMETHING_NETWORK_PLACES.map((place) => <button type="button" role="checkbox" aria-checked={data.network.places.includes(place)} className={data.network.places.includes(place) ? "is-selected" : ""} onClick={() => togglePlace(place)} key={place}>{data.network.places.includes(place) && <Check/>}{place}</button>)}</div></fieldset>{data.network.places.includes("Other") && <TextField label="Other location" value={data.network.other} onChange={(value) => { if (!completing.current) setData(current => ({ ...current, network: syncStartSomethingPlaces(current.network, current.network.places, value) })); }}/>}</>;
   } else if (activePage.kind === "network_circle") {
     const location = data.network.locations[activePage.circle];
     pageContent = <><h2 className="start-something-network-title">Add the people in this setting who might be interested in hearing about your mission.</h2><div className="start-something-network-map is-single"><fieldset className="start-something-network-orbit"><legend>Connection circle {activePage.circle + 1}</legend><div className="start-something-location-node"><label>Location {activePage.circle + 1}<textarea rows={3} value={location.location} placeholder="Name this setting" onChange={(event) => updateLocation(activePage.circle, "location", event.target.value)}/></label></div><div className="start-something-connection-nodes">{location.names.map((name, nameIndex) => <label key={nameIndex}>Connection {nameIndex + 1}<textarea rows={2} value={name} placeholder="Add a person" onChange={(event) => updateLocation(activePage.circle, "name", event.target.value, nameIndex)}/></label>)}</div></fieldset></div></>;
@@ -182,7 +184,7 @@ export function StartSomethingExperience({ initialData, route, preview = false, 
     })}</ol></nav>
     <p className="start-something-question-count">Question {stagePages.findIndex(({ index }) => index === currentPage) + 1} of {stagePages.length}</p>
     <section className={`start-something-stage is-stage-${stage}`}>{pageContent}</section>
-    <AnswerSummary data={data} currentPage={currentPage}/>
+    <AnswerSummary data={data} currentPage={currentPage} guidedPages={guidedPages}/>
     <p className="start-something-save-state" role="status">{preview ? "Preview — nothing is saved" : saveState === "saving" ? "Saving your draft…" : saveState === "dirty" ? "Unsaved changes" : saveState === "error" ? "Save failed — your answers remain here. Retry Save." : "Draft saved"} {message}</p>
     <footer className="start-something-navigation"><button type="button" disabled={currentPage === 0} onClick={() => setCurrentPage((value) => Math.max(0, value - 1))}>Back</button>{!preview && <button type="button" disabled={saveState === "saving" || saveState === "saved"} onClick={() => void save(latest.current)}>{saveState === "error" ? "Retry Save" : "Save Draft"}</button>}{currentPage < guidedPages.length - 1 ? <button className="is-primary" type="button" onClick={() => setCurrentPage((value) => value + 1)}>Next step →</button> : <button className="is-primary" type="button" disabled={finishing} onClick={() => void finish()}>{finishing ? "Saving…" : "Save my response"}</button>}</footer>
   </main>);

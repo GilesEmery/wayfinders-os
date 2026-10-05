@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { createStartSomethingFinished, emptyStartSomethingData, normalizeStartSomethingData, normalizeStartSomethingEnvelope, projectStartSomethingSave, START_SOMETHING_NETWORK_PLACES, START_SOMETHING_PROMPTS, START_SOMETHING_STAGES, START_SOMETHING_TIMELINE, startSomethingEquivalent } from "./start-something.ts";
+import { syncStartSomethingPlaces, createStartSomethingFinished, emptyStartSomethingData, normalizeStartSomethingData, normalizeStartSomethingEnvelope, projectStartSomethingSave, START_SOMETHING_NETWORK_PLACES, START_SOMETHING_PROMPTS, START_SOMETHING_STAGES, START_SOMETHING_TIMELINE, startSomethingEquivalent } from "./start-something.ts";
 
 test("maps the exact 22 core reflective prompts without identity or workshop questions", () => {
   assert.equal(Object.keys(START_SOMETHING_PROMPTS).length, 22);
@@ -102,4 +102,25 @@ test("release registration requires the canonical published version before stand
   assert.match(script, /completion_provider: "experience_enrollment"/);
   assert.match(script, /status: "active"/);
   assert.match(script, /--confirm=/);
+});
+
+test("selected network settings populate circles and preserve names when reordered or reselected", () => {
+  const original = emptyStartSomethingData().network;
+  let network = syncStartSomethingPlaces(original, ["Church", "Work", "Coffee shop"]);
+  assert.deepEqual(network.locations.slice(0, 3).map(row => row.location), ["Church", "Work", "Coffee shop"]);
+  network.locations[1].names[0] = "Fixture connection";
+  network = syncStartSomethingPlaces(network, ["Church", "Coffee shop"]);
+  assert.equal(network.locations[1].location, "Coffee shop");
+  network = syncStartSomethingPlaces(network, ["Church", "Coffee shop", "Work"]);
+  assert.equal(network.locations[2].names[0], "Fixture connection");
+  assert.deepEqual(original.places, []);
+});
+
+test("Other fills the selected circle while existing custom location labels survive", () => {
+  let network = syncStartSomethingPlaces(emptyStartSomethingData().network, ["Other"], "Local library");
+  assert.equal(network.locations[0].location, "Local library");
+  network = syncStartSomethingPlaces(network, ["Other"], "Community library");
+  assert.equal(network.locations[0].location, "Community library");
+  network.locations[0].location = "My custom label";
+  assert.equal(syncStartSomethingPlaces(network, ["Other"], "Another library").locations[0].location, "My custom label");
 });
