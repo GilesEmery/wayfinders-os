@@ -123,7 +123,8 @@ test("Course launches bypass the second launch card and nested focus dialog", ()
   ]) {
     const page = readFileSync(new URL(`../../../app/experiences/${slug}/page.tsx`, import.meta.url), "utf8");
     const runtime = readFileSync(new URL(`../../../components/experiences/builder/${component}.tsx`, import.meta.url), "utf8");
-    assert.match(page, /autoStart=\{Boolean\(returnTo\)\}/);
+    if (slug === "wayfinders-ethos") assert.match(page, /<EthosAssessment autoStart standalone/);
+    else assert.match(page, /autoStart=\{Boolean\(returnTo\)\}/);
     assert.match(runtime, /useState\(autoStart\)/);
     assert.match(runtime, /if \(!focused && !autoStart\) return <AssessmentLaunchCard/);
     assert.match(runtime, /active=\{focused && !autoStart\}/);
