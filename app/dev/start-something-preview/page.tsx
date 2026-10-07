@@ -38,12 +38,12 @@ fixture.next_steps = { timeline_stage: "3. Strategy", two_week_plan: "Confirm th
 
 const route = { slug: "start-something", moduleKey: "preview", lessonKey: "preview", sectionKey: "preview", blockKey: "preview" };
 
-export default async function StartSomethingPreviewPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
+export default async function StartSomethingPreviewPage({ searchParams }: { searchParams: Promise<{ view?: string; mode?: string }> }) {
   if (process.env.NODE_ENV !== "development") notFound();
-  const { view } = await searchParams;
+  const { view, mode } = await searchParams;
   const initialData = view === "result"
     ? { schemaVersion: 1, draft: fixture, finished: createStartSomethingFinished(fixture, "2026-10-01T12:00:00.000Z") }
-    : { schemaVersion: 1, draft: fixture, finished: null };
+    : { schemaVersion: 1, draft: view === "intro" ? emptyStartSomethingData() : fixture, finished: null };
 
-  return <StartSomethingExperience initialData={initialData} route={route} preview mode="standalone" />;
+  return <StartSomethingExperience initialData={initialData} route={route} preview mode={mode === "course" ? "course" : "standalone"} />;
 }

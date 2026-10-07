@@ -2690,3 +2690,104 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
 .admin-history-button{align-items:center;background:#fff;border:1px solid var(--admin-border);border-radius:50%;color:var(--admin-charcoal);cursor:pointer;display:inline-flex;flex-shrink:0;height:44px;justify-content:center;padding:0;transition:background .15s,border-color .15s;width:44px}
 .admin-history-button:hover{background:var(--admin-soft);border-color:var(--admin-blue)}
 .admin-platform-shell.is-focused-builder .admin-history-navigation{margin:0;padding:16px 24px}
+
+/* Informational entry within the existing Start Something assessment. */
+.start-something-introduction .start-something-heading,.start-something-introduction-copy{margin-inline:auto;max-width:740px}
+.start-something-introduction .start-something-introduction-subtitle{color:var(--ss-blue);font-family:var(--font-editorial),serif;font-size:clamp(23px,3vw,32px)}
+.start-something-introduction-copy{font-size:16px;line-height:1.75;overflow-wrap:anywhere}
+.start-something-introduction-copy>p:first-child{margin-top:32px}
+.start-something-introduction-copy section{border-top:1px solid #dcd8cd;margin-top:32px;padding-top:16px}
+.start-something-introduction-copy h2{color:var(--ss-blue);font-family:var(--font-editorial),serif;font-size:clamp(26px,3vw,34px);font-weight:500;line-height:1.2}
+.start-something-introduction-copy ol{padding-left:26px}
+.start-something-introduction-copy li{padding-left:8px;margin-block:14px}
+.start-something-introduction-copy li::marker{color:var(--ss-blue);font-weight:800}
+.start-something-introduction-encouragement{border-left:5px solid var(--ss-yellow);background:var(--ss-cream);margin-top:32px;padding:20px}
+.start-something-introduction-encouragement>p{color:var(--ss-blue);font-family:var(--font-editorial),serif;font-size:26px;margin:0}
+.start-something-introduction-encouragement .start-something-navigation{justify-content:flex-start;margin-top:18px}
+.start-something-introduction button:focus-visible{outline:3px solid var(--ss-yellow);outline-offset:4px}
+.start-something-introduction-copy p{margin-block:18px}
+.start-something-introduction-copy ol{list-style:decimal}
+.start-something-introduction-encouragement>p{margin:0}
+
+/* Compact assessment navigation and stacked influence fields on small screens. */
+.start-something-mobile-progress{display:none}
+.start-something-stage{scroll-margin-top:100px}
+@media(max-width:800px){
+  .start-something-shell .start-something-progress{display:none}
+  .start-something-mobile-progress{align-items:center;background:var(--ss-cream);border:1px solid #dcd8cd;border-radius:12px;display:flex;gap:12px;margin:28px 0;padding:12px}
+  .start-something-mobile-progress>span{align-items:center;background:var(--ss-yellow);border:2px solid var(--ss-charcoal);border-radius:50%;display:flex;flex:0 0 38px;font-weight:800;height:38px;justify-content:center}
+  .start-something-mobile-progress label{flex:1;min-width:0}
+  .start-something-mobile-progress select{background:transparent;border:0;color:var(--ss-charcoal);font:inherit;font-size:14px;font-weight:800;min-height:44px;max-width:100%;width:100%}
+  .start-something-mobile-progress small{color:#626864;flex-shrink:0;font-size:12px}
+  .start-something-network-map.is-single{grid-template-columns:minmax(0,1fr)}
+  .start-something-network-map .start-something-network-orbit{height:auto;min-height:0!important;min-width:0;overflow:visible;padding:18px!important}
+  .start-something-network-orbit::before{display:none}
+  .start-something-network-orbit .start-something-location-node{border-radius:16px;height:auto;left:auto;min-width:0;padding:18px;position:static;top:auto;transform:none;width:100%}
+  .start-something-location-node label{min-width:0;width:100%}
+  .start-something-network-orbit .start-something-connection-nodes{display:grid;gap:12px;grid-template-columns:minmax(0,1fr);margin-top:20px}
+  .start-something-network-orbit .start-something-connection-nodes label:nth-child(n){border-radius:12px;bottom:auto;height:auto;left:auto;min-height:0;min-width:0;padding:16px;position:static;right:auto;top:auto;transform:none;width:100%}
+  .start-something-network-orbit textarea{font-size:16px;min-height:64px;resize:vertical}
+}
+.start-something-progress .start-something-instructions-link{color:var(--ss-blue);margin-bottom:32px;min-height:44px;padding:8px 0;text-decoration:underline;text-underline-offset:4px}
+.start-something-instructions-section{scroll-margin-top:100px}
+
+/* Compact, continuous stage choices for small screens. */
+@media(max-width:800px){
+  .start-something-timeline>div{grid-template-columns:minmax(0,1fr);gap:10px;margin-top:20px}
+  .start-something-timeline label{align-items:center;border:1px solid #d5dbd7;border-radius:12px;display:flex;gap:14px;min-height:64px;padding:12px 16px;position:relative}
+  .start-something-timeline label>span{border-radius:50%;flex:0 0 36px;height:36px;margin:0;width:36px}
+  .start-something-timeline label strong{font-size:16px;line-height:1.3}
+  .start-something-timeline label.is-selected{background:#edf5fc;border-color:var(--ss-blue);box-shadow:inset 4px 0 0 var(--ss-blue)}
+  .start-something-timeline label:focus-within{outline:3px solid var(--ss-blue);outline-offset:3px}
+}
+.start-something-print-response{display:none}
+.start-something-navigation button:has(svg){align-items:center;display:flex;gap:8px;justify-content:center}
+.start-something-navigation button svg{height:18px;width:18px}
+@media print{
+  .start-something-workflow{border:0;border-radius:0;box-shadow:none;max-width:none;overflow:visible;padding:0}
+  .start-something-workflow>*:not(.start-something-heading):not(.start-something-print-response){display:none!important}
+  .start-something-workflow .start-something-print-response{border:0;display:block!important;margin-top:24px;max-width:none;padding:0}
+  .start-something-print-response summary{display:block;list-style:none}
+  .start-something-print-response summary>span:last-child{display:none}
+  .start-something-print-response dl{display:block}
+  .start-something-print-response dl>div{break-inside:avoid;margin:0 0 16px;padding:12px 0}
+  .start-something-print-response dd{overflow-wrap:anywhere;white-space:pre-wrap}
+  .start-something-workflow .start-something-heading h1{font-size:32pt}
+  .start-something-workflow .start-something-heading p{display:none}
+}
+
+.start-something-timeline-choice{min-width:0;position:relative}
+.start-something-timeline-choice label{min-height:104px;padding-right:38px}
+.start-something-timeline-help{position:relative}
+.start-something-timeline-help summary{align-items:center;background:#fff;border:1px solid #cbd0cd;border-radius:50%;color:var(--ss-blue);cursor:pointer;display:flex;height:30px;justify-content:center;list-style:none;position:absolute;right:5px;top:-40px;width:30px}
+.start-something-timeline-help summary::-webkit-details-marker{display:none}
+.start-something-timeline-help summary:focus-visible{outline:3px solid var(--ss-blue);outline-offset:3px}
+.start-something-timeline-help[open] summary>span:first-child{transform:rotate(45deg)}
+.start-something-timeline-help p{background:var(--ss-cream);border-left:3px solid var(--ss-yellow);font-size:13px;line-height:1.6;margin:8px 0 0;padding:14px;position:relative;z-index:1}
+@media(max-width:800px){.start-something-timeline-choice label{min-height:64px;padding-right:54px}.start-something-timeline-help summary{right:14px;top:-48px}}
+.start-something-print-document{display:none}
+@media print{
+  body:has(.start-something-print-document){background:#fff!important}
+  .start-something-shell>.start-something-workflow,.start-something-shell>.start-something-result,.start-something-shell>.start-something-instructions-section{display:none!important}
+  .start-something-shell .start-something-print-document{box-sizing:border-box;color:#252a29;display:block!important;font-size:10pt;line-height:1.55;margin:0;max-width:100%;min-width:0;overflow-wrap:anywhere;padding:.2in;box-decoration-break:clone;-webkit-box-decoration-break:clone;width:100%;print-color-adjust:exact;-webkit-print-color-adjust:exact}
+  .start-something-print-document header{background:#0054a1!important;border-bottom:6px solid #f5bd00;color:#fff!important;padding:28px 32px}
+  .start-something-print-document header p,.ss-print-direction>p{font-size:8pt;font-weight:800;letter-spacing:.16em;margin:0 0 12px;text-transform:uppercase}
+  .start-something-print-document h1{font-family:var(--font-editorial),serif;font-size:36pt;font-weight:500;letter-spacing:-.03em;line-height:1.05;margin:0 0 16px}
+  .start-something-print-document header>span{color:#e0edfa;font-size:10pt}
+  .ss-print-direction{background:#f8f5ec;border-left:5px solid #f5bd00;margin:24px 0;padding:20px 24px}
+  .ss-print-direction>p{color:#0054a1}
+  .ss-print-direction blockquote{font-family:var(--font-editorial),serif;font-size:20pt;line-height:1.35;margin:0 0 18px;overflow-wrap:anywhere;white-space:pre-wrap}
+  .ss-print-direction>div{border-top:1px solid #dcd8cd;display:flex;flex-wrap:wrap;gap:8px 20px;padding-top:12px}
+  .ss-print-direction strong{color:#0054a1}
+  .start-something-print-document section{margin:24px 0}
+  .start-something-print-document h2{align-items:center;border-bottom:1px solid #d5dbd7;color:#0054a1;display:flex;font-family:var(--font-editorial),serif;font-size:21pt;font-weight:500;gap:12px;margin:0 0 16px;padding-bottom:10px;break-after:avoid}
+  .start-something-print-document h2>span{align-items:center;background:#f5bd00;color:#252a29;display:flex;font-family:Arial,sans-serif;font-size:10pt;font-weight:800;height:30px;justify-content:center;width:30px}
+  .start-something-print-document dl{margin:0}
+  .start-something-print-document dl>div{border-bottom:1px solid #eceeea;break-inside:avoid;padding:0 0 14px;margin:0 0 14px}
+  .start-something-print-document dt{color:#0054a1;font-size:9pt;font-weight:700;line-height:1.4;margin-bottom:6px}
+  .start-something-print-document dd{margin:0;overflow-wrap:anywhere;white-space:pre-wrap;orphans:3;widows:3}
+  .ss-print-next{background:#f8f5ec;border-top:4px solid #f5bd00;padding:20px 24px}
+  .start-something-print-document footer{border-top:2px solid #0054a1;color:#0054a1;display:flex;font-size:8pt;justify-content:space-between;margin-top:28px;padding-top:12px}
+  .start-something-print-document header{break-inside:avoid}
+  .start-something-shell{margin:0!important;max-width:none!important;min-height:0!important;min-width:0!important;padding:0!important;width:100%!important}
+}

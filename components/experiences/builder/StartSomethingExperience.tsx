@@ -1,13 +1,25 @@
 "use client";
 
 import Link from "next/link";
+import { flushSync } from "react-dom";
+import { StartSomethingPrintResponse } from "./StartSomethingPrintResponse";
 import { Check, CircleDot, Lightbulb, Network, Printer, Sparkles, Target } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { StartSomethingIntroduction } from "./StartSomethingIntroduction";
+import { emptyStartSomethingData, startSomethingEquivalent } from "@/lib/experiences/builder/start-something";
 import { finishStartSomethingAction, saveStartSomethingDraftAction } from "@/lib/experiences/builder/start-something-actions";
 import { normalizeStartSomethingEnvelope, syncStartSomethingPlaces, START_SOMETHING_NETWORK_PLACES, START_SOMETHING_PROMPTS, START_SOMETHING_STAGES, START_SOMETHING_TIMELINE, type StartSomethingData } from "@/lib/experiences/builder/start-something";
 
 type Route = { slug: string; moduleKey: string; lessonKey: string; sectionKey: string; blockKey: string; cohortId?: string | null };
-type View = "workflow" | "result";
+type View = "introduction" | "workflow" | "result";
+const timelineDescriptions = [
+  "You have a spark of an idea or a need you want to respond to. Explore who it could serve and why it matters.",
+  "You can picture the change you hope to see. Put that future into words so others can understand the direction.",
+  "You are working out how to move toward your vision. Identify practical steps, resources, and values that will guide the work.",
+  "You are inviting people to help bring the vision to life. Look for shared purpose, complementary strengths, and clear roles.",
+  "You are trying the idea on a small scale. Listen to feedback, notice what works, and adjust before growing.",
+  "You are ready to give the work sustained attention. Agree on responsibilities and a rhythm for continuing, learning, and reviewing progress.",
+];
 const ideaKeys = ["idea_summary", "idea_origin", "people_location", "redemptive_work"] as const;
 const inventoryKeys = ["needs", "causes", "responses", "negative_impact", "partnerships", "success", "community_loss", "resources"] as const;
 const strategyKeys = ["current_vision", "desired_future", "needed_elements", "values", "share_values", "planned_elements", "distinctiveness"] as const;
@@ -39,12 +51,12 @@ function TextField({ label, value, onChange, rows = 4 }: { label: string; value:
   return <label className="start-something-field"><strong>{label}</strong><textarea rows={rows} value={value} onChange={(event) => onChange(event.target.value)}/></label>;
 }
 
-function AnswerSummary({ data, currentPage, guidedPages }: { data: StartSomethingData; currentPage: number; guidedPages: GuidedPage[] }) {
+function AnswerSummary({ data, currentPage, guidedPages, printOnly = false }: { data: StartSomethingData; currentPage: number; guidedPages: GuidedPage[]; printOnly?: boolean }) {
   if (!currentPage) return null;
   const answer = (value: string) => value.trim() || "Not answered";
   const previous = guidedPages.slice(0, currentPage);
-  return <details className="pis-previous-responses start-something-previous-responses">
-    <summary><span><strong>Your Previous Responses</strong><small>Open this anytime to remember what you shared earlier.</small></span><span aria-hidden="true">+</span></summary>
+  return <details open={printOnly || undefined} className={printOnly ? "pis-previous-responses start-something-previous-responses start-something-print-response" : "pis-previous-responses start-something-previous-responses"}>
+    <summary><span><strong>{printOnly ? "Your response" : "Your Previous Responses"}</strong>{!printOnly && <small>Open this anytime to remember what you shared earlier.</small>}</span><span aria-hidden="true">+</span></summary>
     <dl>
       {previous.map((page, index) => {
         if (page.kind === "idea") return <div key={index}><dt>{START_SOMETHING_PROMPTS[page.key]}</dt><dd>{answer(data.idea[page.key])}</dd></div>;
@@ -67,9 +79,21 @@ export function StartSomethingExperience({ initialData, route, preview = false, 
   const [data, setData] = useState(() => ({ ...initial.draft, network: syncStartSomethingPlaces(initial.draft.network, initial.draft.network.places) }));
   const guidedPages = allGuidedPages.filter(page => page.kind !== "network_circle" || page.circle < data.network.places.length);
   const firstPageByStage = START_SOMETHING_STAGES.map((_, stage) => guidedPages.findIndex(page => page.stage === stage));
+  const [printData, setPrintData] = useState<StartSomethingData | null>(null);
   const [finished, setFinished] = useState(initial.finished);
   const [currentPage, setCurrentPage] = useState(0);
-  const [view, setView] = useState<View>(initial.finished ? "result" : "workflow");
+  const [view, setView] = useState<View>(() => initial.finished ? "result" : startSomethingEquivalent(initial.draft, emptyStartSomethingData()) ? "introduction" : "workflow");
+  const questionRef = useRef<HTMLElement>(null);
+  const introductionRef = useRef<HTMLDivElement>(null);
+  const previousPage = useRef({ currentPage, view });
+  useEffect(() => {
+    const previous = previousPage.current;
+    previousPage.current = { currentPage, view };
+    if (previous.currentPage === currentPage && previous.view === view) return;
+    const target = view === "introduction" ? introductionRef.current : view === "workflow" ? questionRef.current : null;
+    target?.focus({ preventScroll: true });
+    target?.scrollIntoView({ block: "start", behavior: "instant" });
+  }, [currentPage, view]);
   const [saveState, setSaveState] = useState<"saved" | "dirty" | "saving" | "error">("saved");
   const [message, setMessage] = useState("");
   const latest = useRef(data);
@@ -116,20 +140,28 @@ export function StartSomethingExperience({ initialData, route, preview = false, 
     const locations = data.network.locations.map((location, row) => row !== index ? location : key === "location" ? { ...location, location: value } : { ...location, names: location.names.map((name, column) => column === nameIndex ? value : name) });
     change("network", "locations", locations);
   }
-  async function finish() {
+  async function finish(print = false, snapshot = latest.current) {
     if (completing.current) return;
+    if (preview && print) { flushSync(() => setPrintData(snapshot)); window.print(); return; }
     if (preview) { setFinished({ schemaVersion: 1, sourceVersion: "start-something.v1", completedAt: new Date().toISOString(), participantMaterial: data }); setView("result"); return; }
     completing.current = true; setFinishing(true);
     if (autosaveTimer.current !== null) window.clearTimeout(autosaveTimer.current);
     setSaveState("saving"); setMessage("");
     await queue.current;
     try {
-      const result = await finishStartSomethingAction(route.slug, route.moduleKey, route.lessonKey, route.sectionKey, route.blockKey, route.cohortId, latest.current);
+      const result = await finishStartSomethingAction(route.slug, route.moduleKey, route.lessonKey, route.sectionKey, route.blockKey, route.cohortId, snapshot);
       if (!result.completedAt) throw new Error("Completion was not confirmed.");
-      lastSaved.current = JSON.stringify(latest.current); setSaveState("saved");
+      lastSaved.current = JSON.stringify(snapshot); setSaveState("saved");
+      if (print) {
+        const completedAt = result.completedAt;
+        flushSync(() => { setPrintData(snapshot); setFinished({ schemaVersion: 1, sourceVersion: "start-something.v1", completedAt, participantMaterial: snapshot }); setMessage("Your response is saved. You can print it or save it as a PDF."); });
+        window.print();
+        completing.current = false; setFinishing(false);
+        return;
+      }
       navigationConfirmed.current = true;
       window.location.assign(returnTo ?? "/dashboard");
-    } catch { setSaveState("error"); setMessage("Your response could not be completed. Your answers remain here. Please retry Save my response."); completing.current = false; setFinishing(false); }
+    } catch { setSaveState("error"); setMessage("Your response could not be saved. Your answers remain here. Please retry Save my response or Print my response."); completing.current = false; setFinishing(false); }
   }
 
   const confirmLeave = (event: React.MouseEvent<HTMLElement>) => {
@@ -137,10 +169,17 @@ export function StartSomethingExperience({ initialData, route, preview = false, 
     if (!window.confirm("Your latest Start Something changes may not be saved yet. Leave this page?")) event.preventDefault();
   };
 
-  const shell = (content: React.ReactNode) => <div className={`start-something-shell is-${mode}${preview ? " is-preview" : ""}`}>{!preview && <nav className="start-something-context"><Link onClick={confirmLeave} href={returnTo ?? "/dashboard"}>← {returnTo ? "Return to Course" : "My Dashboard"}</Link></nav>}{content}</div>;
+  const shell = (content: React.ReactNode) => <div className={`start-something-shell is-${mode}${preview ? " is-preview" : ""}`}>{!preview && <nav className="start-something-context"><Link onClick={confirmLeave} href={returnTo ?? "/dashboard"}>← {returnTo ? "Return to Course" : "My Dashboard"}</Link></nav>}{content}<StartSomethingPrintResponse data={printData ?? (view === "result" && finished ? finished.participantMaterial : data)}/></div>;
   if (view === "result" && finished) {
     const result = finished.participantMaterial;
-    return shell(<main className="start-something-result"><header><p>Start Something</p><h1>Your idea has a direction.</h1><blockquote>{result.vision.vision_statement || result.idea.idea_summary || "Your finished workbook"}</blockquote></header><section className="start-something-result-grid"><article><Lightbulb/><h2>The Idea</h2><p>{result.idea.idea_summary || "Not answered"}</p><p>{result.idea.people_location}</p></article><article><Target/><h2>Vision & Strategy</h2><p>{result.vision.method_strategy || "Not answered"}</p><div className="start-something-keywords">{result.vision.keywords.filter(Boolean).map((word) => <span key={word}>{word}</span>)}</div></article><article><CircleDot/><h2>What You See</h2><p><strong>Needs</strong><br/>{result.inventory.needs || "Not answered"}</p><p><strong>Underlying causes</strong><br/>{result.inventory.causes || "Not answered"}</p><p><strong>Possible responses</strong><br/>{result.inventory.responses || "Not answered"}</p></article><article><Sparkles/><h2>How You’ll Move</h2><p><strong>Where the vision is now</strong><br/>{result.strategy.current_vision || "Not answered"}</p><p><strong>Desired future</strong><br/>{result.strategy.desired_future || "Not answered"}</p><p><strong>Needed elements</strong><br/>{result.strategy.needed_elements || "Not answered"}</p></article><article className="is-wide"><Network/><h2>Your Network</h2><p>{result.network.places.length ? result.network.places.join(" · ") : "No settings selected"}</p><div className="start-something-network-result">{result.network.locations.filter((item) => item.location || item.names.some(Boolean)).map((item, index) => <div key={`${item.location}-${index}`}><strong>{item.location || `Location ${index + 1}`}</strong><ul>{item.names.filter(Boolean).map((name) => <li key={name}>{name}</li>)}</ul></div>)}</div>{result.network.additional_locations && <p><strong>Additional locations</strong><br/>{result.network.additional_locations}</p>}{result.network.indirect_connections && <p><strong>Indirect connections</strong><br/>{result.network.indirect_connections}</p>}</article><article><CircleDot/><h2>Current Stage</h2><p>{result.next_steps.timeline_stage || "Not selected"}</p></article><article><Sparkles/><h2>The Next Two Weeks</h2><p>{result.next_steps.two_week_plan || "Not answered"}</p></article></section><footer className="start-something-result-actions"><button type="button" onClick={() => { setData({ ...result, network: syncStartSomethingPlaces(result.network, result.network.places) }); setCurrentPage(0); setView("workflow"); }}>Review / Edit</button><button type="button" onClick={() => window.print()}><Printer/> Print / Save as PDF</button>{returnTo && <a onClick={confirmLeave} href={returnTo}>Return to Course</a>}</footer></main>);
+    return shell(<main className="start-something-result"><header><p>Start Something</p><h1>Your idea has a direction.</h1><blockquote>{result.vision.vision_statement || result.idea.idea_summary || "Your finished workbook"}</blockquote></header><section className="start-something-result-grid"><article><Lightbulb/><h2>The Idea</h2><p>{result.idea.idea_summary || "Not answered"}</p><p>{result.idea.people_location}</p></article><article><Target/><h2>Vision & Strategy</h2><p>{result.vision.method_strategy || "Not answered"}</p><div className="start-something-keywords">{result.vision.keywords.filter(Boolean).map((word) => <span key={word}>{word}</span>)}</div></article><article><CircleDot/><h2>What You See</h2><p><strong>Needs</strong><br/>{result.inventory.needs || "Not answered"}</p><p><strong>Underlying causes</strong><br/>{result.inventory.causes || "Not answered"}</p><p><strong>Possible responses</strong><br/>{result.inventory.responses || "Not answered"}</p></article><article><Sparkles/><h2>How You’ll Move</h2><p><strong>Where the vision is now</strong><br/>{result.strategy.current_vision || "Not answered"}</p><p><strong>Desired future</strong><br/>{result.strategy.desired_future || "Not answered"}</p><p><strong>Needed elements</strong><br/>{result.strategy.needed_elements || "Not answered"}</p></article><article className="is-wide"><Network/><h2>Your Network</h2><p>{result.network.places.length ? result.network.places.join(" · ") : "No settings selected"}</p><div className="start-something-network-result">{result.network.locations.filter((item) => item.location || item.names.some(Boolean)).map((item, index) => <div key={`${item.location}-${index}`}><strong>{item.location || `Location ${index + 1}`}</strong><ul>{item.names.filter(Boolean).map((name) => <li key={name}>{name}</li>)}</ul></div>)}</div>{result.network.additional_locations && <p><strong>Additional locations</strong><br/>{result.network.additional_locations}</p>}{result.network.indirect_connections && <p><strong>Indirect connections</strong><br/>{result.network.indirect_connections}</p>}</article><article><CircleDot/><h2>Current Stage</h2><p>{result.next_steps.timeline_stage || "Not selected"}</p></article><article><Sparkles/><h2>The Next Two Weeks</h2><p>{result.next_steps.two_week_plan || "Not answered"}</p></article></section>{message && <p className="start-something-save-state" role={saveState === "error" ? "alert" : "status"}>{message}</p>}<footer className="start-something-result-actions"><button type="button" onClick={() => { setData({ ...result, network: syncStartSomethingPlaces(result.network, result.network.places) }); setCurrentPage(0); setView("workflow"); }}>Review / Edit</button><button type="button" disabled={finishing} onClick={() => void finish(true, result)}><Printer/> {finishing ? "Saving…" : "Print my response / Save as PDF"}</button>{returnTo && <a onClick={confirmLeave} href={returnTo}>Return to Course</a>}</footer></main>);
+  }
+
+  if (view === "introduction") {
+    return shell(<div ref={introductionRef} tabIndex={-1} aria-label="Instructions" className="start-something-instructions-section"><StartSomethingIntroduction onBegin={() => {
+      setCurrentPage(0);
+      setView("workflow");
+    }}/></div>);
   }
 
   const activePage = guidedPages[currentPage];
@@ -169,23 +208,28 @@ export function StartSomethingExperience({ initialData, route, preview = false, 
   } else if (activePage.kind === "network_indirect") {
     pageContent = <TextField label="Is there anyone else you can think of who may be connected to people you know?" value={data.network.indirect_connections} onChange={(value) => change("network", "indirect_connections", value)} rows={7}/>;
   } else if (activePage.kind === "timeline") {
-    pageContent = <fieldset className="start-something-timeline"><legend>Identify where you are on this rough timeline. Place yourself, then consider what should happen next.</legend><div>{START_SOMETHING_TIMELINE.map((item, index) => <label className={data.next_steps.timeline_stage === item ? "is-selected" : ""} key={item}><input type="radio" name="start-something-stage" checked={data.next_steps.timeline_stage === item} onChange={() => change("next_steps", "timeline_stage", item)}/><span>{index + 1}</span><strong>{item.replace(/^\d+\. /, "")}</strong></label>)}</div></fieldset>;
+    pageContent = <fieldset className="start-something-timeline"><legend>Identify where you are on this rough timeline. Place yourself, then consider what should happen next.</legend><div>{START_SOMETHING_TIMELINE.map((item, index) => <div className="start-something-timeline-choice" key={item}><label className={data.next_steps.timeline_stage === item ? "is-selected" : ""}><input type="radio" name="start-something-stage" checked={data.next_steps.timeline_stage === item} onChange={() => change("next_steps", "timeline_stage", item)}/><span>{index + 1}</span><strong>{item.replace(/^\d+\. /, "")}</strong></label><details className="start-something-timeline-help"><summary><span aria-hidden="true">+</span><span className="sr-only">About the {item.replace(/^\d+\. /, "")} stage</span></summary><p>{timelineDescriptions[index]}</p></details></div>)}</div></fieldset>;
   } else {
     pageContent = <TextField label="What is your plan in the next two weeks to make your idea start to come to life—or move to the next stage?" value={data.next_steps.two_week_plan} onChange={(value) => change("next_steps", "two_week_plan", value)} rows={7}/>;
   }
 
   return shell(<main className="start-something-workflow">
-    <header className="start-something-heading"><span>Start Something</span><h1>{START_SOMETHING_STAGES[stage]}</h1><p>Move your idea toward thoughtful, meaningful action—one honest reflection at a time.</p></header>
-    <nav className="start-something-progress" aria-label="Guided experience progress"><ol>{START_SOMETHING_STAGES.map((name, index) => {
+    <header className="start-something-heading"><span>Start Something</span><h1 id="start-something-stage-heading" tabIndex={-1}>{START_SOMETHING_STAGES[stage]}</h1><p>Move your idea toward thoughtful, meaningful action—one honest reflection at a time.</p></header>
+    <nav className="start-something-mobile-progress" aria-label="Current assessment stage">
+      <span aria-hidden="true">{stage + 1}</span>
+      <label><span className="sr-only">Assessment section</span><select value={stage} onChange={(event) => event.target.value === "instructions" ? setView("introduction") : setCurrentPage(firstPageByStage[Number(event.target.value)])}><option value="instructions">Instructions</option>{START_SOMETHING_STAGES.map((name, index) => <option key={name} value={index}>{name}</option>)}</select></label>
+      <small>of {START_SOMETHING_STAGES.length}</small>
+    </nav>
+    <nav className="start-something-progress" aria-label="Guided experience progress"><button type="button" className="start-something-instructions-link" onClick={() => setView("introduction")}>Instructions</button><ol>{START_SOMETHING_STAGES.map((name, index) => {
       const pages = guidedPages.map((page, pageIndex) => ({ page, pageIndex })).filter(({ page }) => page.stage === index);
       const nextStepPages = index === 4 ? guidedPages.map((page, pageIndex) => ({ page, pageIndex })).filter(({ page }) => page.stage === 5) : [];
       const trackPages = index === 5 ? [] : [...pages, ...nextStepPages];
       return <li key={name} style={index === 5 ? { flex: "0 0 94px" } : { flex: trackPages.length + 1 }} className={index === stage ? "is-current" : index < stage ? "is-visited" : "is-upcoming"}><button type="button" onClick={() => setCurrentPage(firstPageByStage[index])} aria-current={index === stage ? "step" : undefined}><span>{index < stage ? <Check/> : index + 1}</span>{name}</button>{trackPages.length > 0 && <div className="start-something-substeps" aria-label={`${name} questions`}>{trackPages.map(({ pageIndex }, substep) => <button type="button" key={pageIndex} className={pageIndex === currentPage ? "is-current" : pageIndex < currentPage ? "is-complete" : ""} onClick={() => setCurrentPage(pageIndex)} aria-label={`Question ${substep + 1} of ${trackPages.length} after ${name}`}/>)}</div>}</li>;
     })}</ol></nav>
     <p className="start-something-question-count">Question {stagePages.findIndex(({ index }) => index === currentPage) + 1} of {stagePages.length}</p>
-    <section className={`start-something-stage is-stage-${stage}`}>{pageContent}</section>
+    <section ref={questionRef} tabIndex={-1} aria-label={`${START_SOMETHING_STAGES[stage]} question ${stagePages.findIndex(({ index }) => index === currentPage) + 1}`} className={`start-something-stage is-stage-${stage}`}>{pageContent}</section>
     <AnswerSummary data={data} currentPage={currentPage} guidedPages={guidedPages}/>
     <p className="start-something-save-state" role="status">{preview ? "Preview — nothing is saved" : saveState === "saving" ? "Saving your draft…" : saveState === "dirty" ? "Unsaved changes" : saveState === "error" ? "Save failed — your answers remain here. Retry Save." : "Draft saved"} {message}</p>
-    <footer className="start-something-navigation"><button type="button" disabled={currentPage === 0} onClick={() => setCurrentPage((value) => Math.max(0, value - 1))}>Back</button>{!preview && <button type="button" disabled={saveState === "saving" || saveState === "saved"} onClick={() => void save(latest.current)}>{saveState === "error" ? "Retry Save" : "Save Draft"}</button>}{currentPage < guidedPages.length - 1 ? <button className="is-primary" type="button" onClick={() => setCurrentPage((value) => value + 1)}>Next step →</button> : <button className="is-primary" type="button" disabled={finishing} onClick={() => void finish()}>{finishing ? "Saving…" : "Save my response"}</button>}</footer>
+    <footer className="start-something-navigation"><button type="button" onClick={() => currentPage === 0 ? setView("introduction") : setCurrentPage((value) => value - 1)}>Back</button>{!preview && <button type="button" disabled={saveState === "saving" || saveState === "saved"} onClick={() => void save(latest.current)}>{saveState === "error" ? "Retry Save" : "Save Draft"}</button>}{currentPage < guidedPages.length - 1 ? <button className="is-primary" type="button" onClick={() => setCurrentPage((value) => value + 1)}>Next step →</button> : <><button type="button" disabled={finishing} onClick={() => void finish(true)}><Printer aria-hidden="true"/> {finishing ? "Saving…" : "Print my response"}</button><button className="is-primary" type="button" disabled={finishing} onClick={() => void finish()}>{finishing ? "Saving…" : "Save my response"}</button></>}</footer>
   </main>);
 }
