@@ -80,13 +80,13 @@ test("runtime, preview, privacy, autosave, result, return context, and responsiv
   assert.match(component, /aria-checked/);
   assert.match(component, /You can select up to 4/);
   assert.match(component, /Return to Course/);
-  assert.match(component, /Copy Statement/);
+  for (const label of ["Review answers", "Retake assessment", "Print assessment", "Save and close"]) assert.ok(component.includes(label));
   assert.match(component, /Review My Responses/);
   assert.match(component, /Your Previous Responses/);
   assert.match(component, /Open this anytime to remember what you shared earlier/);
   assert.match(component, /stage > 1[\s\S]*Causes You Care About/);
   assert.match(component, /stage > 5[\s\S]*Distilled Statement/);
-  assert.match(component, /Print \/ Save as PDF/);
+  assert.match(component, /Print assessment/);
   assert.match(mutation, /confirmAssessmentCompletion/);
   assert.match(mutation, /participantId.*resolution\.participantId/);
   assert.match(script, /experience_type: "assessment"/);

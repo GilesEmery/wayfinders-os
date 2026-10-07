@@ -1,4 +1,5 @@
 import "server-only";
+import { isAssessmentRetake } from "./assessment-retake";
 
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { resolveParticipantCourseForMutation } from "./participant-runtime";
@@ -10,7 +11,7 @@ import { recordSectionVisitForAuthorizedCourse } from "./progress-mutations";
 
 const KEY = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-export async function saveEthosAssessment(slug: string, moduleKey: string, lessonKey: string, sectionKey: string, blockKey: string, cohortId: string | null | undefined, input: unknown, finalize = false) {
+export async function saveEthosAssessment(slug: string, moduleKey: string, lessonKey: string, sectionKey: string, blockKey: string, cohortId: string | null | undefined, input: unknown, finalize = false, retakeCompletedAt?: string) {
   if (![slug, moduleKey, lessonKey, sectionKey, blockKey].every((value) => value.length <= 120 && KEY.test(value))) throw new Error("This assessment is unavailable.");
   const resolution = await resolveParticipantCourseForMutation(slug, cohortId ?? null);
   if (resolution.status !== "ready" || !resolution.enrollmentId) throw new Error("This assessment is unavailable.");
@@ -22,13 +23,13 @@ export async function saveEthosAssessment(slug: string, moduleKey: string, lesso
   const complete = ethosComplete(answers);
   if (slug === "wayfinders-ethos") {
     if (finalize && !complete) throw new Error("Answer every question before finishing.");
-    const saved = await persistAssessmentResponse({ participantId: resolution.participantId, enrollmentId: resolution.enrollmentId, versionId: resolution.structure.version.id, definitionId: response.definition.id }, (prior, now) => projectAssessmentResponse(prior, answers, finalize, now));
+    const saved = await persistAssessmentResponse({ participantId: resolution.participantId, enrollmentId: resolution.enrollmentId, versionId: resolution.structure.version.id, definitionId: response.definition.id }, (prior, now) => projectAssessmentResponse(isAssessmentRetake(prior, retakeCompletedAt, finalize) ? {} : prior, answers, finalize, now));
     await recordSectionVisitForAuthorizedCourse(resolution, moduleKey, lessonKey, sectionKey);
     if (saved.completedAt) {
       await completeSectionResponsesForAuthorizedCourse(resolution, moduleKey, lessonKey, sectionKey);
       await confirmAssessmentCompletion(resolution.participantId, resolution.enrollmentId, resolution.structure.version.id);
     }
-    return { complete: Boolean(saved.completedAt), status: saved.completedAt ? "submitted" : "draft" } as const;
+    return { completedAt: saved.completedAt, complete: Boolean(saved.completedAt), status: saved.completedAt ? "submitted" : "draft" } as const;
   }
   const now = new Date().toISOString();
   const payload = { participant_id: resolution.participantId, enrollment_id: resolution.enrollmentId, experience_version_id: resolution.structure.version.id, response_definition_id: response.definition.id, response_data: { answers }, status: complete ? "submitted" : "draft", finalized_at: null, updated_at: now };
@@ -38,5 +39,5 @@ export async function saveEthosAssessment(slug: string, moduleKey: string, lesso
     : await db.from("participant_responses").insert(payload);
   if (result.error) throw new Error(`Unable to save the Ethos Assessment: ${result.error.message}`);
   await recordSectionVisitForAuthorizedCourse(resolution, moduleKey, lessonKey, sectionKey);
-  return { complete };
+  return { completedAt: null, complete };
 }

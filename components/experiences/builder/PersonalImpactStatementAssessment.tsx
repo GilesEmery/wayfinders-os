@@ -6,7 +6,7 @@ import {
   Accessibility, Activity, BriefcaseBusiness, Check, CircleDollarSign,
   Droplets, Earth, GraduationCap, HandHeart, HandPlatter, HeartHandshake, Hospital,
   Landmark, Leaf, Lightbulb, Palette, PersonStanding, Scale, ShieldCheck,
-  Sparkles, Users, UsersRound,
+  Sparkles, Users, UsersRound, Printer,
 } from "lucide-react";
 import { finishPersonalImpactStatementAction, savePersonalImpactStatementAction } from "@/lib/experiences/builder/personal-impact-statement-actions";
 import {
@@ -67,6 +67,7 @@ export function PersonalImpactStatementAssessment({ initialData, initialComplete
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [message, setMessage] = useState("");
   const completing = useRef(false);
+  const retakeCompletedAt = useRef<string | undefined>(undefined);
   const [finishing, setFinishing] = useState(false);
   const autosaveTimer = useRef<number | null>(null);
   const queued = useRef(Promise.resolve());
@@ -119,15 +120,16 @@ export function PersonalImpactStatementAssessment({ initialData, initialComplete
     setMessage("");
     if (stage < 6) setStage((value) => value + 1);
     else if (personalImpactComplete(data)) {
-      if (preview) { setFinished((current) => current ?? { schemaVersion: 1, sourceVersion: PERSONAL_IMPACT_RENDERER_KEY, completedAt: new Date().toISOString(), participantMaterial: structuredClone(data) }); setView("result"); return; }
+      if (preview) { setFinished({ schemaVersion: 1, sourceVersion: PERSONAL_IMPACT_RENDERER_KEY, completedAt: new Date().toISOString(), participantMaterial: structuredClone(data) }); setView("result"); return; }
       completing.current = true; setFinishing(true);
       if (autosaveTimer.current !== null) window.clearTimeout(autosaveTimer.current);
       await queued.current;
       try {
-        const result = await finishPersonalImpactStatementAction(route.slug, route.moduleKey, route.lessonKey, route.sectionKey, route.blockKey, route.cohortId, data);
+        const result = await finishPersonalImpactStatementAction(route.slug, route.moduleKey, route.lessonKey, route.sectionKey, route.blockKey, route.cohortId, data, retakeCompletedAt.current);
         if (!result.completedAt) throw new Error("Completion was not confirmed.");
         lastSaved.current = JSON.stringify(data); setSaveState("saved");
-        window.location.assign(returnTo ?? "/dashboard");
+        setFinished({ schemaVersion: 1, sourceVersion: PERSONAL_IMPACT_RENDERER_KEY, completedAt: result.completedAt, participantMaterial: structuredClone(data) });
+        completing.current = false; setFinishing(false); setView("result");
       } catch { setSaveState("error"); setMessage("Your response could not be completed. Your answers remain here. Please retry Save my response."); completing.current = false; setFinishing(false); }
     }
   }
@@ -153,7 +155,7 @@ export function PersonalImpactStatementAssessment({ initialData, initialComplete
     <div className="pis-contours" aria-hidden="true"/><p className="pis-kicker">Your Personal Impact Statement</p><blockquote>{result.final_impact_statement}</blockquote>
     <section><h2>Areas You Care About</h2><div className="pis-result-causes">{result.causes.map((cause) => <span key={cause}>{cause}</span>)}</div></section>
     <section><h2>Area of Influence</h2><p>{result.area_of_influence}</p></section>
-    <div className="pis-actions"><button type="button" onClick={() => { setData(result); setStage(6); setView("assessment"); }}>Review / Edit</button><button type="button" onClick={() => navigator.clipboard.writeText(result.final_impact_statement)}>Copy Statement</button><button type="button" onClick={() => setView("review")}>Review My Responses</button><button type="button" onClick={() => window.print()}>Print / Save as PDF</button>{returnTo && <a href={returnTo}>Return to Course</a>}</div>
+    <div className="pis-actions pis-result-actions"><button type="button" onClick={() => setView("review")}>Review answers</button><button type="button" onClick={() => { retakeCompletedAt.current = finished.completedAt; setData(normalizePersonalImpactData({})); setStage(0); setView("assessment"); setMessage(""); }}>Retake assessment</button><button type="button" onClick={() => window.print()}><Printer aria-hidden="true"/> Print assessment</button><button className="pis-primary" type="button" onClick={() => window.location.assign(returnTo ?? "/dashboard")}>Save and close</button></div>
   </section>);
   }
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { Printer } from "lucide-react";
 import { saveActivatePurposeAssessmentAction } from "@/lib/experiences/builder/activate-purpose-assessment-actions";
 import { AssessmentFocusFrame } from "./AssessmentFocusFrame";
 import { AssessmentLaunchCard, assessmentLaunchLabel, type AssessmentLaunchStatus } from "./AssessmentLaunchCard";
@@ -49,7 +50,7 @@ function ResultCard({ result, onExplore }: { result: Result; onExplore: () => vo
   return <article className="purpose-result-card"><p>{result.area.title}</p><strong>{result.score} <span>/ 20</span></strong><h3>{result.stage.title}</h3><button aria-haspopup="dialog" onClick={onExplore} type="button">+ Explore</button></article>;
 }
 
-export function ActivatePurposeAssessment({ initialData, route, preview = false, standalone = false, autoStart = false }: { initialData: unknown; route: Route; preview?: boolean; standalone?: boolean; autoStart?: boolean }) {
+export function ActivatePurposeAssessment({ initialData, route, preview = false, standalone = false, autoStart = false, returnTo }: { initialData: unknown; route: Route; preview?: boolean; standalone?: boolean; autoStart?: boolean; returnTo?: string | null }) {
   const initialAnswers = normalizeActivatePurposeAnswers(initialData);
   const initiallyComplete = activatePurposeComplete(initialAnswers);
   const [answers, setAnswers] = useState<Record<string, ActivatePurposeAnswer>>(initialAnswers);
@@ -60,6 +61,7 @@ export function ActivatePurposeAssessment({ initialData, route, preview = false,
   const [focused, setFocused] = useState(autoStart);
   const [dialog, setDialog] = useState<Result | null>(null);
   const queue = useRef(Promise.resolve());
+  const closing = useRef(false);
 
   const question = ACTIVATE_PURPOSE_QUESTIONS[questionIndex];
   const area = ACTIVATE_PURPOSE_AREAS.find((candidate) => candidate.questions.some((item) => item.key === question.key))!;
@@ -97,13 +99,34 @@ export function ActivatePurposeAssessment({ initialData, route, preview = false,
     setDialog(null);
   }
 
+  async function saveAndClose() {
+    if (closing.current) return;
+    closing.current = true;
+    setSaveState("saving");
+    try {
+      await queue.current;
+      if (!preview) {
+        await saveActivatePurposeAssessmentAction(route.slug, route.moduleKey, route.lessonKey, route.sectionKey, route.blockKey, route.cohortId, answers, standalone);
+      }
+      setFinalized(true);
+      setSaveState("saved");
+      if (preview || !standalone) { setFocused(false); setDialog(null); }
+      else window.location.assign(returnTo ?? "/dashboard");
+    } catch {
+      setSaveState("error");
+    } finally {
+      closing.current = false;
+    }
+  }
+
   const launchStatus: AssessmentLaunchStatus = (standalone ? finalized : results) ? "completed" : answeredCount ? "in_progress" : "not_started";
   if (!focused && !autoStart) return <AssessmentLaunchCard eyebrow="PurposeOS Assessment" title="Activate Your Purpose" description="Discover your current growth stage across the three areas of purpose and identify the next step in your development." status={launchStatus} action={<button aria-label="Open Activate Your Purpose Assessment" type="button" onClick={() => setFocused(true)}>{preview ? "Preview Assessment" : assessmentLaunchLabel(launchStatus)}</button>}/>;
 
   if (showResults && results) return <AssessmentFocusFrame active={focused && !autoStart} label="Activate Your Purpose Assessment in progress" onClose={() => setFocused(false)}><section aria-label="Activate Your Purpose Assessment results" className="purpose-assessment purpose-results-view">
     <header className="purpose-assessment-header"><div><p>Activate Your Purpose</p><span>{standalone && !finalized ? "Ready to finish" : "Assessment complete"}</span></div><h2>Your growth stages</h2><p>Each area reflects where you are today. Explore a result for its stage description and development context.</p></header>
     <div className="purpose-results-grid">{results.map((result) => <ResultCard key={result.area.key} result={result} onExplore={() => setDialog(result)}/>)}</div>
-    <footer className="purpose-results-footer"><button onClick={() => { setShowResults(false); setQuestionIndex(0); }} type="button">Review answers</button>{!standalone && <button onClick={retake} type="button">Retake assessment</button>}{standalone && results && !finalized && <button disabled={saveState === "saving"} onClick={async () => { setSaveState("saving"); try { await queue.current; if (!preview) await saveActivatePurposeAssessmentAction(route.slug, route.moduleKey, route.lessonKey, route.sectionKey, route.blockKey, route.cohortId, answers, true); setFinalized(true); setSaveState("saved"); } catch { setSaveState("error"); } }} type="button">{saveState === "saving" ? "Saving…" : "Finish assessment"}</button>}<span aria-live="polite">{preview ? "Preview only · responses are not saved" : saveState === "saving" ? "Saving…" : saveState === "error" ? "Could not save. Retry your save." : standalone && !finalized ? "Draft saved · Finish to complete" : "Assessment saved ✓"}</span></footer>
+    <section className="purpose-print-details" aria-label="Full assessment results">{results.map(result => <article key={result.area.key}><h3>{result.area.title}</h3><strong>{result.score} / 20</strong><div className="purpose-stage-line"><span>{result.stage.title}</span><small>{result.stage.range}</small></div><p>{result.stage.description}</p><p>{result.area.description}</p><div className="purpose-result-responses"><h4>Your responses</h4><ol>{result.area.questions.map(question => { const answer = answers[question.key]; return <li key={question.key}><p>{question.prompt}</p><div><b>{answer}</b><span>{question.options[answer]}</span></div></li>; })}</ol></div></article>)}</section>
+    <footer className="purpose-results-footer purpose-saved-actions"><button onClick={() => { setShowResults(false); setQuestionIndex(0); }} type="button">Review answers</button>{!standalone && <button onClick={retake} type="button">Retake assessment</button>}<button type="button" onClick={() => window.print()}><Printer aria-hidden="true"/> Print assessment</button><button className="is-primary" disabled={saveState === "saving"} onClick={() => void saveAndClose()} type="button">{saveState === "saving" ? "Saving…" : "Save and close"}</button><span aria-live="polite">{preview ? "Preview only · responses are not saved" : saveState === "saving" ? "Saving…" : saveState === "error" ? "Could not save. Retry Save and close." : standalone && !finalized ? "Draft saved" : "Assessment saved ✓"}</span></footer>
     {dialog && <AreaDialog answers={answers} result={dialog} onClose={() => setDialog(null)}/>} 
   </section></AssessmentFocusFrame>;
 

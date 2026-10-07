@@ -7,8 +7,8 @@ export async function saveStartSomethingDraftAction(slug: string, moduleKey: str
   return saveStartSomething(slug, moduleKey, lessonKey, sectionKey, blockKey, cohortId, input, false);
 }
 
-export async function finishStartSomethingAction(slug: string, moduleKey: string, lessonKey: string, sectionKey: string, blockKey: string, cohortId: string | null | undefined, input: unknown) {
-  const result = await saveStartSomething(slug, moduleKey, lessonKey, sectionKey, blockKey, cohortId, input, true);
+export async function finishStartSomethingAction(slug: string, moduleKey: string, lessonKey: string, sectionKey: string, blockKey: string, cohortId: string | null | undefined, input: unknown, retakeCompletedAt?: string) {
+  const result = await saveStartSomething(slug, moduleKey, lessonKey, sectionKey, blockKey, cohortId, input, true, retakeCompletedAt);
   revalidatePath("/dashboard");
   revalidatePath("/my-journey");
   revalidatePath("/experiences", "layout");

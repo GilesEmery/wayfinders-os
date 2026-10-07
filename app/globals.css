@@ -2774,7 +2774,36 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
 .ethos-saved-responses dd{margin:0;white-space:nowrap;font-weight:700}
 .ethos-saved-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:12px;padding:24px}
 .ethos-print-result-details{display:none}
-.ethos-saved-actions button{align-items:center;background:#fff;border:2px solid var(--experience-accent,#0054a1);border-radius:6px;color:var(--experience-accent,#0054a1);cursor:pointer;display:flex;font:inherit;font-size:12px;font-weight:800;gap:10px;justify-content:center;letter-spacing:.04em;line-height:1.4;min-height:48px;padding:14px 22px;text-transform:uppercase;transition:background .15s,color .15s}
+.purpose-print-details{display:none}
+.purpose-results-footer.purpose-saved-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:12px}
+.purpose-saved-actions>span{flex-basis:100%}
+.purpose-saved-actions button{align-items:center;display:inline-flex;gap:10px;justify-content:center;min-height:48px}
+.purpose-saved-actions button.is-primary{background:var(--experience-accent,#0054a1);border-color:var(--experience-accent,#0054a1);color:#fff}
+.purpose-saved-actions button svg{height:20px;width:20px;flex-shrink:0}
+.purpose-saved-actions button:focus-visible{outline:3px solid var(--experience-accent,#0054a1);outline-offset:4px}
+@media(max-width:760px){.purpose-saved-actions{flex-direction:column}.purpose-saved-actions button{width:100%}}
+@media print{
+  body:has(.purpose-results-view){background:#fff!important}
+  body:has(.purpose-results-view) *:not(:has(.purpose-results-view)):not(.purpose-results-view):not(.purpose-results-view *){display:none!important}
+  body:has(.purpose-results-view) .assessment-focus-backdrop{background:#fff;position:static;padding:0}
+  body:has(.purpose-results-view) .assessment-focus-panel{height:auto;max-width:none;overflow:visible}
+  .purpose-results-view{background:#fff!important;border:0!important;box-shadow:none;margin:0!important;min-height:0!important;overflow:visible!important;padding:.5in;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+  .purpose-results-view :is(.purpose-assessment-header,.purpose-results-grid,.purpose-result-card,.purpose-print-details,.purpose-result-responses,.purpose-result-responses li){background:#fff!important;box-shadow:none!important}
+  .purpose-results-view .purpose-results-footer,.purpose-results-view button{display:none!important}
+  .purpose-results-view .purpose-results-grid{grid-template-columns:repeat(3,minmax(0,1fr));break-inside:avoid}
+  .purpose-results-view .purpose-print-details{display:block;font-size:10pt;line-height:1.6}
+  .purpose-print-details>article{border-top:2px solid #0054a1;margin-top:24px;padding-top:20px}
+  .purpose-print-details h3,.purpose-print-details h4,.purpose-print-details .purpose-stage-line{break-after:avoid}
+  .purpose-print-details h3{font-family:var(--font-editorial),serif;font-size:22pt}
+  .purpose-print-details p{margin:12px 0}
+  .purpose-print-details ol{list-style:decimal;padding-left:24px}
+  .purpose-print-details li{break-inside:avoid}
+}
+.ethos-saved-actions button{align-items:center;background:#fff;border:1px solid var(--experience-border,#bbb);border-radius:0;color:var(--experience-text,#252a29);cursor:pointer;display:flex;font:inherit;font-size:12px;font-weight:800;gap:10px;justify-content:center;letter-spacing:.04em;line-height:1.4;min-height:48px;padding:14px 22px;text-transform:uppercase;transition:background .15s,color .15s}
+.start-something-result-actions button.is-primary{background:var(--ss-blue);border-color:var(--ss-blue);color:#fff}
+.pis-result-actions button{align-items:center;display:inline-flex;gap:10px;justify-content:center}
+.pis-result-actions button svg{height:20px;width:20px;flex-shrink:0}
+@media(max-width:760px){.start-something-result-actions,.pis-result-actions{flex-direction:column}.start-something-result-actions button,.pis-result-actions button{width:100%}}
 .ethos-saved-actions button.is-primary{background:var(--experience-accent,#0054a1);color:#fff}
 .ethos-saved-actions button:hover{background:var(--experience-accent,#0054a1);color:#fff}
 .ethos-saved-actions button.is-primary:hover{filter:brightness(.9)}
@@ -2784,7 +2813,8 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
 @media print{
   body:has(.ethos-saved-results){background:#fff!important}
   body:has(.ethos-saved-results) *:not(:has(.ethos-saved-results)):not(.ethos-saved-results):not(.ethos-saved-results *){display:none!important}
-  .ethos-saved-results{border:0;box-shadow:none;margin:0;padding:.5in;overflow:visible;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+  .ethos-saved-results{background:#fff!important;border:0;box-shadow:none;margin:0;padding:.5in;overflow:visible;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+  .ethos-saved-results :is(.ethos-intro,.ethos-results,.ethos-result-box,.ethos-balanced-result,.ethos-saved-responses){background:#fff!important}
   .ethos-saved-results .ethos-saved-actions,.ethos-saved-results button,.ethos-saved-results .ethos-dialog-backdrop{display:none!important}
   .ethos-saved-results .ethos-results{display:block}
   .ethos-saved-results .ethos-result-box{min-height:0;break-inside:auto}
@@ -2820,4 +2850,14 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
   .start-something-print-document footer{border-top:2px solid #0054a1;color:#0054a1;display:flex;font-size:8pt;justify-content:space-between;margin-top:28px;padding-top:12px}
   .start-something-print-document header{break-inside:avoid}
   .start-something-shell{margin:0!important;max-width:none!important;min-height:0!important;min-width:0!important;padding:0!important;width:100%!important}
+}
+
+/* Print surfaces stay white even when browser background graphics are enabled. */
+@media print{
+  body:has(:is(.pis-result,.start-something-print-document,.completed-assessment-result)),
+  .pis-shell,.pis-shell-main,.pis-result,.pis-result blockquote,.pis-result-causes span,
+  .start-something-print-document,.ss-print-direction,.ss-print-next,
+  .assessment-result-page,.completed-assessment-result,.completed-pis-result blockquote,
+  .completed-start-result blockquote{background:#fff!important;box-shadow:none!important}
+  .pis-contours{display:none!important}
 }

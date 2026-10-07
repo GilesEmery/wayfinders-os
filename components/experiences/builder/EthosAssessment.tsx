@@ -34,8 +34,10 @@ export function EthosAssessment({ initialData, route, preview = false, standalon
   const [dialog, setDialog] = useState<"strength" | "growth" | null>(null);
   const [finalized, setFinalized] = useState(() => Boolean((initialData as { finished?: unknown } | null)?.finished));
   const [reviewing, setReviewing] = useState(false);
+  const [completedAt, setCompletedAt] = useState<string | undefined>((initialData as { finished?: { completedAt?: string } })?.finished?.completedAt);
   const queue = useRef(Promise.resolve());
   const savingResponse = useRef(false);
+  const retakeCompletedAt = useRef<string | undefined>(undefined);
   const category = ETHOS_CATEGORIES[step];
   const stepComplete = category.questions.every((question) => Boolean(answers[question.key]));
   const results = ethosResults(answers);
@@ -65,7 +67,7 @@ export function EthosAssessment({ initialData, route, preview = false, standalon
     setSaveState("saving");
     try {
       await queue.current;
-      if (!preview) await saveEthosAssessmentAction(route.slug, route.moduleKey, route.lessonKey, route.sectionKey, route.blockKey, route.cohortId, answers, true);
+      if (!preview) { const saved = await saveEthosAssessmentAction(route.slug, route.moduleKey, route.lessonKey, route.sectionKey, route.blockKey, route.cohortId, answers, true, retakeCompletedAt.current); setCompletedAt(saved.completedAt ?? undefined); } else setCompletedAt(new Date().toISOString());
       setFinalized(true);
       setReviewing(false);
       setSaveState("saved");
@@ -110,7 +112,7 @@ export function EthosAssessment({ initialData, route, preview = false, standalon
     </>}
     {results && (!standalone || showingResults) && (results.allEqual ? <section className="ethos-balanced-result"><p>Balanced result</p><h3>Your scores are currently even across all five Wayfinders Ethos areas.</h3><ul>{results.scores.map(({ category: item, score }) => <li key={item.key}><span>{item.title}</span><strong>{score} / 15</strong></li>)}</ul></section> : <section className="ethos-results" aria-label="Ethos Assessment results"><ResultBox kind="strength" items={results.strongest} onExplore={() => setDialog("strength")}/><ResultBox kind="growth" items={results.growth} onExplore={() => setDialog("growth")}/></section>)}
     {showingResults && results && <section className="ethos-saved-responses"><h3>Your responses</h3>{results.scores.map(({ category: item, score }) => <article key={item.key}><h4>{item.title}<span>{score} / 15</span></h4><dl>{item.questions.map(question => <div key={question.key}><dt>{question.text}</dt><dd>{answers[question.key]} / 5</dd></div>)}</dl></article>)}</section>}
-    {showingResults && <footer className="ethos-saved-actions"><button type="button" onClick={() => setReviewing(true)}>Review responses</button><button className="is-primary" type="button" onClick={() => window.print()}><Printer aria-hidden="true"/> Print my response / Save as PDF</button><button className="is-primary" type="button" onClick={() => { if (preview) { setFocused(false); return; } window.location.assign(returnTo ?? "/dashboard"); }}>Save and close</button></footer>}
+    {showingResults && <footer className="ethos-saved-actions"><button type="button" onClick={() => setReviewing(true)}>Review answers</button><button type="button" onClick={() => { retakeCompletedAt.current = completedAt; setAnswers({}); setFinalized(false); setReviewing(false); setStep(0); setDialog(null); setSaveState("idle"); }}>Retake assessment</button><button type="button" onClick={() => window.print()}><Printer aria-hidden="true"/> Print assessment</button><button className="is-primary" type="button" onClick={() => { if (preview) { setFocused(false); return; } window.location.assign(returnTo ?? "/dashboard"); }}>Save and close</button></footer>}
     {dialog && results && <ResultDialog kind={dialog} items={dialog === "strength" ? results.strongest : results.growth} onClose={() => setDialog(null)}/>} 
   </section></AssessmentFocusFrame>;
 }

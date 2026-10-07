@@ -9,8 +9,8 @@ export async function savePersonalImpactStatementAction(slug: string, moduleKey:
   return result;
 }
 
-export async function finishPersonalImpactStatementAction(slug: string, moduleKey: string, lessonKey: string, sectionKey: string, blockKey: string, cohortId: string | null | undefined, input: unknown) {
-  const result = await savePersonalImpactStatement(slug, moduleKey, lessonKey, sectionKey, blockKey, cohortId, input, true);
+export async function finishPersonalImpactStatementAction(slug: string, moduleKey: string, lessonKey: string, sectionKey: string, blockKey: string, cohortId: string | null | undefined, input: unknown, retakeCompletedAt?: string) {
+  const result = await savePersonalImpactStatement(slug, moduleKey, lessonKey, sectionKey, blockKey, cohortId, input, true, retakeCompletedAt);
   revalidatePath("/dashboard");
   revalidatePath("/my-journey");
   revalidatePath("/experiences", "layout");
