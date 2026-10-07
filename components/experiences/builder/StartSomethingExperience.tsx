@@ -160,8 +160,10 @@ export function StartSomethingExperience({ initialData, route, preview = false, 
         return;
       }
       navigationConfirmed.current = true;
-      window.location.assign(returnTo ?? "/dashboard");
-    } catch { setSaveState("error"); setMessage("Your response could not be saved. Your answers remain here. Please retry Save my response or Print my response."); completing.current = false; setFinishing(false); }
+      setFinished({ schemaVersion: 1, sourceVersion: "start-something.v1", completedAt: result.completedAt, participantMaterial: snapshot });
+      setView("result");
+      completing.current = false; setFinishing(false);
+    } catch { setSaveState("error"); setMessage("Your response could not be saved. Your answers remain here. Please retry the save."); completing.current = false; setFinishing(false); }
   }
 
   const confirmLeave = (event: React.MouseEvent<HTMLElement>) => {
@@ -230,6 +232,6 @@ export function StartSomethingExperience({ initialData, route, preview = false, 
     <section ref={questionRef} tabIndex={-1} aria-label={`${START_SOMETHING_STAGES[stage]} question ${stagePages.findIndex(({ index }) => index === currentPage) + 1}`} className={`start-something-stage is-stage-${stage}`}>{pageContent}</section>
     <AnswerSummary data={data} currentPage={currentPage} guidedPages={guidedPages}/>
     <p className="start-something-save-state" role="status">{preview ? "Preview — nothing is saved" : saveState === "saving" ? "Saving your draft…" : saveState === "dirty" ? "Unsaved changes" : saveState === "error" ? "Save failed — your answers remain here. Retry Save." : "Draft saved"} {message}</p>
-    <footer className="start-something-navigation"><button type="button" onClick={() => currentPage === 0 ? setView("introduction") : setCurrentPage((value) => value - 1)}>Back</button>{!preview && <button type="button" disabled={saveState === "saving" || saveState === "saved"} onClick={() => void save(latest.current)}>{saveState === "error" ? "Retry Save" : "Save Draft"}</button>}{currentPage < guidedPages.length - 1 ? <button className="is-primary" type="button" onClick={() => setCurrentPage((value) => value + 1)}>Next step →</button> : <><button type="button" disabled={finishing} onClick={() => void finish(true)}><Printer aria-hidden="true"/> {finishing ? "Saving…" : "Print my response"}</button><button className="is-primary" type="button" disabled={finishing} onClick={() => void finish()}>{finishing ? "Saving…" : "Save my response"}</button></>}</footer>
+    <footer className="start-something-navigation"><button type="button" onClick={() => currentPage === 0 ? setView("introduction") : setCurrentPage((value) => value - 1)}>Back</button>{!preview && <button type="button" disabled={saveState === "saving" || saveState === "saved"} onClick={() => void save(latest.current)}>{saveState === "error" ? "Retry Save" : "Save Draft"}</button>}{currentPage < guidedPages.length - 1 ? <button className="is-primary" type="button" onClick={() => setCurrentPage((value) => value + 1)}>Next step →</button> : <button className="is-primary" type="button" disabled={finishing} onClick={() => void finish()}>{finishing ? "Saving…" : "Save my response"}</button>}</footer>
   </main>);
 }
