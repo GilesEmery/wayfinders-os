@@ -2,28 +2,30 @@ import type { ReactNode } from "react";
 import type { JSONContent } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { MarkdownManager } from "@tiptap/markdown";
-import { safeExternalUrl } from "@/lib/experiences/builder/media-source";
+import Link from "next/link";
+import { safeRichTextLink, safeCourseLink, contextualCourseLink, type CourseLinkContext } from "@/lib/experiences/builder/course-links";
 
 const markdown = new MarkdownManager({
   extensions: [StarterKit.configure({ code: false, codeBlock: false, horizontalRule: false, strike: false })],
 });
 
-function markedContent(node: JSONContent, content: ReactNode) {
+function markedContent(node: JSONContent, content: ReactNode, context?: CourseLinkContext) {
   return (node.marks ?? []).reduce<ReactNode>((rendered, mark, index) => {
     if (mark.type === "bold") return <strong key={index}>{rendered}</strong>;
     if (mark.type === "italic") return <em key={index}>{rendered}</em>;
     if (mark.type === "link") {
-      const href = safeExternalUrl(typeof mark.attrs?.href === "string" ? mark.attrs.href : "");
+      const href = safeRichTextLink(typeof mark.attrs?.href === "string" ? mark.attrs.href : "");
+      if (href && safeCourseLink(href)) return <Link key={index} href={contextualCourseLink(href, context)}>{rendered}</Link>;
       return href ? <a key={index} href={href} target="_blank" rel="noopener noreferrer">{rendered}<span className="sr-only"> (opens in a new tab)</span></a> : rendered;
     }
     return rendered;
   }, content);
 }
 
-function renderNode(node: JSONContent, key: number | string): ReactNode {
-  if (node.type === "text") return <span key={key}>{markedContent(node, node.text ?? "")}</span>;
+function renderNode(node: JSONContent, key: number | string, context?: CourseLinkContext): ReactNode {
+  if (node.type === "text") return <span key={key}>{markedContent(node, node.text ?? "", context)}</span>;
   if (node.type === "hardBreak") return <br key={key}/>;
-  const children = (node.content ?? []).map((child, index) => renderNode(child, index));
+  const children = (node.content ?? []).map((child, index) => renderNode(child, index, context));
   if (node.type === "doc") return <>{children}</>;
   if (node.type === "paragraph") return <p key={key}>{children.length ? children : <br/>}</p>;
   if (node.type === "heading") {
@@ -39,7 +41,7 @@ function renderNode(node: JSONContent, key: number | string): ReactNode {
   return <span key={key}>{children}</span>;
 }
 
-export function ParticipantRichText({ title, text }: { title: string; text: string }) {
+export function ParticipantRichText({ title, text, linkContext }: { title: string; text: string; linkContext?: CourseLinkContext }) {
   const document = markdown.parse(text);
-  return <div className="participant-rich-text-block">{title && <h3>{title}</h3>}{renderNode(document, "document")}</div>;
+  return <div className="participant-rich-text-block">{title && <h3>{title}</h3>}{renderNode(document, "document", linkContext)}</div>;
 }

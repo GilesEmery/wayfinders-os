@@ -4,12 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Markdown } from "@tiptap/markdown";
+import { safeRichTextLink, type CourseLinkOption } from "@/lib/experiences/builder/course-links";
 import { safeExternalUrl } from "@/lib/experiences/builder/media-source";
 import { createInlineRecoveryRecord, inlineSaveNeedsFollowUp, parseInlineRecovery, serializeInlineDraft, type InlineDocumentIdentity, type InlineDraft, type InlineRecovery, type InlineSaveResult, type InlineSaveState } from "@/lib/experiences/admin/inline-draft";
 
 type SaveAction = (form: FormData) => Promise<InlineSaveResult>;
 type EditorStatus = InlineSaveState;
-type Props = InlineDocumentIdentity & { text: string; title?: string; level?: InlineDraft["level"]; alignment?: "left" | "center"; eyebrow?: string; serverRevision: string; saveAction: SaveAction };
+type Props = InlineDocumentIdentity & { internalLinks?: CourseLinkOption[]; text: string; title?: string; level?: InlineDraft["level"]; alignment?: "left" | "center"; eyebrow?: string; serverRevision: string; saveAction: SaveAction };
 const AUTOSAVE_MS = 1400;
 
 function announce(id: string, status: EditorStatus | "removed") {
@@ -24,7 +25,7 @@ function baseline(text: string, title: string, level: InlineDraft["level"], kind
   return { text, title: kind === "rich_text" ? title : "", level };
 }
 
-export function InlineTextBlockEditor({ experienceId, versionId, sectionId, blockId, kind, text, title = "", level = "h2", alignment = "left", eyebrow = "", serverRevision, saveAction }: Props) {
+export function InlineTextBlockEditor({ experienceId, versionId, sectionId, blockId, kind, text, title = "", level = "h2", alignment = "left", eyebrow = "", serverRevision, saveAction, internalLinks = [] }: Props) {
   const document = useMemo<InlineDocumentIdentity>(() => ({ experienceId, versionId, sectionId, blockId, kind }), [blockId, experienceId, kind, sectionId, versionId]);
   const storageKey = `purposeos:inline-draft:${blockId}`;
   const incomingDraft = useMemo(() => baseline(text, title, level, kind), [kind, level, text, title]);
@@ -32,6 +33,11 @@ export function InlineTextBlockEditor({ experienceId, versionId, sectionId, bloc
   const [headingLevel, setHeadingLevel] = useState(incomingDraft.level);
   const [status, setStatusState] = useState<EditorStatus>("saved");
   const [error, setError] = useState("");
+  const [linkPicker, setLinkPicker] = useState(false);
+  const [linkWeek, setLinkWeek] = useState("");
+  const [linkLesson, setLinkLesson] = useState("");
+  const [linkPage, setLinkPage] = useState("");
+  const linkSelection = useRef<{ from: number; to: number } | null>(null);
   const [active, setActive] = useState(false);
   const [recovery, setRecovery] = useState<InlineRecovery | null>(null);
   const [conflict, setConflict] = useState<{ revision: string; serverDraft: InlineDraft; message: string } | null>(null);
@@ -58,7 +64,7 @@ export function InlineTextBlockEditor({ experienceId, versionId, sectionId, bloc
     immediatelyRender: false,
     content: text || (kind === "heading" ? "New heading" : "Add your content here."),
     contentType: "markdown",
-    extensions: [StarterKit.configure({ heading: { levels: [1, 2, 3] }, code: false, codeBlock: false, horizontalRule: false, strike: false, link: { autolink: false, linkOnPaste: true, markdownLinks: true, openOnClick: false, defaultProtocol: "https", isAllowedUri: (url) => Boolean(safeExternalUrl(url)), HTMLAttributes: { rel: "noopener noreferrer", target: "_blank" } } }), Markdown],
+    extensions: [StarterKit.configure({ heading: { levels: [1, 2, 3] }, code: false, codeBlock: false, horizontalRule: false, strike: false, link: { autolink: false, linkOnPaste: true, markdownLinks: true, openOnClick: false, defaultProtocol: "https", isAllowedUri: (url) => Boolean(safeRichTextLink(url)), HTMLAttributes: { rel: "noopener noreferrer", target: "_blank" } } }), Markdown],
     editorProps: { attributes: { class: `inline-text-surface is-${kind}`, "aria-label": kind === "heading" ? "Heading text" : "Rich text content" } },
     onFocus: () => setActive(true),
   });
@@ -251,9 +257,23 @@ export function InlineTextBlockEditor({ experienceId, versionId, sectionId, bloc
     {showToolbar && <div className="inline-text-toolbar" role="toolbar" aria-label={`${kind === "heading" ? "Heading" : "Rich text"} formatting`}>
       {kind === "rich_text" ? <>
         <label><span className="sr-only">Paragraph style</span><select aria-label="Paragraph style" value={editor.isActive("blockquote") ? "quote" : editor.isActive("heading", { level: 1 }) ? "h1" : editor.isActive("heading", { level: 2 }) ? "h2" : editor.isActive("heading", { level: 3 }) ? "h3" : "body"} onChange={(event) => { const style = event.currentTarget.value; if (style === "body") editor.chain().focus().setParagraph().run(); else if (style === "quote") editor.chain().focus().setBlockquote().run(); else editor.chain().focus().setHeading({ level: Number(style.slice(1)) as 1 | 2 | 3 }).run(); }}><option value="body">Body</option><option value="h1">Heading 1</option><option value="h2">Heading 2</option><option value="h3">Heading 3</option><option value="quote">Quote</option></select></label>
-        <ToolbarButton label="Bold" active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}><strong>B</strong></ToolbarButton><ToolbarButton label="Italic" active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()}><em>I</em></ToolbarButton><ToolbarButton label={editor.isActive("link") ? "Edit or remove link" : "Add link"} active={editor.isActive("link")} disabled={!selectedText && !editor.isActive("link")} onClick={setLink}>Link</ToolbarButton><ToolbarButton label="Bulleted list" active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()}>• List</ToolbarButton><ToolbarButton label="Numbered list" active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()}>1. List</ToolbarButton><ToolbarButton label="Undo" disabled={!editor.can().chain().focus().undo().run()} onClick={() => editor.chain().focus().undo().run()}>↶</ToolbarButton><ToolbarButton label="Redo" disabled={!editor.can().chain().focus().redo().run()} onClick={() => editor.chain().focus().redo().run()}>↷</ToolbarButton>
+        <ToolbarButton label="Bold" active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}><strong>B</strong></ToolbarButton><ToolbarButton label="Italic" active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()}><em>I</em></ToolbarButton><ToolbarButton label={editor.isActive("link") ? "Edit or remove link" : "Add link"} active={editor.isActive("link")} disabled={!selectedText && !editor.isActive("link")} onClick={setLink}>External link</ToolbarButton><ToolbarButton label="Insert internal course link" disabled={!internalLinks.length} onClick={() => { linkSelection.current = { from: editor.state.selection.from, to: editor.state.selection.to }; setLinkPicker(true); }}>Internal link</ToolbarButton><ToolbarButton label="Bulleted list" active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()}>• List</ToolbarButton><ToolbarButton label="Numbered list" active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()}>1. List</ToolbarButton><ToolbarButton label="Undo" disabled={!editor.can().chain().focus().undo().run()} onClick={() => editor.chain().focus().undo().run()}>↶</ToolbarButton><ToolbarButton label="Redo" disabled={!editor.can().chain().focus().redo().run()} onClick={() => editor.chain().focus().redo().run()}>↷</ToolbarButton>
       </> : <label><span className="sr-only">Heading level</span><select aria-label="Heading level" value={headingLevel} onChange={(event) => { const next = event.currentTarget.value as InlineDraft["level"]; setHeadingLevel(next); changedRef.current({ level: next }); }}><option value="h2">H1</option><option value="h3">H2</option><option value="h4">H3</option></select></label>}
       <button className="inline-text-save" type="button" onClick={requestSave} disabled={status === "saving" || status === "saved" || status === "recovery" || status === "conflict"}>{status === "saving" ? "Saving…" : status === "error" ? "Retry Save" : "Save"}</button>
+    </div>}
+    {linkPicker && <div className="inline-internal-link-picker" role="group" aria-label="Choose an internal course link">
+      <label>Week<select value={linkWeek} onChange={event => { setLinkWeek(event.target.value); setLinkLesson(""); setLinkPage(""); }}><option value="">Choose a week</option>{[...new Set(internalLinks.map(link => link.week))].map(week => <option key={week}>{week}</option>)}</select></label>
+      <label>Lesson<select disabled={!linkWeek} value={linkLesson} onChange={event => { setLinkLesson(event.target.value); setLinkPage(""); }}><option value="">Choose a lesson</option>{[...new Set(internalLinks.filter(link => link.week === linkWeek).map(link => link.lesson))].map(lesson => <option key={lesson}>{lesson}</option>)}</select></label>
+      <label>Content page<select disabled={!linkLesson} value={linkPage} onChange={event => setLinkPage(event.target.value)}><option value="">Choose a content page</option>{internalLinks.filter(link => link.week === linkWeek && link.lesson === linkLesson).map(link => <option key={link.href} value={link.href}>{link.page}</option>)}</select></label>
+      <button type="button" disabled={!linkPage} onClick={() => {
+        const target = internalLinks.find(link => link.href === linkPage);
+        if (!target || !linkSelection.current) return;
+        const { from, to } = linkSelection.current;
+        const chain = editor.chain().focus().setTextSelection({ from, to });
+        if (from === to) chain.insertContent({ type: "text", text: target.page, marks: [{ type: "link", attrs: { href: target.href, target: null, rel: null } }] }).run();
+        else chain.setLink({ href: target.href, target: null, rel: null }).run();
+        setLinkPicker(false);
+      }}>Insert link</button><button type="button" onClick={() => setLinkPicker(false)}>Cancel</button>
     </div>}
     {kind === "rich_text" && (draftTitle || active) && <input className="inline-rich-title" aria-label="Optional Rich Text title" value={draftTitle} onChange={(event) => { const next = event.currentTarget.value; setDraftTitle(next); changedRef.current({ title: next.trim() }); }} placeholder="Optional title" maxLength={200}/>}
     {kind === "heading" && eyebrow && <span className="inline-heading-eyebrow">{eyebrow}</span>}

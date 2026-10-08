@@ -28,7 +28,7 @@ function Unavailable({ block }: { block: BuilderContentBlock }) {
   return <div className="participant-block-unavailable" role="status">Content unavailable</div>;
 }
 
-export function ParticipantBlockRenderer({ block, response, asset, route, preview = false, requirementsBypassed = false, assessmentCard }: { block: BuilderContentBlock; response?: ParticipantResponseContext; asset?: ResolvedAsset; route: { slug: string; moduleKey: string; lessonKey: string; sectionKey: string; cohortId?: string | null }; preview?: boolean; requirementsBypassed?: boolean; assessmentCard?: AssessmentCardData }) {
+export function ParticipantBlockRenderer({ block, response, asset, route, preview = false, requirementsBypassed = false, assessmentCard }: { block: BuilderContentBlock; response?: ParticipantResponseContext; asset?: ResolvedAsset; route: { slug: string; moduleKey: string; lessonKey: string; sectionKey: string; cohortId?: string | null; previewBase?: string }; preview?: boolean; requirementsBypassed?: boolean; assessmentCard?: AssessmentCardData }) {
   if (block.status !== "active" || block.visibility !== "visible") return null;
   const definition = getParticipantBlockDefinition(block.block_type, block.custom_renderer_key);
   if (!definition) return <Unavailable block={block}/>;
@@ -69,7 +69,7 @@ export function ParticipantBlockRenderer({ block, response, asset, route, previe
     const level = value(configuration, "level");
     return <header className={`participant-heading-block is-${value(configuration, "alignment") || "left"}`}>{eyebrow && <p>{eyebrow}</p>}{level === "h4" ? <h4>{text}</h4> : level === "h3" ? <h3>{text}</h3> : <h2>{text}</h2>}</header>;
   }
-  if (definition.previewKey === "rich_text") return <ParticipantRichText title={value(configuration, "title")} text={value(configuration, "text")}/>;
+  if (definition.previewKey === "rich_text") return <ParticipantRichText linkContext={{ slug: route.slug, cohortId: route.cohortId, previewBase: route.previewBase }} title={value(configuration, "title")} text={value(configuration, "text")}/>;
   if (definition.previewKey === "pdf_reader") return <ParticipantPdfReader config={configuration} asset={asset}/>;
   if (definition.previewKey === "media") return <ParticipantMediaBlock kind={block.block_type as "video" | "image" | "document" | "download" | "external_link"} config={configuration} asset={asset}/>;
   const title = value(configuration, "title");
