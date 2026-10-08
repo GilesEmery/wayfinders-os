@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Printer } from "lucide-react";
+import { NativeAssessmentShell } from "./NativeAssessmentShell";
 import { AssessmentFocusFrame } from "./AssessmentFocusFrame";
 import { AssessmentLaunchCard, assessmentLaunchLabel, type AssessmentLaunchStatus } from "./AssessmentLaunchCard";
 import { saveEthosAssessmentAction } from "@/lib/experiences/builder/ethos-assessment-actions";
@@ -85,7 +86,7 @@ export function EthosAssessment({ initialData, route, preview = false, standalon
 
   const showingResults = standalone && finalized && !reviewing;
 
-  return <AssessmentFocusFrame active={focused && !autoStart} label="Wayfinders Ethos Assessment in progress" onClose={() => setFocused(false)}><section className={`ethos-assessment${showingResults ? " ethos-saved-results" : ""}`} aria-label="Wayfinders Ethos Assessment">
+  return <AssessmentFocusFrame active={focused && !autoStart} label="Wayfinders Ethos Assessment in progress" onClose={() => setFocused(false)}><NativeAssessmentShell returnTo={returnTo} showReturn={autoStart}><section className={`ethos-assessment${showingResults ? " ethos-saved-results" : ""}`} aria-label="Wayfinders Ethos Assessment">
     {showingResults && <header className="ethos-intro"><div className="ethos-intro-meta"><p>Wayfinders Ethos Reflection</p><span>Saved response</span></div><h2>Your leadership reflection</h2><span>A record of your responses, current strengths, and opportunities for growth.</span></header>}
     {!showingResults && <>
     <header className="ethos-intro">
@@ -94,6 +95,7 @@ export function EthosAssessment({ initialData, route, preview = false, standalon
       <span>Reflect on what is true in your current context. There are no right answers, and every selection saves automatically.</span>
       <div className="ethos-progress-summary"><strong>{answeredCount}</strong><span>of 15 reflections complete</span></div>
     </header>
+    <label className="native-assessment-mobile-sections"><span aria-hidden="true">{step + 1}</span><select aria-label="Reflection section" value={step} onChange={event => setStep(Number(event.target.value))}>{ETHOS_CATEGORIES.map((item, index) => <option key={item.key} value={index}>{item.title}</option>)}</select><small>of {ETHOS_CATEGORIES.length}</small></label>
     <nav aria-label="Assessment progress" className="ethos-progress">
       {ETHOS_CATEGORIES.map((item, index) => {
         const complete = item.questions.every((question) => Boolean(answers[question.key]));
@@ -114,5 +116,5 @@ export function EthosAssessment({ initialData, route, preview = false, standalon
     {showingResults && results && <section className="ethos-saved-responses"><h3>Your responses</h3>{results.scores.map(({ category: item, score }) => <article key={item.key}><h4>{item.title}<span>{score} / 15</span></h4><dl>{item.questions.map(question => <div key={question.key}><dt>{question.text}</dt><dd>{answers[question.key]} / 5</dd></div>)}</dl></article>)}</section>}
     {showingResults && <footer className="ethos-saved-actions"><button type="button" onClick={() => setReviewing(true)}>Review answers</button><button type="button" onClick={() => { retakeCompletedAt.current = completedAt; setAnswers({}); setFinalized(false); setReviewing(false); setStep(0); setDialog(null); setSaveState("idle"); }}>Retake assessment</button><button type="button" onClick={() => window.print()}><Printer aria-hidden="true"/> Print assessment</button><button className="is-primary" type="button" onClick={() => { if (preview) { setFocused(false); return; } window.location.assign(returnTo ?? "/dashboard"); }}>Save and close</button></footer>}
     {dialog && results && <ResultDialog kind={dialog} items={dialog === "strength" ? results.strongest : results.growth} onClose={() => setDialog(null)}/>} 
-  </section></AssessmentFocusFrame>;
+  </section></NativeAssessmentShell></AssessmentFocusFrame>;
 }

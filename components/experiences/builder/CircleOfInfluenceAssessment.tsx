@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { BriefcaseBusiness, Church, GraduationCap, Heart, House, Plus, Printer, Users, Volleyball } from "lucide-react";
+import { NativeAssessmentShell } from "./NativeAssessmentShell";
 import { AssessmentFocusFrame } from "./AssessmentFocusFrame";
 import { AssessmentLaunchCard } from "./AssessmentLaunchCard";
 import { CircleOfInfluenceGuidance, CircleOfInfluenceResults } from "./CircleOfInfluenceResults";
@@ -56,8 +57,7 @@ export function CircleOfInfluenceAssessment({ initialData, route, preview = fals
     window.location.assign(returnTo ?? "/dashboard");
   }
   if (!focused && !autoStart) return <AssessmentLaunchCard eyebrow="Wayfinders Assessment" title="Circle of Influence" description="Recognize the people in your everyday communities and discern how to shepherd them with care." status={finished ? "completed" : Object.values(data.people).some(names => names.some(Boolean)) ? "in_progress" : "not_started"} action={<button type="button" onClick={() => setFocused(true)}>{finished ? "View results" : "Open assessment"}</button>}/>;
-  return <AssessmentFocusFrame active={focused && !autoStart} label="Circle of Influence assessment" onClose={() => { void close(); }}><section className={`circle-assessment${view === "results" ? " circle-saved-results" : ""}`}>
-    {autoStart && <a className="circle-dashboard-link" href={returnTo ?? "/dashboard"}>{returnTo ? "← Back to course" : "← My dashboard"}</a>}
+  return <AssessmentFocusFrame active={focused && !autoStart} label="Circle of Influence assessment" onClose={() => { void close(); }}><NativeAssessmentShell returnTo={returnTo} showReturn={autoStart}><section className={`circle-assessment${view === "results" ? " circle-saved-results" : ""}`}>
     <header className="circle-heading"><p>Wayfinders · Circle of Influence</p><h2 ref={heading} tabIndex={-1}>{view === "results" ? "Your circle of influence" : view === "instructions" ? "Who is your flock?" : step === 8 ? "Reflect on your influence" : area.title === "Other" ? data.otherLabel || "Other" : area.title}</h2><span>{view === "results" ? "A record of your relationships and the steps ahead." : "Know your people. Listen with care. Lead with purpose."}</span></header>
     {view === "instructions" ? <><CircleOfInfluenceGuidance/><button className="circle-primary" type="button" onClick={() => go(0)}>Begin reflection →</button></> : view === "results" && finished ? <><CircleOfInfluenceResults data={finished.participantMaterial}/><footer className="circle-actions"><button type="button" onClick={() => go(0)}>Review answers</button><button type="button" onClick={() => { retake.current = finished.completedAt; setFinished(null); setView("editing"); setStep(0); setStatus("idle"); }}>Retake assessment</button><button type="button" onClick={() => window.print()}><Printer aria-hidden="true"/> Print assessment</button><button className="circle-primary" type="button" onClick={() => void close()}>Save and close</button></footer></> : <>
       <label className="circle-mobile-progress"><span>{step + 1}</span><select aria-label="Assessment section" value={step} onChange={event => event.target.value === "instructions" ? setView("instructions") : go(Number(event.target.value))}><option value="instructions">Instructions</option>{CIRCLE_AREAS.map((item, index) => <option key={item.key} value={index}>{item.key === "other" ? data.otherLabel || "Other" : item.title}</option>)}<option value={8}>Reflect on your influence</option></select><small>of 9</small></label>
@@ -66,5 +66,5 @@ export function CircleOfInfluenceAssessment({ initialData, route, preview = fals
       <footer className="circle-edit-actions"><button type="button" disabled={step === 0} onClick={() => go(step - 1)}>← Back</button><button type="button" disabled={status === "saving"} onClick={() => void close()}>Save and close</button>{step < 8 ? <button className="circle-primary" type="button" onClick={() => go(step + 1)}>Next section →</button> : <button className="circle-primary" disabled={!readOnly && (Boolean(saveError) || status === "saving")} type="button" onClick={() => readOnly ? setView("results") : void finish()}>{readOnly ? "View results" : "Save response"}</button>}</footer>
     </>}
     <p className="circle-save-status" role={status === "error" ? "alert" : "status"}>{preview ? "Preview · nothing is saved" : message || (status === "saving" ? "Saving…" : status === "saved" ? "Assessment saved ✓" : "")}</p>
-  </section></AssessmentFocusFrame>;
+  </section></NativeAssessmentShell></AssessmentFocusFrame>;
 }
