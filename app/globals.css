@@ -2956,3 +2956,12 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
   .pis-mobile-progress small{color:#626864;flex-shrink:0;font-size:12px}
 }
 @media print{.pis-mobile-progress{display:none!important}}
+
+/* Mobile assessment panels reach the edges; dashboard links remain inset. */
+@media screen and (max-width:760px){
+  .pis-shell .pis-shell-main{padding-inline:0}
+  .pis-shell.is-course .pis-experience,.pis-shell.is-standalone .pis-experience,.pis-shell.is-preview .pis-experience{background:#fff;border-inline:0;border-radius:18px 18px 0 0}
+}
+@media screen and (max-width:520px){
+  .start-something-shell.is-standalone .start-something-context{margin-inline:20px}
+}
