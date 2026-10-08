@@ -28,7 +28,7 @@ export function buildPersonalNavigation(): DashboardNavigationGroup[] {
       { label: "My Journey", href: "/my-journey", icon: "timeline" },
       { label: "Purpose Profile", href: "/purpose-profile", icon: "wayfinders" },
       { label: "My Training and Assessments", href: "/dashboard#trainings", icon: "trainings" },
-      { label: "My Cohorts", href: "/dashboard#community", icon: "cohorts" },
+      { label: "My Cohorts", href: "/dashboard#cohorts", icon: "cohorts" },
     ] },
     { label: "Explore", items: [
       { label: "Trainings and Assessments", href: "/trainings", icon: "trainings" },
@@ -63,7 +63,7 @@ export function filterNavigationByEntitlements(groups: DashboardNavigationGroup[
 export function buildDashboardNavigation(context: DashboardNavigationContext): DashboardNavigationGroup[] {
   const personalJourney: DashboardNavigationItem[] = [{ label: "Overview", href: "#overview", icon: "overview" }];
   if (context.hasTrainings || context.hasAssessments) personalJourney.push({ label: "My Training and Assessments", href: "#trainings", icon: "trainings" });
-  if (context.hasCohorts) personalJourney.push({ label: "Cohorts", href: "#community", icon: "cohorts" });
+  if (context.hasCohorts) personalJourney.push({ label: "My Cohorts", href: "#cohorts", icon: "cohorts" });
 
   const groups: DashboardNavigationGroup[] = [{ label: "My Journey", items: personalJourney }];
   if (context.hasHubs || context.hasCohorts) groups.push({ label: "My Community", items: [{ label: "Hubs & Communities", href: "#community", icon: "hub" }] });

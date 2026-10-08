@@ -2930,3 +2930,7 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
 .wayfinder-dashboard #trainings{scroll-margin-top:94px}
 
 .experience-category{margin-top:32px}.experience-category+.experience-category{border-top:1px solid var(--platform-border,#ddd);margin-top:48px;padding-top:32px}.experience-category>h2,.experience-category>h3{margin:0 0 24px}
+
+.wayfinder-dashboard #community,.wayfinder-dashboard #cohorts{scroll-margin-top:94px}
+
+.hub-member-directory{border-top:1px solid var(--platform-border,#ddd);margin-top:48px;padding-top:32px}.hub-member-search{display:grid;gap:8px;max-width:480px}.hub-member-search input{border:1px solid #aeb3b0;border-radius:4px;font:inherit;padding:12px;width:100%;box-sizing:border-box}.hub-member-directory ul{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;list-style:none;padding:0}.hub-member-directory li{align-items:center;display:flex;gap:14px}.hub-member-avatar{align-items:center;background:#000;border-radius:50%;color:#fff;display:flex;flex:0 0 48px;font-size:16px;font-weight:750;height:48px;justify-content:center}.hub-member-directory li a{font-weight:650;text-decoration:underline;text-underline-offset:4px}.hub-profile-details>div{border-bottom:1px solid #ddd;padding:16px 0}.hub-profile-details dt{font-weight:700}.hub-profile-details dd{margin:8px 0 0}

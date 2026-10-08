@@ -9,6 +9,7 @@ test("participant navigation separates enrolled Trainings from Explore Trainings
   assert.deepEqual(groups.find((group) => group.label === "My Dashboard")?.items.map((item) => item.label), ["My Dashboard", "My Journey", "Purpose Profile", "My Training and Assessments", "My Cohorts"]);
   assert.deepEqual(groups.find((group) => group.label === "Explore")?.items, [{ label: "Trainings and Assessments", href: "/trainings", icon: "trainings" }]);
   assert.equal(groups.find((group) => group.label === "My Dashboard")?.items.find((item) => item.label === "My Training and Assessments")?.href, "/dashboard#trainings");
+  assert.equal(groups.find((group) => group.label === "My Dashboard")?.items.find((item) => item.label === "My Cohorts")?.href, "/dashboard#cohorts");
 });
 
 test("My Trainings and Explore Trainings active states cannot collide", () => {
