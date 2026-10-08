@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { flushSync } from "react-dom";
 import { StartSomethingPrintResponse } from "./StartSomethingPrintResponse";
-import { Check, CircleDot, Lightbulb, Network, Printer, Sparkles, Target } from "lucide-react";
+import { Check, CircleDot, Lightbulb, Network, Printer, Sparkles, Target, Church, Coffee, BriefcaseBusiness, Dumbbell, GraduationCap, CalendarDays, MessagesSquare, Handshake, HeartHandshake, Compass, Store, BookOpen, Trees, Palette, Heart, Landmark, Rocket, Flower2, House, Users, Plus } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { StartSomethingIntroduction } from "./StartSomethingIntroduction";
 import { emptyStartSomethingData, startSomethingEquivalent } from "@/lib/experiences/builder/start-something";
@@ -12,6 +12,8 @@ import { normalizeStartSomethingEnvelope, syncStartSomethingPlaces, START_SOMETH
 
 type Route = { slug: string; moduleKey: string; lessonKey: string; sectionKey: string; blockKey: string; cohortId?: string | null };
 type View = "introduction" | "workflow" | "result";
+const networkPlaceIcons = [Church, Coffee, BriefcaseBusiness, Dumbbell, GraduationCap, CalendarDays, MessagesSquare, Handshake, HeartHandshake, Compass, Store, BookOpen, Trees, Palette, Heart, Landmark, Rocket, Flower2, House, Users, Plus];
+
 const timelineDescriptions = [
   "You have a spark of an idea or a need you want to respond to. Explore who it could serve and why it matters.",
   "You can picture the change you hope to see. Put that future into words so others can understand the direction.",
@@ -202,7 +204,11 @@ export function StartSomethingExperience({ initialData, route, preview = false, 
   } else if (activePage.kind === "strategy") {
     pageContent = <TextField label={START_SOMETHING_PROMPTS[activePage.key]} value={data.strategy[activePage.key]} onChange={(value) => change("strategy", activePage.key, value)} rows={7}/>;
   } else if (activePage.kind === "network_places") {
-    pageContent = <><fieldset className="start-something-place-picker"><legend>Choose up to 5 different places where you have connections.</legend><p>{data.network.places.length} of 5 selected</p><div>{START_SOMETHING_NETWORK_PLACES.map((place) => <button type="button" role="checkbox" aria-checked={data.network.places.includes(place)} className={data.network.places.includes(place) ? "is-selected" : ""} onClick={() => togglePlace(place)} key={place}>{data.network.places.includes(place) && <Check/>}{place}</button>)}</div></fieldset>{data.network.places.includes("Other") && <TextField label="Other location" value={data.network.other} onChange={(value) => { if (!completing.current) setData(current => ({ ...current, network: syncStartSomethingPlaces(current.network, current.network.places, value) })); }}/>}</>;
+    pageContent = <><fieldset className="start-something-place-picker"><legend>Choose up to 5 different places where you have connections.</legend><p aria-live="polite">{data.network.places.length} of 5 selected</p><div>{START_SOMETHING_NETWORK_PLACES.map((place, index) => {
+      const Icon = networkPlaceIcons[index];
+      const selected = data.network.places.includes(place);
+      return <button type="button" role="checkbox" aria-checked={selected} className={selected ? "is-selected" : ""} onClick={() => togglePlace(place)} key={place}><Icon aria-hidden="true"/><span>{place}</span>{selected && <Check className="start-something-place-check" aria-hidden="true"/>}</button>;
+    })}</div></fieldset>{data.network.places.includes("Other") && <TextField label="Other location" value={data.network.other} onChange={(value) => { if (!completing.current) setData(current => ({ ...current, network: syncStartSomethingPlaces(current.network, current.network.places, value) })); }}/>}</>;
   } else if (activePage.kind === "network_circle") {
     const location = data.network.locations[activePage.circle];
     pageContent = <><h2 className="start-something-network-title">Add the people in this setting who might be interested in hearing about your mission.</h2><div className="start-something-network-map is-single"><fieldset className="start-something-network-orbit"><legend>Connection circle {activePage.circle + 1}</legend><div className="start-something-location-node"><label>Location {activePage.circle + 1}<textarea rows={3} value={location.location} placeholder="Name this setting" onChange={(event) => updateLocation(activePage.circle, "location", event.target.value)}/></label></div><div className="start-something-connection-nodes">{location.names.map((name, nameIndex) => <label key={nameIndex}>Connection {nameIndex + 1}<textarea rows={2} value={name} placeholder="Add a person" onChange={(event) => updateLocation(activePage.circle, "name", event.target.value, nameIndex)}/></label>)}</div></fieldset></div></>;
