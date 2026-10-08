@@ -11,19 +11,24 @@ export const CIRCLE_AREAS = [
   { key: "other", title: "Other", description: "Name another community or setting where you regularly connect with people." },
 ] as const;
 export type CircleAreaKey = typeof CIRCLE_AREAS[number]["key"];
-export type CircleData = { people: Record<CircleAreaKey, string[]>; otherLabel: string; prayer: string; disciple: string; nextStep: string };
+export type CircleData = { people: Record<CircleAreaKey, string[]>; otherLabel: string; influenceWith: string; influenceWhy: string; heartToward: string; prayer: string; disciple: string; nextStep: string };
+export const CIRCLE_REFLECTIONS = [
+  { key: "influenceWith", label: "Who do I already have strong influence with?" },
+  { key: "influenceWhy", label: "Why do I have influence with them?" },
+  { key: "heartToward", label: "Who is God stirring my heart toward?" },
+] as const;
 export const CIRCLE_GUIDANCE = [
   "God has given everyone a unique circle of influence (oikos). As a believer, your circle of influence is your sheepfold: people you are called to shepherd with care and skill.",
   "Influence is not developed overnight. Knowing who is in your community helps you discern whom and how to influence, understand, and listen to others.",
   "A shepherding leader knows their sheep and recognizes when they need to be led forward, cared for, or protected. Knowing your fold also helps you recognize who is not in it yet.",
   "Write down the names of people you regularly rub shoulders with in each applicable area. Aim for 4–15 people per area; leave areas that do not apply blank.",
-  "Pray for the people on your list. Ask God to reveal whom you ought to disciple. As a disciple of Jesus, you are a leader. What will you do about it?",
+  "Pray for the people on your list. Notice where you already have influence, why those relationships matter, and whom God is stirring your heart toward. Consider how you can listen, care, and lead.",
 ];
 function record(input: unknown): Record<string, unknown> { return input && typeof input === "object" && !Array.isArray(input) ? input as Record<string, unknown> : {}; }
 const text = (value: unknown, length: number) => typeof value === "string" ? value.slice(0, length) : "";
 export function normalizeCircleData(input: unknown): CircleData {
   const root = record(input), people = record(root.people);
-  return { people: Object.fromEntries(CIRCLE_AREAS.map(area => [area.key, Array.isArray(people[area.key]) ? (people[area.key] as unknown[]).slice(0, 15).map(name => text(name, 120)) : []])) as CircleData["people"], otherLabel: text(root.otherLabel, 80), prayer: text(root.prayer, 2000), disciple: text(root.disciple, 2000), nextStep: text(root.nextStep, 2000) };
+  return { people: Object.fromEntries(CIRCLE_AREAS.map(area => [area.key, Array.isArray(people[area.key]) ? (people[area.key] as unknown[]).slice(0, 15).map(name => text(name, 120)) : []])) as CircleData["people"], otherLabel: text(root.otherLabel, 80), influenceWith: text(root.influenceWith, 2000), influenceWhy: text(root.influenceWhy, 2000), heartToward: text(root.heartToward, 2000), prayer: text(root.prayer, 2000), disciple: text(root.disciple, 2000), nextStep: text(root.nextStep, 2000) };
 }
 export function circleCounts(data: CircleData) { return CIRCLE_AREAS.map(area => ({ ...area, title: area.key === "other" ? data.otherLabel.trim() || "Other" : area.title, count: data.people[area.key].filter(name => name.trim()).length })); }
 export function circleSaveError(data: CircleData) {

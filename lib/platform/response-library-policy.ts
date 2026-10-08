@@ -1,4 +1,4 @@
-import { CIRCLE_AREAS, CIRCLE_RESPONSE_KEY, normalizeCircleData } from "../experiences/builder/circle-of-influence.ts";
+import { CIRCLE_AREAS, CIRCLE_REFLECTIONS, CIRCLE_RESPONSE_KEY, normalizeCircleData } from "../experiences/builder/circle-of-influence.ts";
 import { ACTIVATE_PURPOSE_QUESTIONS, activatePurposeResults, normalizeActivatePurposeAnswers } from "../experiences/builder/activate-purpose-assessment.ts";
 import { ETHOS_CATEGORIES, ethosResults, normalizeEthosAnswers } from "../experiences/builder/ethos-assessment.ts";
 import { LAUNCHING_HUB_QUESTIONS, LAUNCHING_HUB_SCALE, launchingHubResult, normalizeLaunchingHubAnswers } from "../experiences/builder/launching-wayfinders-hub-assessment.ts";
@@ -45,7 +45,7 @@ export function activityResponseItems(responseKey: string, data: unknown, config
     return [...CIRCLE_AREAS.flatMap(area => {
       const response = circle.people[area.key].filter(name => name.trim()).join(" · ");
       return response || includeUnanswered ? [{ question: area.key === "other" ? circle.otherLabel || "Other" : area.title, response: response || "Not answered", answered: Boolean(response) }] : [];
-    }), ...readableResponseFields({ prayer: circle.prayer, disciple: circle.disciple, next_step: circle.nextStep })];
+    }), ...CIRCLE_REFLECTIONS.filter(({ key }) => circle[key].trim() || includeUnanswered).map(({ key, label }) => ({ question: label, response: circle[key].trim() || "Not answered", answered: Boolean(circle[key].trim()) })), ...readableResponseFields({ prayer: circle.prayer, disciple: circle.disciple, next_step: circle.nextStep })];
   }
   if (responseKey === "personal_impact_statement") {
     const statement = normalizePersonalImpactData(completedMaterial ?? currentDraft ?? envelope.response ?? data);

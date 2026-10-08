@@ -28,3 +28,14 @@ test("finishing preserves an immutable result while later drafts remain resumabl
   assert.equal(normalizeCircleEnvelope({ finished: { completedAt: "invalid", sourceVersion: "circle-of-influence.v1" } }).finished, null);
   assert.throws(() => projectCircleSave({}, {}, true, "now"), /Add at least one/);
 });
+
+test("new influence questions do not reinterpret older saved reflections", () => {
+  const data = normalizeCircleData({ prayer: "Pray each morning", disciple: "Maya", nextStep: "Listen", influenceWith: "My neighbors", influenceWhy: "Years of trust", heartToward: "Theo" });
+  assert.equal(data.influenceWith, "My neighbors");
+  assert.equal(data.influenceWhy, "Years of trust");
+  assert.equal(data.heartToward, "Theo");
+  assert.equal(data.prayer, "Pray each morning");
+  const legacy = normalizeCircleData({ prayer: "Previous prayer answer" });
+  assert.equal(legacy.influenceWith, "");
+  assert.equal(legacy.prayer, "Previous prayer answer");
+});
