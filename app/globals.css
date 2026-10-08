@@ -2337,6 +2337,9 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
 :is(.inline-text-surface,.participant-rich-text-block) ul ul{list-style-type:circle}
 :is(.inline-text-surface,.participant-rich-text-block) ol ol{list-style-type:lower-alpha}
 :is(.inline-text-surface,.participant-rich-text-block) li>p{margin:0}
+:is(.inline-text-surface,.participant-rich-text-block) a{color:var(--experience-accent,var(--builder-accent,#0054a1));text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:.18em}
+:is(.inline-text-surface,.participant-rich-text-block) a:hover{text-decoration-thickness:2px}
+:is(.inline-text-surface,.participant-rich-text-block) a:focus-visible{outline:2px solid var(--experience-accent,var(--builder-accent,#0054a1));outline-offset:3px}
 
 /* Companion builder and participant rail. */
 .course-builder-grid.has-companion{grid-template-columns:280px minmax(0,1fr) 320px}
