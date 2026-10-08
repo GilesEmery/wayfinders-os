@@ -5,7 +5,7 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { PERSONAL_IMPACT_RESPONSE_KEY } from "@/lib/experiences/builder/personal-impact-statement";
 import { START_SOMETHING_RESPONSE_KEY } from "@/lib/experiences/builder/start-something";
 import { completedJourneyRecords } from "@/lib/platform/journey-policy";
-import { NATIVE_ASSESSMENT_RESULTS, completedGenericResult } from "@/lib/assessment-results-policy";
+import { NATIVE_ASSESSMENT_RESULTS, completedGenericResult, completedLegacyActivatePurpose } from "@/lib/assessment-results-policy";
 
 export type AssessmentResultKind = "life-mapping-u" | "personal-impact-statement" | "start-something" | "activate-your-purpose" | "wayfinders-ethos" | "launching-your-wayfinders-hub";
 export type AssessmentResultSummary = { kind: AssessmentResultKind; id: string; name: string; completedAt: string; enrollmentId?: string; versionId?: string };
@@ -40,8 +40,10 @@ export async function listCompletedAssessmentResults(participantId: string): Pro
   if (responses.error) throw new Error("Unable to load completed Guided Experience results.");
   const completions = await canonicalGenericCompletions(participantId);
   const generic = (responses.data ?? []).flatMap((response) => {
-    if (!completions.some((record) => record.enrollmentId === response.enrollment_id && record.versionId === response.experience_version_id)) return [];
-    const parsed = completedGenericResult(definitionById.get(response.response_definition_id) ?? "", response.response_data, response.finalized_at);
+    const key = definitionById.get(response.response_definition_id) ?? "";
+    const legacy = completedLegacyActivatePurpose(key, response.response_data, response.finalized_at);
+    if (!legacy && !completions.some((record) => record.enrollmentId === response.enrollment_id && record.versionId === response.experience_version_id)) return [];
+    const parsed = legacy ?? completedGenericResult(key, response.response_data, response.finalized_at);
     return parsed ? [{ kind: parsed.kind, id: response.id, name: parsed.name, completedAt: parsed.completedAt, enrollmentId: response.enrollment_id, versionId: response.experience_version_id }] : [];
   });
   return [
@@ -68,9 +70,10 @@ export async function loadCompletedAssessmentResult(participantId: string, kind:
     .in("status", ["submitted", "finalized"]).not("finalized_at", "is", null).maybeSingle();
   if (response.error || !response.data) return null;
   const completions = await canonicalGenericCompletions(participantId);
-  if (!completions.some((record) => record.enrollmentId === response.data!.enrollment_id && record.versionId === response.data!.experience_version_id)) return null;
+  const legacy = completedLegacyActivatePurpose(expectedKey!, response.data.response_data, response.data.finalized_at);
+  if (!legacy && !completions.some((record) => record.enrollmentId === response.data!.enrollment_id && record.versionId === response.data!.experience_version_id)) return null;
   const definition = await db.from("response_definitions").select("response_key").eq("id", response.data.response_definition_id).eq("response_key", expectedKey).maybeSingle();
   if (definition.error || !definition.data) return null;
-  const parsed = completedGenericResult(definition.data.response_key, response.data.response_data, response.data.finalized_at);
+  const parsed = legacy ?? completedGenericResult(definition.data.response_key, response.data.response_data, response.data.finalized_at);
   return parsed && parsed.kind === kind ? { ...parsed, id } : null;
 }

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { listCompletedAssessmentResults } from "@/lib/assessment-results";
 import { connection } from "next/server";
 import { resolveCourseCoverUrl } from "@/lib/experiences/builder/course-cover";
 import { normalizeCourseConfiguration } from "@/lib/experiences/builder/course-configuration";
@@ -24,6 +25,7 @@ export type TrainingCatalogItem = {
   card: CourseCardDisplay;
   enrollmentStatus: string | null;
   href: string;
+  completedResultHref: string | null;
 };
 
 export async function getTrainingCatalog(): Promise<{ items: TrainingCatalogItem[]; signedIn: boolean }> {
@@ -76,6 +78,7 @@ export async function getTrainingCatalog(): Promise<{ items: TrainingCatalogItem
   const enrollmentByExperience = new Map(enrollmentRows.map((enrollment) => [enrollment.experience_id, enrollment]));
   const configurations = eligibleRows.map(({ item }) => normalizeCourseConfiguration(publishedByExperience.get(item.id)?.course_configuration ?? item.card_configuration));
   const cardImages = await resolveResourceIds(db, configurations.flatMap((configuration) => configuration.card.image_resource_id ? [configuration.card.image_resource_id] : []));
+  const results = participant.data ? await listCompletedAssessmentResults(participant.data.id) : [];
   const items = await Promise.all(eligibleRows.map(async ({ item, href }) => {
     const version = publishedByExperience.get(item.id);
     const themeId = version?.theme_id ?? item.default_theme_id;
@@ -86,6 +89,7 @@ export async function getTrainingCatalog(): Promise<{ items: TrainingCatalogItem
     const enrollment = enrollmentByExperience.get(item.id);
     const entries = enrollment ? resolveParticipantCourseEntries({ enrollment, experience: item, memberships: membershipResult.data ?? [], cohorts: cohortResult.data ?? [], offerings: offeringResult.data ?? [] }) : [];
     return {
+      completedResultHref: results.find(result => result.kind === item.slug) ? `/account/results/${item.slug}/${results.find(result => result.kind === item.slug)!.id}` : null,
       id: item.id,
       slug: item.slug,
       name: item.name,

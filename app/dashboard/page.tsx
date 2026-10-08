@@ -3,6 +3,7 @@ import Link from "next/link";
 import { PlatformAuthGate } from "@/components/platform/PlatformAuthGate";
 import { PlatformShell } from "@/components/platform/PlatformShell";
 import { ParticipantCourseCard } from "@/components/platform/ParticipantCourseCard";
+import { listCompletedAssessmentResults } from "@/lib/assessment-results";
 import { activeJourneyCards } from "@/lib/platform/active-journey";
 import { visibleCanonicalJourneyCompletion } from "@/lib/platform/journey-policy";
 import { getWayfinderDashboard } from "@/lib/platform/dashboard";
@@ -41,6 +42,33 @@ export default async function DashboardPage() {
     ...data.lmuAssessments.map((item) => ({ date: item.updated_at, label: `Life Mapping U · ${titleCase(item.status)}` })),
     ...canonicalJourney.map(({ enrollment, experience }) => ({ date: enrollment.updated_at, label: `${experience?.name ?? "PurposeOS experience"} · ${titleCase(enrollment.status)}` })),
   ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 4);
+  const completedResults = await listCompletedAssessmentResults(data.participant.id);
+  const assessmentCards = [...activeCards.filter(item => item.isAssessment)];
+  for (const result of completedResults) {
+    if (assessmentCards.some(item => item.id === result.enrollmentId || item.id === result.id)) continue;
+    const experience = data.experiences.find(item => item.slug === result.kind);
+    const card = (result.enrollmentId ? data.trainingCards[result.enrollmentId] : null) ?? (result.kind === "life-mapping-u" ? data.lmuCard : null) ?? { imageUrl: null, headline: result.name, eyebrow: "Assessment", supportingText: experience?.description ?? null };
+    assessmentCards.push({ id: result.id, isAssessment: true, card, href: `/account/results/${result.kind}/${result.id}`, action: "View results", meta: "Assessment · Completed", accessedAt: result.completedAt, entries: [] });
+  }
+  assessmentCards.sort((a, b) => Date.parse(b.accessedAt) - Date.parse(a.accessedAt) || a.id.localeCompare(b.id));
+  const journeyCards = [...activeCards.filter(item => !item.isAssessment), ...assessmentCards];
+  for (const record of data.completionRecords) {
+    const experience = experienceById.get(record.experienceId);
+    if (!experience || experience.experience_type === "assessment") continue;
+    if (journeyCards.some(item => item.id === record.enrollmentId)) continue;
+    const card = data.trainingCards[record.id] ?? data.trainingCards[record.enrollmentId] ?? { imageUrl: null, headline: experience.name, eyebrow: "Training", supportingText: experience.description };
+    journeyCards.push({ id: record.enrollmentId, isAssessment: false, card, href: `/experiences/${experience.slug}`, action: "Start over", meta: "Training · Completed", accessedAt: record.completedAt, entries: [] });
+  }
+  const seenJourneys = new Set<string>();
+  const recentCards = journeyCards.sort((a, b) => Date.parse(b.accessedAt) - Date.parse(a.accessedAt) || a.id.localeCompare(b.id)).filter(item => {
+    const result = completedResults.find(result => result.id === item.id);
+    const enrollment = data.enrollments.find(enrollment => enrollment.id === item.id);
+    const slug = result?.kind ?? (enrollment ? experienceById.get(enrollment.experience_id)?.slug : null);
+    const key = item.isAssessment && slug ? `assessment:${slug}` : item.id;
+    if (seenJourneys.has(key)) return false;
+    seenJourneys.add(key);
+    return true;
+  }).slice(0, 3);
   const activeCount = activeCards.length;
   const completedCount = data.completionRecords.filter((item) => visibleCanonicalJourneyCompletion(experienceById.get(item.experienceId)?.slug, data.lmuAssessments.some((assessment) => assessment.status === "completed"))).length + data.lmuAssessments.filter((item) => item.status === "completed").length;
 
@@ -51,13 +79,10 @@ export default async function DashboardPage() {
     </section>
     <section className="dashboard-section dashboard-continue" id="trainings" aria-labelledby="continue-heading">
       <header className="dashboard-section-heading"><div><p>What matters now</p><h2 id="continue-heading">Continue Your Journey</h2></div><Link href="/my-journey">View all →</Link></header>
-      {[false, true].map(isAssessment => {
-        const categoryCards = activeCards.filter(item => item.isAssessment === isAssessment);
-        return <section className="experience-category" key={String(isAssessment)}><h3>{isAssessment ? "Assessments" : "Trainings"}</h3><div className="dashboard-continue-cards">
-        {categoryCards.slice(0, 3).map((item) => <div key={item.id}><ParticipantCourseCard card={item.card} href={item.href} actionLabel={item.action} meta={item.meta} variant="horizontal"/>{item.entries.length > 1 && <nav className="dashboard-cohort-contexts" aria-label={`${item.card.headline} cohorts`}>{item.entries.map((entry) => <Link key={entry.cohortId} href={entry.href}>{entry.cohortName} · {titleCase(entry.role)} →</Link>)}</nav>}</div>)}
-        {!categoryCards.length && <p className="dashboard-empty dashboard-empty-large">No {isAssessment ? "assessments" : "trainings"} are currently in progress. Those you begin will appear here.</p>}
-      </div></section>;
-      })}
+      <div className="dashboard-continue-cards">
+        {recentCards.map((item) => <div key={item.id}><ParticipantCourseCard card={item.card} href={item.href} actionLabel={item.action} secondaryAction={item.action === "View results" ? { href: `/experiences/${completedResults.find(result => result.id === item.id)?.kind ?? ""}`, label: "Revisit / Redo" } : undefined} meta={item.meta} variant="horizontal"/>{item.entries.length > 1 && <nav className="dashboard-cohort-contexts" aria-label={`${item.card.headline} cohorts`}>{item.entries.map((entry) => <Link key={entry.cohortId} href={entry.href}>{entry.cohortName} · {titleCase(entry.role)} →</Link>)}</nav>}</div>)}
+        {!recentCards.length && <p className="dashboard-empty dashboard-empty-large">Trainings and assessments you begin will appear here.</p>}
+      </div>
     </section>
     <div className="dashboard-priority-grid">
       <section className="dashboard-section dashboard-purpose-profile"><header><p>Discovering who I am</p><h2>Purpose Profile</h2></header><p>Your Purpose Profile will take shape as you move through PurposeOS.</p><div className="dashboard-profile-states"><div><span>Story</span><strong>Still to explore</strong></div><div><span>Values</span><strong>Not explored yet</strong></div><div><span>Skills</span><strong>Still to explore</strong></div><div><span>Purpose</span><strong>Still taking shape</strong></div></div><Link className="dashboard-text-link" href="/purpose-profile">View profile →</Link></section>

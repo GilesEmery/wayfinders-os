@@ -101,7 +101,8 @@ test("Course blocks and My Trainings share one canonical Assessment journey", ()
   assert.match(library, /activeCanonicalJourneyEnrollment\(enrollment, experience.slug, Boolean\(lmu\)\)/);
   assert.match(dashboard, /activeJourneyCards\(data\)/);
   assert.match(dashboard, /visibleCanonicalJourneyCompletion\(/);
-  assert.match(dashboard, /activeCards.slice\(0, 3\)/);
+  assert.match(dashboard, /recentCards.map/);
+  assert.match(dashboard, /slice\(0, 3\)/);
 
 });
 

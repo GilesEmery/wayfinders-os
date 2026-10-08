@@ -24,3 +24,10 @@ export function completedGenericResult(responseKey: string, responseData: unknow
   const complete = native.kind === "activate-your-purpose" ? activatePurposeComplete(normalizeActivatePurposeAnswers(finished.answers)) : native.kind === "wayfinders-ethos" ? ethosComplete(normalizeEthosAnswers(finished.answers)) : launchingHubComplete(normalizeLaunchingHubAnswers(finished.answers));
   return complete ? { ...native, completedAt: finished.completedAt, data: finished.answers } : null;
 }
+
+export function completedLegacyActivatePurpose(responseKey: string, responseData: unknown, finalizedAt: string | null) {
+  const data = responseData as { answers?: unknown; finished?: unknown } | null;
+  if (responseKey !== "activate_your_purpose_assessment" || data?.finished || !finalizedAt || !Number.isFinite(Date.parse(finalizedAt))) return null;
+  const answers = normalizeActivatePurposeAnswers(data?.answers);
+  return activatePurposeComplete(answers) ? { kind: "activate-your-purpose" as const, name: "Activate Your Purpose", completedAt: finalizedAt, data: answers } : null;
+}

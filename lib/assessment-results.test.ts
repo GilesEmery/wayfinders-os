@@ -45,3 +45,12 @@ test("standalone numeric results require durable finish plus matching final time
   assert.equal(completedGenericResult("wayfinders_ethos_assessment", { finished }, finished.completedAt)?.kind, "wayfinders-ethos");
   assert.equal(completedGenericResult("launching_wayfinders_hub_assessment", { finished }, finished.completedAt)?.kind, "launching-your-wayfinders-hub");
 });
+
+test("legacy submitted Activate Your Purpose answers are readable without completing the parent course", async () => {
+  const { completedLegacyActivatePurpose } = await import("./assessment-results-policy.ts");
+  const answers = Object.fromEntries(Array.from({ length: 15 }, (_, i) => [`q${i + 1}`, "B"]));
+  assert.equal(completedLegacyActivatePurpose("activate_your_purpose_assessment", { answers }, "2026-10-07T19:49:30Z")?.kind, "activate-your-purpose");
+  assert.equal(completedLegacyActivatePurpose("activate_your_purpose_assessment", { answers }, null), null);
+  assert.equal(completedLegacyActivatePurpose("activate_your_purpose_assessment", { answers: { q1: "B" } }, "2026-10-07T19:49:30Z"), null);
+  assert.equal(completedLegacyActivatePurpose("wayfinders_ethos_assessment", { answers }, "2026-10-07T19:49:30Z"), null);
+});
