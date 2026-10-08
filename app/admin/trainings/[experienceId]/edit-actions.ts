@@ -161,6 +161,7 @@ export async function updateCustomCodeCardAction(experienceId: string, form: For
 
 export async function setCustomCodeCardImageAction(experienceId: string, form: FormData) {
   const admin = await requireAdmin();
+  try {
   const authorization = await getAuthorizationContext(admin.id, admin.email);
   if (!await canBuildExperienceById(authorization, experienceId)) throw new Error("You are not authorized to change this Experience.");
   const db = createAdminSupabaseClient();
@@ -175,12 +176,17 @@ export async function setCustomCodeCardImageAction(experienceId: string, form: F
   const result = await db.from("experiences").update({ card_configuration: { ...existing, card: { ...existing.card, image_resource_id: resourceId } } }).eq("id", experienceId).eq("delivery_mode", "custom_code").select("id").maybeSingle();
   if (result.error || !result.data) throw new Error("Course Card image could not be saved.");
   await audit(admin, "custom_code.card.image.updated", "experience", experienceId, { resourceId });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "The image could not be saved. Please try again.";
+    redirect(`/admin/trainings/${experienceId}?advanced=1&error=${encodeURIComponent(message)}`);
+  }
   revalidatePath(`/admin/trainings/${experienceId}`); revalidatePath("/trainings"); revalidatePath("/dashboard");
   redirect(`/admin/trainings/${experienceId}?updated=1&advanced=1`);
 }
 
 async function setCourseImage(experienceId: string, versionId: string, form: FormData, kind: "cover" | "logo" | "header_logo" | "card") {
   const admin = await requireAdmin();
+  try {
   const authorization = await getAuthorizationContext(admin.id, admin.email);
   if (!await canBuildExperienceById(authorization, experienceId)) throw new Error("You are not authorized to change this Course.");
   const db = createAdminSupabaseClient();
@@ -204,6 +210,10 @@ async function setCourseImage(experienceId: string, versionId: string, form: For
   const result = await db.from("experience_versions").update({ course_configuration: updated }).eq("id", versionId).eq("experience_id", experienceId).eq("status", "draft").select("id").maybeSingle();
   if (result.error || !result.data) throw new Error(`Course ${kind} could not be saved.`);
   await audit(admin, `course.${kind}.updated`, "experience_version", versionId, { experienceId, resourceId });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "The image could not be saved. Please try again.";
+    redirect(`/admin/trainings/${experienceId}/versions/${versionId}?error=${encodeURIComponent(message)}`);
+  }
   revalidatePath(`/admin/trainings/${experienceId}/versions/${versionId}`);
   revalidatePath("/trainings");
   revalidatePath("/dashboard");
