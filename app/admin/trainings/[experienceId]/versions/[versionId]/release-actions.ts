@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { clonePublishedVersion, publishVersion } from "@/lib/experiences/admin/version-release";
+import { getExperienceStructure } from "@/lib/experiences/builder/data";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 function workspace(experienceId: string, versionId: string, notice?: { error?: string; saved?: string }) {
@@ -29,7 +30,27 @@ export async function publishVersionAction(experienceId: string, versionId: stri
   revalidatePath("/experiences");
   revalidatePath("/experiences/[slug]", "page");
   const experience = await createAdminSupabaseClient().from("experiences").select("delivery_mode").eq("id", experienceId).maybeSingle();
-  if (returnToBuilder) redirect(builderReturn({ saved: "Changes published." }));
+  if (returnToBuilder) {
+    let nextVersionId: string;
+    let nextSectionId: string | undefined;
+    try {
+      // Published versions are immutable; continue editing a fresh draft.
+      const source = await getExperienceStructure(experienceId, versionId);
+      const selected = source.modules.flatMap(module => module.lessons.flatMap(lesson => lesson.sections.map(section => ({ moduleKey: module.module_key, lessonKey: lesson.lesson_key, section })))).find(item => item.section.id === selectedSection);
+      nextVersionId = await clonePublishedVersion(experienceId, versionId, `Draft ${new Date().toISOString()}`);
+      if (selected) {
+        const draft = await getExperienceStructure(experienceId, nextVersionId);
+        nextSectionId = draft.modules.find(module => module.module_key === selected.moduleKey)?.lessons.find(lesson => lesson.lesson_key === selected.lessonKey)?.sections.find(section => section.section_key === selected.section.section_key)?.id;
+      }
+    } catch (error) {
+      unstable_rethrow(error);
+      redirect(builderReturn({ error: "Changes were published, but the next editing draft could not be opened. Open Edit Course to continue." }));
+    }
+    const query = new URLSearchParams({ saved: "Changes published." });
+    if (nextSectionId) query.set("section", nextSectionId);
+    revalidatePath(workspace(experienceId, nextVersionId));
+    redirect(`${workspace(experienceId, nextVersionId)}?${query}`);
+  }
   if (experience.data?.delivery_mode === "builder") redirect(`/admin/trainings/${experienceId}`);
   redirect(workspace(experienceId, versionId, { saved: "Version Published and set as the current participant Version." }));
 }
