@@ -6,9 +6,9 @@ import { TRAINING_CATALOG_EMPTY_MESSAGE, trainingCatalogAccessLabel, trainingCat
 test("participant navigation separates enrolled Trainings from Explore Trainings", () => {
   const groups = buildPersonalNavigation();
   assert.deepEqual(groups.map((group) => group.label), ["My Dashboard", "Explore", "My Community", "My Account"]);
-  assert.deepEqual(groups.find((group) => group.label === "My Dashboard")?.items.map((item) => item.label), ["My Dashboard", "My Journey", "Purpose Profile", "My Trainings", "My Assessments", "My Cohorts"]);
-  assert.deepEqual(groups.find((group) => group.label === "Explore")?.items, [{ label: "Trainings", href: "/trainings", icon: "trainings" }]);
-  assert.equal(groups.find((group) => group.label === "My Dashboard")?.items.find((item) => item.label === "My Trainings")?.href, "/dashboard#trainings");
+  assert.deepEqual(groups.find((group) => group.label === "My Dashboard")?.items.map((item) => item.label), ["My Dashboard", "My Journey", "Purpose Profile", "My Training and Assessments", "My Cohorts"]);
+  assert.deepEqual(groups.find((group) => group.label === "Explore")?.items, [{ label: "Trainings and Assessments", href: "/trainings", icon: "trainings" }]);
+  assert.equal(groups.find((group) => group.label === "My Dashboard")?.items.find((item) => item.label === "My Training and Assessments")?.href, "/dashboard#trainings");
 });
 
 test("My Trainings and Explore Trainings active states cannot collide", () => {
@@ -26,7 +26,7 @@ test("participant navigation contains no Administration destinations", () => {
 });
 
 test("catalog recognizes existing access without offering a duplicate enrollment action", () => {
-  assert.equal(trainingCatalogAccessLabel(true, "in_progress", "open_enrollment"), "Already in My Trainings");
+  assert.equal(trainingCatalogAccessLabel(true, "in_progress", "open_enrollment"), "Already in My Training and Assessments");
   assert.equal(trainingCatalogActionLabel(true, "in_progress", "open_enrollment"), "Continue Training");
   assert.equal(trainingCatalogActionLabel(true, "completed", "open_enrollment"), "Open Training");
 });

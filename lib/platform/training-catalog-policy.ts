@@ -6,7 +6,7 @@ export function trainingCatalogActionLabel(signedIn: boolean, enrollmentStatus: 
 }
 
 export function trainingCatalogAccessLabel(signedIn: boolean, enrollmentStatus: string | null, admissionPolicy: string) {
-  if (enrollmentStatus) return "Already in My Trainings";
+  if (enrollmentStatus) return "Already in My Training and Assessments";
   if (admissionPolicy === "open_enrollment") return signedIn ? "Open Enrollment" : "Sign in to enroll";
   return "Enrollment is assigned by Wayfinders staff";
 }

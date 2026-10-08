@@ -2925,3 +2925,8 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
 
 .course-preview-frame.is-mobile .participant-course-layout.mobile-course-panels.has-open-outline>main,.course-preview-frame.is-mobile .participant-course-layout.mobile-course-panels.has-open-companion>main{opacity:.25}
 .course-preview-frame.is-mobile .participant-course-layout.mobile-course-panels.has-open-outline>.mobile-course-tab.is-companion,.course-preview-frame.is-mobile .participant-course-layout.mobile-course-panels.has-open-companion>.mobile-course-tab.is-outline{opacity:.25}
+
+/* Keep the training destination visible below the sticky platform header. */
+.wayfinder-dashboard #trainings{scroll-margin-top:94px}
+
+.experience-category{margin-top:32px}.experience-category+.experience-category{border-top:1px solid var(--platform-border,#ddd);margin-top:48px;padding-top:32px}.experience-category>h2,.experience-category>h3{margin:0 0 24px}

@@ -49,12 +49,15 @@ export default async function DashboardPage() {
     <section className="dashboard-my-hub" aria-labelledby="my-hub-heading">
       {primaryHub ? <><div className="dashboard-my-hub-copy"><p className="platform-eyebrow">My Hub</p><h2 id="my-hub-heading">{primaryHub.name}</h2>{primaryHub.description && <p>{primaryHub.description}</p>}</div><div className="dashboard-my-hub-context">{hubLocation(primaryHub.location) && <span>{hubLocation(primaryHub.location)}</span>}<span>{titleCase(primaryHub.role)}</span>{primaryHub.memberCount > 0 && <span>{primaryHub.memberCount} {primaryHub.memberCount === 1 ? "member" : "members"}</span>}</div><Link href={`/hubs/${primaryHub.slug}`}>View Hub →</Link></> : hubContexts.length > 1 ? <><div className="dashboard-my-hub-copy"><p className="platform-eyebrow">My Hubs</p><h2 id="my-hub-heading">You belong to {hubContexts.length} Wayfinder Hubs</h2><p>Choose a default Hub from a Hub page to make it your primary context here.</p></div><div className="dashboard-my-hub-list">{hubContexts.map((hub) => <Link href={`/hubs/${hub.slug}`} key={hub.id}>{hub.name} →</Link>)}</div></> : <div className="dashboard-my-hub-copy"><p className="platform-eyebrow">My Hub</p><h2 id="my-hub-heading">You are not connected to a Wayfinder Hub yet.</h2><p>Hubs are local communities where Wayfinders connect, learn, grow, and pursue impact together.</p></div>}
     </section>
-    <section className="dashboard-section dashboard-continue" aria-labelledby="continue-heading">
+    <section className="dashboard-section dashboard-continue" id="trainings" aria-labelledby="continue-heading">
       <header className="dashboard-section-heading"><div><p>What matters now</p><h2 id="continue-heading">Continue Your Journey</h2></div><Link href="/my-journey">View all →</Link></header>
-      <div className="dashboard-continue-cards">
-        {activeCards.slice(0, 3).map((item) => <div key={item.id}><ParticipantCourseCard card={item.card} href={item.href} actionLabel={item.action} meta={item.meta} variant="horizontal"/>{item.entries.length > 1 && <nav className="dashboard-cohort-contexts" aria-label={`${item.card.headline} cohorts`}>{item.entries.map((entry) => <Link key={entry.cohortId} href={entry.href}>{entry.cohortName} · {titleCase(entry.role)} →</Link>)}</nav>}</div>)}
-        {!activeCards.length && <p className="dashboard-empty dashboard-empty-large">Nothing is currently in progress. Experiences you begin will appear here.</p>}
-      </div>
+      {[false, true].map(isAssessment => {
+        const categoryCards = activeCards.filter(item => item.isAssessment === isAssessment);
+        return <section className="experience-category" key={String(isAssessment)}><h3>{isAssessment ? "Assessments" : "Trainings"}</h3><div className="dashboard-continue-cards">
+        {categoryCards.slice(0, 3).map((item) => <div key={item.id}><ParticipantCourseCard card={item.card} href={item.href} actionLabel={item.action} meta={item.meta} variant="horizontal"/>{item.entries.length > 1 && <nav className="dashboard-cohort-contexts" aria-label={`${item.card.headline} cohorts`}>{item.entries.map((entry) => <Link key={entry.cohortId} href={entry.href}>{entry.cohortName} · {titleCase(entry.role)} →</Link>)}</nav>}</div>)}
+        {!categoryCards.length && <p className="dashboard-empty dashboard-empty-large">No {isAssessment ? "assessments" : "trainings"} are currently in progress. Those you begin will appear here.</p>}
+      </div></section>;
+      })}
     </section>
     <div className="dashboard-priority-grid">
       <section className="dashboard-section dashboard-purpose-profile"><header><p>Discovering who I am</p><h2>Purpose Profile</h2></header><p>Your Purpose Profile will take shape as you move through PurposeOS.</p><div className="dashboard-profile-states"><div><span>Story</span><strong>Still to explore</strong></div><div><span>Values</span><strong>Not explored yet</strong></div><div><span>Skills</span><strong>Still to explore</strong></div><div><span>Purpose</span><strong>Still taking shape</strong></div></div><Link className="dashboard-text-link" href="/purpose-profile">View profile →</Link></section>
@@ -66,6 +69,6 @@ export default async function DashboardPage() {
       <section className="dashboard-section"><header><p>What has been happening</p><h2>Recent Activity</h2></header>{recent.length ? <ul className="dashboard-activity">{recent.map((item, index) => <li key={`${item.date}-${index}`}><span>{item.label}</span><time dateTime={item.date}>{new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(new Date(item.date))}</time></li>)}</ul> : <p className="dashboard-empty">Your recent PurposeOS activity will appear here.</p>}</section>
       <section className="dashboard-section dashboard-recommendations"><header><p>When the time is right</p><h2>Recommended Next Steps</h2></header><p className="dashboard-empty">As you complete trainings, assessments, and experiences, PurposeOS will begin surfacing meaningful next steps.</p></section>
     </div>
-    <div className="dashboard-anchor-targets" aria-hidden="true"><span id="trainings"/><span id="assessments"/></div>
+    <div className="dashboard-anchor-targets" aria-hidden="true"><span id="assessments"/></div>
   </main></PlatformShell>;
 }
