@@ -1,3 +1,4 @@
+import { CIRCLE_RESPONSE_KEY, normalizeCircleEnvelope, circleSaveError } from "./experiences/builder/circle-of-influence.ts";
 import { activatePurposeComplete, normalizeActivatePurposeAnswers } from "./experiences/builder/activate-purpose-assessment.ts";
 import { ethosComplete, normalizeEthosAnswers } from "./experiences/builder/ethos-assessment.ts";
 import { launchingHubComplete, normalizeLaunchingHubAnswers } from "./experiences/builder/launching-wayfinders-hub-assessment.ts";
@@ -10,6 +11,10 @@ import { normalizePersonalImpactEnvelope, PERSONAL_IMPACT_RESPONSE_KEY } from ".
 import { normalizeStartSomethingEnvelope, START_SOMETHING_RESPONSE_KEY } from "./experiences/builder/start-something.ts";
 
 export function completedGenericResult(responseKey: string, responseData: unknown, finalizedAt: string | null) {
+  if (responseKey === CIRCLE_RESPONSE_KEY) {
+    const finished = normalizeCircleEnvelope(responseData).finished;
+    return finished && finished.completedAt === finalizedAt && !circleSaveError(finished.participantMaterial) ? { kind: "circle-of-influence" as const, name: "Circle of Influence", completedAt: finished.completedAt, data: finished.participantMaterial } : null;
+  }
   if (responseKey === PERSONAL_IMPACT_RESPONSE_KEY) {
     const finished = normalizePersonalImpactEnvelope(responseData, finalizedAt).finished;
     return finished ? { kind: "personal-impact-statement" as const, name: "Personal Impact Statement", completedAt: finished.completedAt, data: finished.participantMaterial } : null;

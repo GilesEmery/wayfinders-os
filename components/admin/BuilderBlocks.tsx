@@ -1,3 +1,4 @@
+import { CircleOfInfluenceAssessment } from "@/components/experiences/builder/CircleOfInfluenceAssessment";
 import type { CourseLinkOption } from "@/lib/experiences/builder/course-links";
 import type { Tables } from "@/lib/supabase/database.types";
 import { BLOCK_DEFINITIONS, getBlockDefinition, getParticipantBlockDefinition } from "@/lib/experiences/builder/block-registry";
@@ -82,6 +83,7 @@ function OptionFields({ config, multi }: { config: Record<string, unknown>; mult
 function BlockPreview({ block, responseDefinition, asset }: { block: Block; responseDefinition?: ResponseDefinition; asset?: ResolvedAsset }) {
   const participantDefinition = getParticipantBlockDefinition(block.block_type, block.custom_renderer_key);
   if (!participantDefinition) return <div className="builder-block-unavailable"><strong>Unavailable Block Type</strong><span>Block type: {block.block_type}</span><p>This Block is preserved, but its current renderer and editor are unavailable.</p></div>;
+  if (block.block_type === "custom_component" && block.custom_renderer_key === "circle-of-influence.v1") return <CircleOfInfluenceAssessment initialData={{}} route={{ slug: "", moduleKey: "", lessonKey: "", sectionKey: "", blockKey: block.block_key }} preview/>;
   if (block.block_type === "system_component" && block.custom_renderer_key === ETHOS_RENDERER_KEY) return <EthosAssessment initialData={{}} route={{ slug: "", moduleKey: "", lessonKey: "", sectionKey: "", blockKey: block.block_key }} preview/>;
   if (block.block_type === "custom_component" && block.custom_renderer_key === ACTIVATE_PURPOSE_RENDERER_KEY) return <ActivatePurposeAssessment initialData={{}} route={{ slug: "", moduleKey: "", lessonKey: "", sectionKey: "", blockKey: block.block_key }} preview/>;
   if (block.block_type === "custom_component" && block.custom_renderer_key === LAUNCHING_WAYFINDERS_HUB_RENDERER_KEY) return <LaunchingWayfindersHubAssessment initialData={{}} route={{ slug: "", moduleKey: "", lessonKey: "", sectionKey: "", blockKey: block.block_key }} preview/>;

@@ -1,3 +1,5 @@
+import { CircleOfInfluenceAssessment } from "./CircleOfInfluenceAssessment";
+import { CIRCLE_RENDERER_KEY } from "@/lib/experiences/builder/circle-of-influence";
 import { getParticipantBlockDefinition } from "@/lib/experiences/builder/block-registry";
 import type { BuilderContentBlock } from "@/lib/experiences/builder/types";
 import type { ParticipantResponseContext } from "@/lib/experiences/builder/participant-runtime";
@@ -32,6 +34,10 @@ export function ParticipantBlockRenderer({ block, response, asset, route, previe
   if (block.status !== "active" || block.visibility !== "visible") return null;
   const definition = getParticipantBlockDefinition(block.block_type, block.custom_renderer_key);
   if (!definition) return <Unavailable block={block}/>;
+  if (block.block_type === "custom_component" && block.custom_renderer_key === CIRCLE_RENDERER_KEY) {
+    if (!response || response.definition.response_type !== "structured_response") return <Unavailable block={block}/>;
+    return <CircleOfInfluenceAssessment initialData={response.response?.response_data ?? {}} route={{ ...route, blockKey: block.block_key }} preview={preview}/>;
+  }
   if (block.block_type === "system_component" && block.custom_renderer_key === ETHOS_RENDERER_KEY) {
     if (!response || response.definition.response_type !== "structured_response") return <Unavailable block={block}/>;
     return <EthosAssessment initialData={response.response?.response_data ?? {}} route={{ ...route, blockKey: block.block_key }} preview={preview}/>;

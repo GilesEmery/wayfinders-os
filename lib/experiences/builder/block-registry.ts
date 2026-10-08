@@ -270,7 +270,14 @@ const START_SOMETHING_DEFINITION = Object.freeze({
   supportsResponse: true, supportsCompletion: true, supportsResources: false, duplicable: false, availability: "experimental", participantRuntime: "available", response: { responseKind: "short_text", responseType: "structured_response", completionSignal: "response_submitted" },
 } satisfies BlockDefinition);
 
+const CIRCLE_OF_INFLUENCE_DEFINITION = Object.freeze({
+  blockType: "custom_component", label: "Circle of Influence", description: "Map people in eight everyday communities and discern your next step.", category: "custom_assessment", iconKey: "assessment", editorKey: "response", previewKey: "response", participantRendererKey: "circle-of-influence.v1", defaultCompletionRule: "response_submitted",
+  defaultConfiguration: () => ({}), validateConfiguration: startSomethingExperience,
+  supportsResponse: true, supportsCompletion: true, supportsResources: false, duplicable: false, availability: "experimental", participantRuntime: "available", response: { responseKind: "short_text", responseType: "structured_response", completionSignal: "response_submitted" },
+} satisfies BlockDefinition);
+
 const CUSTOM_PARTICIPANT_BLOCKS = new Map([
+  ["custom_component:circle-of-influence.v1", CIRCLE_OF_INFLUENCE_DEFINITION],
   ["system_component:wayfinders-ethos-assessment.v1", BLOCKS.get("system_component")!],
   ["custom_component:activate-your-purpose-assessment.v1", BLOCKS.get("custom_component")!],
   ["custom_component:launching-wayfinders-hub-assessment.v1", LAUNCHING_WAYFINDERS_HUB_DEFINITION],

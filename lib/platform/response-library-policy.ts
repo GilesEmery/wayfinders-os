@@ -1,3 +1,4 @@
+import { CIRCLE_AREAS, CIRCLE_RESPONSE_KEY, normalizeCircleData } from "../experiences/builder/circle-of-influence.ts";
 import { ACTIVATE_PURPOSE_QUESTIONS, activatePurposeResults, normalizeActivatePurposeAnswers } from "../experiences/builder/activate-purpose-assessment.ts";
 import { ETHOS_CATEGORIES, ethosResults, normalizeEthosAnswers } from "../experiences/builder/ethos-assessment.ts";
 import { LAUNCHING_HUB_QUESTIONS, LAUNCHING_HUB_SCALE, launchingHubResult, normalizeLaunchingHubAnswers } from "../experiences/builder/launching-wayfinders-hub-assessment.ts";
@@ -39,6 +40,13 @@ export function activityResponseItems(responseKey: string, data: unknown, config
   const envelope = object(data), finished = object(envelope.finished);
   const currentDraft = envelope.draft ?? envelope.answers;
   const completedMaterial = finished.answers ?? finished.participantMaterial;
+  if (responseKey === CIRCLE_RESPONSE_KEY) {
+    const circle = normalizeCircleData(completedMaterial ?? currentDraft ?? data);
+    return [...CIRCLE_AREAS.flatMap(area => {
+      const response = circle.people[area.key].filter(name => name.trim()).join(" · ");
+      return response || includeUnanswered ? [{ question: area.key === "other" ? circle.otherLabel || "Other" : area.title, response: response || "Not answered", answered: Boolean(response) }] : [];
+    }), ...readableResponseFields({ prayer: circle.prayer, disciple: circle.disciple, next_step: circle.nextStep })];
+  }
   if (responseKey === "personal_impact_statement") {
     const statement = normalizePersonalImpactData(completedMaterial ?? currentDraft ?? envelope.response ?? data);
     const response = statement.final_impact_statement.trim() || statement.distilled_statement.trim()

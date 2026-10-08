@@ -5,7 +5,7 @@ import { audit, requireAdmin } from "@/lib/admin/auth";
 import { loadCompletedAssessmentResult, type AssessmentResultKind } from "@/lib/assessment-results";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
-const KINDS = new Set<AssessmentResultKind>(["life-mapping-u", "personal-impact-statement", "start-something", "activate-your-purpose", "wayfinders-ethos", "launching-your-wayfinders-hub"]);
+const KINDS = new Set<AssessmentResultKind>(["circle-of-influence", "life-mapping-u", "personal-impact-statement", "start-something", "activate-your-purpose", "wayfinders-ethos", "launching-your-wayfinders-hub"]);
 
 export default async function AdminResultPage({ params }: { params: Promise<{ userId: string; kind: string; resultId: string }> }) {
   const identity = await requireAdmin();

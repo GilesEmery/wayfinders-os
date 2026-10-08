@@ -5,7 +5,7 @@ import { PlatformShell } from "@/components/platform/PlatformShell";
 import { loadCompletedAssessmentResult, type AssessmentResultKind } from "@/lib/assessment-results";
 import { ensurePlatformProfile, getPlatformUser } from "@/lib/platform/auth";
 
-const KINDS = new Set<AssessmentResultKind>(["life-mapping-u", "personal-impact-statement", "start-something", "activate-your-purpose", "wayfinders-ethos", "launching-your-wayfinders-hub"]);
+const KINDS = new Set<AssessmentResultKind>(["circle-of-influence", "life-mapping-u", "personal-impact-statement", "start-something", "activate-your-purpose", "wayfinders-ethos", "launching-your-wayfinders-hub"]);
 
 export default async function AccountResultPage({ params }: { params: Promise<{ kind: string; resultId: string }> }) {
   const user = await getPlatformUser();
