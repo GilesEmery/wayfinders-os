@@ -1,5 +1,7 @@
 "use client";
 
+import { returnFromAssessment } from "@/lib/experiences/builder/assessment-return";
+
 import { useRef, useState } from "react";
 import { Printer } from "lucide-react";
 import { NativeAssessmentShell } from "./NativeAssessmentShell";
@@ -114,7 +116,7 @@ export function EthosAssessment({ initialData, route, preview = false, standalon
     </>}
     {results && (!standalone || showingResults) && (results.allEqual ? <section className="ethos-balanced-result"><p>Balanced result</p><h3>Your scores are currently even across all five Wayfinders Ethos areas.</h3><ul>{results.scores.map(({ category: item, score }) => <li key={item.key}><span>{item.title}</span><strong>{score} / 15</strong></li>)}</ul></section> : <section className="ethos-results" aria-label="Ethos Assessment results"><ResultBox kind="strength" items={results.strongest} onExplore={() => setDialog("strength")}/><ResultBox kind="growth" items={results.growth} onExplore={() => setDialog("growth")}/></section>)}
     {showingResults && results && <section className="ethos-saved-responses"><h3>Your responses</h3>{results.scores.map(({ category: item, score }) => <article key={item.key}><h4>{item.title}<span>{score} / 15</span></h4><dl>{item.questions.map(question => <div key={question.key}><dt>{question.text}</dt><dd>{answers[question.key]} / 5</dd></div>)}</dl></article>)}</section>}
-    {showingResults && <footer className="ethos-saved-actions"><button type="button" onClick={() => setReviewing(true)}>Review answers</button><button type="button" onClick={() => { retakeCompletedAt.current = completedAt; setAnswers({}); setFinalized(false); setReviewing(false); setStep(0); setDialog(null); setSaveState("idle"); }}>Retake assessment</button><button type="button" onClick={() => window.print()}><Printer aria-hidden="true"/> Print assessment</button><button className="is-primary" type="button" onClick={() => { if (preview) { setFocused(false); return; } window.location.assign(returnTo ?? "/dashboard"); }}>Save and close</button></footer>}
+    {showingResults && <footer className="ethos-saved-actions"><button type="button" onClick={() => setReviewing(true)}>Review answers</button><button type="button" onClick={() => { retakeCompletedAt.current = completedAt; setAnswers({}); setFinalized(false); setReviewing(false); setStep(0); setDialog(null); setSaveState("idle"); }}>Retake assessment</button><button type="button" onClick={() => window.print()}><Printer aria-hidden="true"/> Print assessment</button><button className="is-primary" type="button" onClick={() => { if (preview) { setFocused(false); return; } returnFromAssessment(returnTo ?? "/dashboard"); }}>Save and close</button></footer>}
     {dialog && results && <ResultDialog kind={dialog} items={dialog === "strength" ? results.strongest : results.growth} onClose={() => setDialog(null)}/>} 
   </section></NativeAssessmentShell></AssessmentFocusFrame>;
 }

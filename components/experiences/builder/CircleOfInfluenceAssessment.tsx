@@ -1,5 +1,7 @@
 "use client";
 
+import { returnFromAssessment } from "@/lib/experiences/builder/assessment-return";
+
 import { useRef, useState } from "react";
 import { BriefcaseBusiness, Church, GraduationCap, Heart, House, Plus, Printer, Users, Volleyball } from "lucide-react";
 import { NativeAssessmentShell } from "./NativeAssessmentShell";
@@ -54,7 +56,7 @@ export function CircleOfInfluenceAssessment({ initialData, route, preview = fals
   async function close() {
     if (preview) { setFocused(false); return; }
     if (!finished) { try { await draftSave(); } catch { return; } }
-    window.location.assign(returnTo ?? "/dashboard");
+    returnFromAssessment(returnTo ?? "/dashboard");
   }
   if (!focused && !autoStart) return <AssessmentLaunchCard eyebrow="Wayfinders Assessment" title="Circle of Influence" description="Recognize the people in your everyday communities and discern how to shepherd them with care." status={finished ? "completed" : Object.values(data.people).some(names => names.some(Boolean)) ? "in_progress" : "not_started"} action={<button type="button" onClick={() => setFocused(true)}>{finished ? "View results" : "Open assessment"}</button>}/>;
   return <AssessmentFocusFrame active={focused && !autoStart} label="Circle of Influence assessment" onClose={() => { void close(); }}><NativeAssessmentShell returnTo={returnTo} showReturn={autoStart}><section className={`circle-assessment${view === "results" ? " circle-saved-results" : ""}`}>

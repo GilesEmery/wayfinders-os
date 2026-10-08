@@ -1,5 +1,7 @@
 "use client";
 
+import { returnFromAssessment } from "@/lib/experiences/builder/assessment-return";
+
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Printer } from "lucide-react";
@@ -112,7 +114,7 @@ export function ActivatePurposeAssessment({ initialData, route, preview = false,
       setFinalized(true);
       setSaveState("saved");
       if (preview || !standalone) { setFocused(false); setDialog(null); }
-      else window.location.assign(returnTo ?? "/dashboard");
+      else returnFromAssessment(returnTo ?? "/dashboard");
     } catch {
       setSaveState("error");
     } finally {

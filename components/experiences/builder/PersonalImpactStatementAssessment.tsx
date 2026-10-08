@@ -1,5 +1,7 @@
 "use client";
 
+import { returnFromAssessment } from "@/lib/experiences/builder/assessment-return";
+
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -156,7 +158,7 @@ export function PersonalImpactStatementAssessment({ initialData, initialComplete
     <div className="pis-contours" aria-hidden="true"/><p className="pis-kicker">Your Personal Impact Statement</p><blockquote>{result.final_impact_statement}</blockquote>
     <section><h2>Areas You Care About</h2><div className="pis-result-causes">{result.causes.map((cause) => <span key={cause}>{cause}</span>)}</div></section>
     <section><h2>Area of Influence</h2><p>{result.area_of_influence}</p></section>
-    <div className="pis-actions pis-result-actions"><button type="button" onClick={() => setView("review")}>Review answers</button><button type="button" onClick={() => { retakeCompletedAt.current = finished.completedAt; setData(normalizePersonalImpactData({})); setStage(0); setView("assessment"); setMessage(""); }}>Retake assessment</button><button type="button" onClick={() => window.print()}><Printer aria-hidden="true"/> Print assessment</button><button className="pis-primary" type="button" onClick={() => window.location.assign(returnTo ?? "/dashboard")}>Save and close</button></div>
+    <div className="pis-actions pis-result-actions"><button type="button" onClick={() => setView("review")}>Review answers</button><button type="button" onClick={() => { retakeCompletedAt.current = finished.completedAt; setData(normalizePersonalImpactData({})); setStage(0); setView("assessment"); setMessage(""); }}>Retake assessment</button><button type="button" onClick={() => window.print()}><Printer aria-hidden="true"/> Print assessment</button><button className="pis-primary" type="button" onClick={() => returnFromAssessment(returnTo ?? "/dashboard")}>Save and close</button></div>
   </section>);
   }
 
