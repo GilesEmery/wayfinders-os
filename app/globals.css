@@ -2965,3 +2965,8 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
 @media screen and (max-width:520px){
   .start-something-shell.is-standalone .start-something-context{margin-inline:20px}
 }
+
+/* Keep rich-text paragraph rhythm identical in editing and participant preview. */
+:is(.inline-text-surface,.participant-rich-text-block)>p{line-height:1.7;margin-block:1em;min-height:1.7em}
+:is(.inline-text-surface,.participant-rich-text-block)>p:first-child{margin-top:0}
+:is(.inline-text-surface,.participant-rich-text-block)>p:last-child{margin-bottom:0}

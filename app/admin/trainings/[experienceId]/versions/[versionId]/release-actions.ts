@@ -13,14 +13,23 @@ function workspace(experienceId: string, versionId: string, notice?: { error?: s
 }
 
 export async function publishVersionAction(experienceId: string, versionId: string, form: FormData) {
-  if (form.get("confirm_publish") !== "yes") redirect(workspace(experienceId, versionId, { error: "Confirm publication before continuing." }));
+  const section = String(form.get("section") ?? "");
+  const returnToBuilder = form.get("return_to_builder") === "yes";
+  const selectedSection = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(section) ? section : null;
+  const builderReturn = (notice: { saved?: string; error?: string }) => {
+    const query = new URLSearchParams(notice as Record<string, string>);
+    if (selectedSection) query.set("section", selectedSection);
+    return `${workspace(experienceId, versionId)}?${query}`;
+  };
+  if (form.get("confirm_publish") !== "yes") redirect(builderReturn({ error: "Confirm publication before continuing." }));
   try { await publishVersion(experienceId, versionId); }
-  catch (error) { unstable_rethrow(error); redirect(workspace(experienceId, versionId, { error: error instanceof Error ? error.message : "Publication could not be completed." })); }
+  catch (error) { unstable_rethrow(error); redirect(builderReturn({ error: error instanceof Error ? error.message : "Publication could not be completed." })); }
   revalidatePath(`/admin/trainings/${experienceId}`);
   revalidatePath(workspace(experienceId, versionId));
   revalidatePath("/experiences");
   revalidatePath("/experiences/[slug]", "page");
   const experience = await createAdminSupabaseClient().from("experiences").select("delivery_mode").eq("id", experienceId).maybeSingle();
+  if (returnToBuilder) redirect(builderReturn({ saved: "Changes published." }));
   if (experience.data?.delivery_mode === "builder") redirect(`/admin/trainings/${experienceId}`);
   redirect(workspace(experienceId, versionId, { saved: "Version Published and set as the current participant Version." }));
 }

@@ -25,7 +25,7 @@ function renderNode(node: JSONContent, key: number | string): ReactNode {
   if (node.type === "hardBreak") return <br key={key}/>;
   const children = (node.content ?? []).map((child, index) => renderNode(child, index));
   if (node.type === "doc") return <>{children}</>;
-  if (node.type === "paragraph") return <p key={key}>{children}</p>;
+  if (node.type === "paragraph") return <p key={key}>{children.length ? children : <br/>}</p>;
   if (node.type === "heading") {
     const level = Number(node.attrs?.level ?? 1);
     if (level === 3) return <h3 key={key}>{children}</h3>;
