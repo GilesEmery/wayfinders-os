@@ -1,4 +1,5 @@
 import "server-only";
+import { presentationSettings } from "../builder/block-presentation";
 
 import { audit, requireAdmin } from "@/lib/admin/auth";
 import { canBuildExperienceById, getAuthorizationContext } from "@/lib/platform/authorization";
@@ -275,7 +276,7 @@ export async function updateBlock(experienceId: string, versionId: string, secti
       if (history.count) throw new Error("Option keys cannot be added, removed, or reordered after participant responses exist. Create a new Version instead.");
     }
   }
-  const result = await db.from("content_blocks").update({ content: parsed.value as Json, settings: {}, requirement_level: requirement, visibility, completion_rule: definition.defaultCompletionRule }).eq("id", blockId).eq("section_id", sectionId).eq("column_id", block.column_id!);
+  const result = await db.from("content_blocks").update({ content: parsed.value as Json, settings: presentationSettings(block.settings, form) as Json, requirement_level: requirement, visibility, completion_rule: definition.defaultCompletionRule }).eq("id", blockId).eq("section_id", sectionId).eq("column_id", block.column_id!);
   if (result.error) throw new Error(`Unable to update Block: ${result.error.message}`);
   if (MEDIA_TYPES.has(block.block_type)) {
     try { await linkExternalResource(db, blockId, block.block_type, parsed.value, admin.id); }
@@ -300,7 +301,7 @@ export async function updateBlockSettings(experienceId: string, versionId: strin
   const requirement = String(form.get("requirement_level") ?? "optional");
   const visibility = String(form.get("visibility") ?? "visible");
   if (!REQUIREMENTS.has(requirement) || !VISIBILITIES.has(visibility)) throw new Error("Invalid Block requirement or visibility.");
-  const updates: { requirement_level: string; visibility: string; content?: Json } = { requirement_level: requirement, visibility };
+  const updates: { requirement_level: string; visibility: string; content?: Json; settings: Json } = { requirement_level: requirement, visibility, settings: presentationSettings(block.settings, form) as Json };
   if (block.block_type === "heading") {
     const current = block.content && typeof block.content === "object" && !Array.isArray(block.content) ? block.content : {};
     const merged = {

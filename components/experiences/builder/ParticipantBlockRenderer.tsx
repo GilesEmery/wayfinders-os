@@ -1,3 +1,4 @@
+import { BlockPresentation } from "./BlockPresentation";
 import { CircleOfInfluenceAssessment } from "./CircleOfInfluenceAssessment";
 import { CIRCLE_RENDERER_KEY } from "@/lib/experiences/builder/circle-of-influence";
 import { getParticipantBlockDefinition } from "@/lib/experiences/builder/block-registry";
@@ -30,7 +31,7 @@ function Unavailable({ block }: { block: BuilderContentBlock }) {
   return <div className="participant-block-unavailable" role="status">Content unavailable</div>;
 }
 
-export function ParticipantBlockRenderer({ block, response, asset, route, preview = false, requirementsBypassed = false, assessmentCard }: { block: BuilderContentBlock; response?: ParticipantResponseContext; asset?: ResolvedAsset; route: { slug: string; moduleKey: string; lessonKey: string; sectionKey: string; cohortId?: string | null; previewBase?: string }; preview?: boolean; requirementsBypassed?: boolean; assessmentCard?: AssessmentCardData }) {
+function ParticipantBlockContent({ block, response, asset, route, preview = false, requirementsBypassed = false, assessmentCard }: { block: BuilderContentBlock; response?: ParticipantResponseContext; asset?: ResolvedAsset; route: { slug: string; moduleKey: string; lessonKey: string; sectionKey: string; cohortId?: string | null; previewBase?: string }; preview?: boolean; requirementsBypassed?: boolean; assessmentCard?: AssessmentCardData }) {
   if (block.status !== "active" || block.visibility !== "visible") return null;
   const definition = getParticipantBlockDefinition(block.block_type, block.custom_renderer_key);
   if (!definition) return <Unavailable block={block}/>;
@@ -80,4 +81,9 @@ export function ParticipantBlockRenderer({ block, response, asset, route, previe
   if (definition.previewKey === "media") return <ParticipantMediaBlock kind={block.block_type as "video" | "image" | "document" | "download" | "external_link"} config={configuration} asset={asset}/>;
   const title = value(configuration, "title");
   return <aside className={`participant-callout-block is-${value(configuration, "treatment") || "info"}`}>{title && <strong>{title}</strong>}<p>{value(configuration, "body")}</p></aside>;
+}
+
+export function ParticipantBlockRenderer(props: Parameters<typeof ParticipantBlockContent>[0]) {
+  if (props.block.status !== "active" || props.block.visibility !== "visible") return null;
+  return <BlockPresentation settings={props.block.settings} linkContext={{ slug: props.route.slug, cohortId: props.route.cohortId, previewBase: props.route.previewBase }}><ParticipantBlockContent {...props}/></BlockPresentation>;
 }

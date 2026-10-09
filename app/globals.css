@@ -3048,3 +3048,27 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
 .course-preview-frame.is-mobile .participant-course .participant-section-header h1{font-size:var(--course-h1-size)}
 
 :is(.inline-text-surface,.participant-rich-text-block) .course-text-indent{margin-inline-start:1.5em}
+
+.course-item-presentation{display:grid;gap:18px;min-width:0}
+.course-item-text.is-h1{--item-text-size:var(--course-h1-size,40px)}
+.course-item-text.is-h2{--item-text-size:var(--course-h2-size,28px)}
+.course-item-text.is-h3{--item-text-size:var(--course-h3-size,20px)}
+.course-item-text.is-h4{--item-text-size:var(--course-h4-size,16px)}
+:is(.participant-course,.course-builder-canvas) .course-item-text .participant-rich-text-block :is(p,li,h1,h2,h3,h4){font-size:var(--item-text-size);line-height:1.5}
+.course-item-content>.participant-media-block>:is(strong,p,figcaption),
+.course-item-content>.participant-response-block>header,
+.course-item-content>.participant-rich-text-block,
+.course-item-content>:is(.participant-heading-block,.builder-heading-preview),
+.course-item-content>:is(.participant-callout-block,.builder-callout-preview)>:is(strong,p){display:none}
+.course-item-content:has(>.participant-rich-text-block),.course-item-content:has(>.participant-heading-block),.course-item-content:has(>.builder-heading-preview){display:none}
+.course-item-text-field{border:1px solid var(--builder-line,#ddd);padding:12px;min-width:0;display:grid;gap:10px}
+.course-item-text-field .inline-text-toolbar{position:static;margin:0}
+.course-item-text-field .inline-text-surface{border:1px solid #ddd;padding:12px;min-height:80px}
+.course-item-text-fields{display:grid;gap:14px}
+.course-item-content>.participant-pdf-reader>figcaption,
+.course-item-content>.assessment-launch-card>.assessment-launch-copy>:is(h2,p){display:none}
+.course-item-text-field.is-h1{--item-editor-size:40px}
+.course-item-text-field.is-h2{--item-editor-size:28px}
+.course-item-text-field.is-h3{--item-editor-size:20px}
+.course-item-text-field.is-h4{--item-editor-size:16px}
+.course-item-text-field .inline-text-surface :is(p,li){font-size:var(--item-editor-size);line-height:1.5}
