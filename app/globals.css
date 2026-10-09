@@ -3029,3 +3029,22 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
 }
 
 .embedded-assessment-document .start-something-context a,.embedded-assessment-document .pis-shell-back a{background:#fff;border:1px solid #d5d9d7;border-radius:8px;color:#252a29;display:inline-flex;min-height:44px;padding:12px 18px;text-decoration:none}
+
+/* Shared course content scale, also used by the authoring canvas. */
+:is(.participant-course,.course-builder-canvas){--course-h1-size:40px;--course-h2-size:28px;--course-h3-size:20px;--course-h4-size:16px}
+:is(.participant-course,.course-builder-canvas) :is(.participant-section-header,.participant-heading-block,.builder-heading-preview,.participant-rich-text-block,.inline-text-surface,.participant-response-block,.participant-callout-block,.course-builder-lesson-header) h1{font-size:var(--course-h1-size);line-height:1.15}
+:is(.participant-course,.course-builder-canvas) :is(.participant-heading-block,.builder-heading-preview,.participant-rich-text-block,.inline-text-surface,.participant-response-block,.participant-callout-block,.course-builder-lesson-header) h2{font-size:var(--course-h2-size);line-height:1.25}
+:is(.participant-course,.course-builder-canvas) :is(.participant-heading-block,.builder-heading-preview,.participant-rich-text-block,.inline-text-surface,.participant-response-block,.participant-callout-block) h3{font-size:var(--course-h3-size);line-height:1.4}
+:is(.participant-course,.course-builder-canvas) :is(.participant-heading-block,.builder-heading-preview,.participant-rich-text-block,.inline-text-surface,.participant-response-block,.participant-callout-block) h4{font-size:var(--course-h4-size);line-height:1.6}
+:is(.participant-course,.course-builder-canvas) :is(.participant-rich-text-block,.inline-text-surface,.participant-callout-block){font-size:var(--course-h4-size)}
+:is(.participant-course,.course-builder-canvas) :is(.participant-rich-text-block,.inline-text-surface,.participant-callout-block) :is(p,li){font-size:var(--course-h4-size);line-height:1.7}
+:is(.participant-course,.course-builder-canvas) .participant-section-header>span:not(.participant-lesson-label){font-size:var(--course-h4-size);line-height:1.7}
+:is(.participant-course,.course-builder-canvas) .participant-response-block header h3{margin:0}
+:is(.participant-course,.course-builder-canvas) .participant-response-block :is(textarea,.participant-response-final>p){font-size:var(--course-h4-size);line-height:1.7}
+:is(.participant-course,.course-builder-canvas) .participant-response-block header>span{font-size:var(--course-h4-size)}
+:is(.participant-course,.course-builder-canvas) .builder-response-preview>strong{font-size:var(--course-h3-size);line-height:1.4}
+@media(max-width:760px){:is(.participant-course,.course-builder-canvas){--course-h1-size:32px;--course-h2-size:24px}}
+.course-preview-frame.is-mobile .participant-course{--course-h1-size:32px;--course-h2-size:24px}
+.course-preview-frame.is-mobile .participant-course .participant-section-header h1{font-size:var(--course-h1-size)}
+
+:is(.inline-text-surface,.participant-rich-text-block) .course-text-indent{margin-inline-start:1.5em}

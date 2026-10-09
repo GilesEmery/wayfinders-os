@@ -73,7 +73,7 @@ export function ParticipantBlockRenderer({ block, response, asset, route, previe
     const eyebrow = value(configuration, "eyebrow");
     const text = value(configuration, "text");
     const level = value(configuration, "level");
-    return <header className={`participant-heading-block is-${value(configuration, "alignment") || "left"}`}>{eyebrow && <p>{eyebrow}</p>}{level === "h4" ? <h4>{text}</h4> : level === "h3" ? <h3>{text}</h3> : <h2>{text}</h2>}</header>;
+    return <header className={`participant-heading-block is-${value(configuration, "alignment") || "left"}`}>{eyebrow && <p>{eyebrow}</p>}{level === "h1" ? <h1>{text}</h1> : level === "h4" ? <h4>{text}</h4> : level === "h3" ? <h3>{text}</h3> : <h2>{text}</h2>}</header>;
   }
   if (definition.previewKey === "rich_text") return <ParticipantRichText linkContext={{ slug: route.slug, cohortId: route.cohortId, previewBase: route.previewBase }} title={value(configuration, "title")} text={value(configuration, "text")}/>;
   if (definition.previewKey === "pdf_reader") return <ParticipantPdfReader config={configuration} asset={asset}/>;

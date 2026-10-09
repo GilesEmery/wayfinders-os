@@ -1,4 +1,4 @@
-export type InlineDraft = Readonly<{ text: string; title: string; level: "h2" | "h3" | "h4" }>;
+export type InlineDraft = Readonly<{ text: string; title: string; level: "h1" | "h2" | "h3" | "h4" }>;
 export type InlineDocumentIdentity = Readonly<{ experienceId: string; versionId: string; sectionId: string; blockId: string; kind: "heading" | "rich_text" }>;
 export type InlineRecoveryRecord = Readonly<{
   schemaVersion: 2;
@@ -60,7 +60,7 @@ function draft(value: unknown): InlineDraft | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const candidate = value as Record<string, unknown>;
   const level = String(candidate.level ?? "h2");
-  if (typeof candidate.text !== "string" || typeof candidate.title !== "string" || !["h2", "h3", "h4"].includes(level)) return null;
+  if (typeof candidate.text !== "string" || typeof candidate.title !== "string" || !["h1", "h2", "h3", "h4"].includes(level)) return null;
   return { text: candidate.text, title: candidate.title, level: level as InlineDraft["level"] };
 }
 

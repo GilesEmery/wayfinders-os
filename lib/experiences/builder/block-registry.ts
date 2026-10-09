@@ -68,7 +68,7 @@ function heading(input: unknown): ValidationResult<BlockConfiguration> {
   if (!parsed.value) return { ok: false, errors: parsed.errors };
   const headingText = text(parsed.value.text, "Heading text", 240, true);
   const eyebrow = text(parsed.value.eyebrow ?? "", "Eyebrow", 120);
-  const level = oneOf(parsed.value.level, ["h2", "h3", "h4"] as const, "Heading level");
+  const level = oneOf(parsed.value.level, ["h1", "h2", "h3", "h4"] as const, "Heading level");
   const alignment = oneOf(parsed.value.alignment, ["left", "center"] as const, "Alignment");
   return result({ text: headingText.value, level: level.value, eyebrow: eyebrow.value || undefined, alignment: alignment.value }, [...parsed.errors, headingText.error, eyebrow.error, level.error, alignment.error]);
 }

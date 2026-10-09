@@ -1,12 +1,13 @@
 import type { ReactNode } from "react";
 import type { JSONContent } from "@tiptap/core";
+import { CourseIndent } from "@/lib/experiences/builder/course-indent";
 import StarterKit from "@tiptap/starter-kit";
 import { MarkdownManager } from "@tiptap/markdown";
 import Link from "next/link";
 import { safeRichTextLink, safeCourseLink, contextualCourseLink, type CourseLinkContext } from "@/lib/experiences/builder/course-links";
 
 const markdown = new MarkdownManager({
-  extensions: [StarterKit.configure({ code: false, codeBlock: false, horizontalRule: false, strike: false })],
+  extensions: [StarterKit.configure({ code: false, codeBlock: false, horizontalRule: false, strike: false }), CourseIndent],
 });
 
 function markedContent(node: JSONContent, content: ReactNode, context?: CourseLinkContext) {
@@ -26,10 +27,12 @@ function renderNode(node: JSONContent, key: number | string, context?: CourseLin
   if (node.type === "text") return <span key={key}>{markedContent(node, node.text ?? "", context)}</span>;
   if (node.type === "hardBreak") return <br key={key}/>;
   const children = (node.content ?? []).map((child, index) => renderNode(child, index, context));
+  if (node.type === "courseIndent") return <div key={key} className="course-text-indent">{children}</div>;
   if (node.type === "doc") return <>{children}</>;
   if (node.type === "paragraph") return <p key={key}>{children.length ? children : <br/>}</p>;
   if (node.type === "heading") {
     const level = Number(node.attrs?.level ?? 1);
+    if (level === 4) return <h4 key={key}>{children}</h4>;
     if (level === 3) return <h3 key={key}>{children}</h3>;
     if (level === 2) return <h2 key={key}>{children}</h2>;
     return <h1 key={key}>{children}</h1>;
