@@ -1,4 +1,4 @@
-import { readBlockPresentation } from "@/lib/experiences/builder/block-presentation";
+import { readBlockPresentation, responsePresentationSettings } from "@/lib/experiences/builder/block-presentation";
 import { BlockPresentationFields } from "./BlockPresentationFields";
 import { BlockPresentation } from "@/components/experiences/builder/BlockPresentation";
 import { CircleOfInfluenceAssessment } from "@/components/experiences/builder/CircleOfInfluenceAssessment";
@@ -114,7 +114,7 @@ function BlockPreviewContent({ block, responseDefinition, asset }: { block: Bloc
 }
 
 function BlockPreview(props: Parameters<typeof BlockPreviewContent>[0]) {
-  return <BlockPresentation settings={props.block.settings}><BlockPreviewContent {...props}/></BlockPresentation>;
+  return <BlockPresentation settings={responsePresentationSettings(props.block.settings, props.responseDefinition?.label, props.responseDefinition?.instructions)}><BlockPreviewContent {...props}/></BlockPresentation>;
 }
 
 function EditorFields({ block, responseDefinition }: { block: Block; responseDefinition?: ResponseDefinition }) {

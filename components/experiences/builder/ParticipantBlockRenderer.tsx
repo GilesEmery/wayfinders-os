@@ -1,3 +1,4 @@
+import { responsePresentationSettings } from "@/lib/experiences/builder/block-presentation";
 import { BlockPresentation } from "./BlockPresentation";
 import { CircleOfInfluenceAssessment } from "./CircleOfInfluenceAssessment";
 import { CIRCLE_RENDERER_KEY } from "@/lib/experiences/builder/circle-of-influence";
@@ -85,5 +86,5 @@ function ParticipantBlockContent({ block, response, asset, route, preview = fals
 
 export function ParticipantBlockRenderer(props: Parameters<typeof ParticipantBlockContent>[0]) {
   if (props.block.status !== "active" || props.block.visibility !== "visible") return null;
-  return <BlockPresentation settings={props.block.settings} linkContext={{ slug: props.route.slug, cohortId: props.route.cohortId, previewBase: props.route.previewBase }}><ParticipantBlockContent {...props}/></BlockPresentation>;
+  return <BlockPresentation settings={responsePresentationSettings(props.block.settings, props.response?.definition.label, props.response?.definition.instructions)} linkContext={{ slug: props.route.slug, cohortId: props.route.cohortId, previewBase: props.route.previewBase }}><ParticipantBlockContent {...props}/></BlockPresentation>;
 }

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { presentationSettings, readBlockPresentation } from "./block-presentation.ts";
+import { presentationSettings, readBlockPresentation, responsePresentationSettings } from "./block-presentation.ts";
 
 test("legacy items and unrelated edits retain existing settings", () => {
   assert.equal(readBlockPresentation({}), null);
@@ -26,4 +26,29 @@ test("invalid sizes normalize safely and oversized text cannot be saved", () => 
   const form = new FormData();
   form.set("presentation_header", "x".repeat(12001));
   assert.throws(() => presentationSettings({}, form), /12,000/);
+});
+
+
+test("question edits replace untouched display seeds without overwriting rich text edits", () => {
+  const form = new FormData();
+  form.set("prompt", "What boundaries does Jesus cross?");
+  form.set("instructions", "Consider the social and spiritual boundaries.");
+  form.set("presentation_header", "Short Response");
+  form.set("presentation_header_initial", "Short Response");
+  form.set("presentation_body", "");
+  form.set("presentation_body_initial", "");
+  const updated = readBlockPresentation(presentationSettings({}, form));
+  assert.equal(updated?.header, form.get("prompt"));
+  assert.equal(updated?.body, form.get("instructions"));
+  form.set("presentation_header", "**Custom header**");
+  assert.equal(readBlockPresentation(presentationSettings({}, form))?.header, "**Custom header**");
+});
+
+test("existing generic display headers recover the saved question and instructions", () => {
+  const settings = { textPresentation: { header: "Short Response", body: "" } };
+  const recovered = readBlockPresentation(responsePresentationSettings(settings, "Saved question", "Saved instructions"));
+  assert.equal(recovered?.header, "Saved question");
+  assert.equal(recovered?.body, "Saved instructions");
+  const blank = { textPresentation: { header: "", body: "" } };
+  assert.deepEqual(responsePresentationSettings(blank, "Saved question"), blank);
 });
