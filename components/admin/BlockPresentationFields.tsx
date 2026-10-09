@@ -1,17 +1,19 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Markdown } from "@tiptap/markdown";
 import { safeRichTextLink } from "@/lib/experiences/builder/course-links";
+import { CourseTextSize } from "@/lib/experiences/builder/course-text-size";
 import { CourseIndent } from "@/lib/experiences/builder/course-indent";
 import { readBlockPresentation } from "@/lib/experiences/builder/block-presentation";
 
 function TextField({ name, label, initial, size }: { name: string; label: string; initial: string; size: string }) {
   const [text, setText] = useState(initial);
   const [textSize, setTextSize] = useState(size);
-  const editor = useEditor({ immediatelyRender: false, extensions: [StarterKit.configure({ heading: { levels: [1, 2, 3, 4] }, code: false, codeBlock: false, horizontalRule: false, link: { openOnClick: false, autolink: false, isAllowedUri: url => Boolean(safeRichTextLink(url)) } }), CourseIndent, Markdown], content: initial, contentType: "markdown", editorProps: { attributes: { "aria-label": label, role: "textbox", "aria-multiline": "true" } }, onUpdate: ({ editor }) => { setText(editor.getMarkdown()); editor.view.dom.dispatchEvent(new Event("change", { bubbles: true })); } });
-  return <fieldset className={`course-item-text-field is-${textSize}`}><legend>{label}</legend><input type="hidden" name={name} value={text}/><label>Text size<select name={`${name}_size`} value={textSize} onChange={event => setTextSize(event.target.value)}>{["h1", "h2", "h3", "h4"].map(level => <option key={level} value={level}>{level.toUpperCase()}{level === "h4" ? " · Normal text" : ""}</option>)}</select></label>{editor && <><div className="inline-text-toolbar" role="toolbar" aria-label={`${label} formatting`}>{[
+  const selection = useRef<{ from: number; to: number } | null>(null);
+  const editor = useEditor({ immediatelyRender: false, extensions: [StarterKit.configure({ heading: { levels: [1, 2, 3, 4] }, code: false, codeBlock: false, horizontalRule: false, link: { openOnClick: false, autolink: false, isAllowedUri: url => Boolean(safeRichTextLink(url)) } }), CourseIndent, CourseTextSize, Markdown], content: initial, contentType: "markdown", editorProps: { attributes: { "aria-label": label, role: "textbox", "aria-multiline": "true" } }, onSelectionUpdate: ({ editor }) => { selection.current = { from: editor.state.selection.from, to: editor.state.selection.to }; setTextSize(editor.getAttributes("courseTextSize").size ?? size); }, onUpdate: ({ editor }) => { setText(editor.getMarkdown()); editor.view.dom.dispatchEvent(new Event("change", { bubbles: true })); } });
+  return <fieldset className={`course-item-text-field is-${size}`}><legend>{label}</legend><input type="hidden" name={name} value={text}/><input type="hidden" name={`${name}_size`} value={size}/><label>Selected text size<select aria-label={`${label} selected text size`} value={textSize} onChange={event => { const next = event.target.value; const chain = editor?.chain().focus(); if (!chain) return; if (selection.current) chain.setTextSelection(selection.current); chain.setMark("courseTextSize", { size: next }).run(); setTextSize(next); }}>{["h1", "h2", "h3", "h4"].map(level => <option key={level} value={level}>{level.toUpperCase()}{level === "h4" ? " · Normal text" : ""}</option>)}</select></label>{editor && <><div className="inline-text-toolbar" role="toolbar" aria-label={`${label} formatting`}>{[
     { label: "Bold", run: () => editor.chain().focus().toggleBold().run() },
     { label: "Link", run: () => { const url = window.prompt("Link URL (leave blank to remove)", String(editor.getAttributes("link").href ?? "")); if (url === null) return; if (!url.trim()) { editor.chain().focus().unsetLink().run(); return; } const safe = safeRichTextLink(url); if (safe) editor.chain().focus().setLink({ href: safe }).run(); } },
     { label: "Italic", run: () => editor.chain().focus().toggleItalic().run() },

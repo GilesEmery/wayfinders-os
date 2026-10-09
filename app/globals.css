@@ -3072,3 +3072,7 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
 .course-item-text-field.is-h3{--item-editor-size:20px}
 .course-item-text-field.is-h4{--item-editor-size:16px}
 .course-item-text-field .inline-text-surface :is(p,li){font-size:var(--item-editor-size);line-height:1.5}
+:is(.inline-text-surface,.participant-rich-text-block) .course-text-size.is-h1{font-size:var(--course-h1-size,40px)}
+:is(.inline-text-surface,.participant-rich-text-block) .course-text-size.is-h2{font-size:var(--course-h2-size,28px)}
+:is(.inline-text-surface,.participant-rich-text-block) .course-text-size.is-h3{font-size:var(--course-h3-size,20px)}
+:is(.inline-text-surface,.participant-rich-text-block) .course-text-size.is-h4{font-size:var(--course-h4-size,16px)}

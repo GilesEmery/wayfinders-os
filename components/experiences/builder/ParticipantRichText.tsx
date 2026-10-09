@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { JSONContent } from "@tiptap/core";
+import { CourseTextSize } from "@/lib/experiences/builder/course-text-size";
 import { CourseIndent } from "@/lib/experiences/builder/course-indent";
 import StarterKit from "@tiptap/starter-kit";
 import { MarkdownManager } from "@tiptap/markdown";
@@ -7,11 +8,12 @@ import Link from "next/link";
 import { safeRichTextLink, safeCourseLink, contextualCourseLink, type CourseLinkContext } from "@/lib/experiences/builder/course-links";
 
 const markdown = new MarkdownManager({
-  extensions: [StarterKit.configure({ code: false, codeBlock: false, horizontalRule: false, strike: false }), CourseIndent],
+  extensions: [StarterKit.configure({ code: false, codeBlock: false, horizontalRule: false, strike: false }), CourseIndent, CourseTextSize],
 });
 
 function markedContent(node: JSONContent, content: ReactNode, context?: CourseLinkContext) {
   return (node.marks ?? []).reduce<ReactNode>((rendered, mark, index) => {
+    if (mark.type === "courseTextSize" && ["h1", "h2", "h3", "h4"].includes(String(mark.attrs?.size))) return <span key={index} className={`course-text-size is-${mark.attrs?.size}`}>{rendered}</span>;
     if (mark.type === "bold") return <strong key={index}>{rendered}</strong>;
     if (mark.type === "italic") return <em key={index}>{rendered}</em>;
     if (mark.type === "link") {
