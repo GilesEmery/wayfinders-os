@@ -66,7 +66,7 @@ function optionConfiguration(form: FormData, multi: boolean) {
 
 function formConfiguration(blockType: string, form: FormData): unknown {
   if (blockType === "heading") return { text: form.get("text"), level: form.get("level"), eyebrow: form.get("eyebrow") ?? "", alignment: form.get("alignment") };
-  if (blockType === "rich_text") return { title: form.get("title") ?? "", text: form.get("text") };
+  if (blockType === "rich_text") return { title: form.get("title") ?? "", text: form.get("text"), titleLevel: form.get("title_level") ?? "h3" };
   if (blockType === "callout") return { title: form.get("title") ?? "", body: form.get("body"), treatment: form.get("treatment") };
   if (blockType === "structured_response" || blockType === "reflection") return { placeholder: form.get("placeholder") ?? "", maxLength: Number(form.get("max_length")) };
   if (blockType === "card_selection") return optionConfiguration(form, false);
@@ -212,7 +212,8 @@ export async function createBlock(experienceId: string, versionId: string, secti
 
 function inlineDraftFromBlock(block: Awaited<ReturnType<typeof blockInContext>>): InlineDraft {
   const content = block.content && typeof block.content === "object" && !Array.isArray(block.content) ? block.content as Record<string, unknown> : {};
-  const level = ["h1", "h2", "h3", "h4"].includes(String(content.level)) ? String(content.level) as InlineDraft["level"] : "h2";
+  const storedLevel = block.block_type === "rich_text" ? content.titleLevel ?? "h3" : content.level;
+  const level = ["h1", "h2", "h3", "h4"].includes(String(storedLevel)) ? String(storedLevel) as InlineDraft["level"] : "h2";
   return { text: String(content.text ?? ""), title: block.block_type === "rich_text" ? String(content.title ?? "") : "", level };
 }
 
@@ -230,7 +231,7 @@ export async function updateInlineTextBlock(experienceId: string, versionId: str
   const nextDraft: InlineDraft = {
     text: String(form.get("text") ?? ""),
     title: block.block_type === "rich_text" ? String(form.get("title") ?? "") : "",
-    level: String(form.get("level") ?? current.level ?? "h2") as InlineDraft["level"],
+    level: String(form.get("level") ?? (block.block_type === "rich_text" ? current.titleLevel ?? "h3" : current.level ?? "h2")) as InlineDraft["level"],
   };
   const merged = mergeInlineTextContent(block.block_type, current, nextDraft);
   const parsed = parseBlockConfiguration(block.block_type, merged);

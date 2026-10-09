@@ -46,7 +46,7 @@ function renderNode(node: JSONContent, key: number | string, context?: CourseLin
   return <span key={key}>{children}</span>;
 }
 
-export function ParticipantRichText({ title, text, linkContext }: { title: string; text: string; linkContext?: CourseLinkContext }) {
+export function ParticipantRichText({ title, text, linkContext, titleLevel = "h3" }: { titleLevel?: string; title: string; text: string; linkContext?: CourseLinkContext }) {
   const document = markdown.parse(text);
-  return <div className="participant-rich-text-block">{title && <h3>{title}</h3>}{renderNode(document, "document", linkContext)}</div>;
+  return <div className="participant-rich-text-block">{title && (titleLevel === "h1" ? <h1>{title}</h1> : titleLevel === "h2" ? <h2>{title}</h2> : titleLevel === "h4" ? <h4>{title}</h4> : <h3>{title}</h3>)}{renderNode(document, "document", linkContext)}</div>;
 }

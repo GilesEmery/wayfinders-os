@@ -76,7 +76,7 @@ function ParticipantBlockContent({ block, response, asset, route, preview = fals
     const level = value(configuration, "level");
     return <header className={`participant-heading-block is-${value(configuration, "alignment") || "left"}`}>{eyebrow && <p>{eyebrow}</p>}{level === "h1" ? <h1>{text}</h1> : level === "h4" ? <h4>{text}</h4> : level === "h3" ? <h3>{text}</h3> : <h2>{text}</h2>}</header>;
   }
-  if (definition.previewKey === "rich_text") return <ParticipantRichText linkContext={{ slug: route.slug, cohortId: route.cohortId, previewBase: route.previewBase }} title={value(configuration, "title")} text={value(configuration, "text")}/>;
+  if (definition.previewKey === "rich_text") return <ParticipantRichText linkContext={{ slug: route.slug, cohortId: route.cohortId, previewBase: route.previewBase }} titleLevel={value(configuration, "titleLevel")} title={value(configuration, "title")} text={value(configuration, "text")}/>;
   if (definition.previewKey === "pdf_reader") return <ParticipantPdfReader config={configuration} asset={asset}/>;
   if (definition.previewKey === "media") return <ParticipantMediaBlock kind={block.block_type as "video" | "image" | "document" | "download" | "external_link"} config={configuration} asset={asset}/>;
   const title = value(configuration, "title");

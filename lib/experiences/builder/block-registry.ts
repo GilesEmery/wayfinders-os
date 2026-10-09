@@ -74,11 +74,12 @@ function heading(input: unknown): ValidationResult<BlockConfiguration> {
 }
 
 function richText(input: unknown): ValidationResult<BlockConfiguration> {
-  const parsed = strict(input, ["title", "text"]);
+  const parsed = strict(input, ["title", "text", "titleLevel"]);
   if (!parsed.value) return { ok: false, errors: parsed.errors };
   const title = text(parsed.value.title ?? "", "Text title", 200);
   const body = text(parsed.value.text, "Rich text", 12000, true);
-  return result({ title: title.value, text: body.value }, [...parsed.errors, title.error, body.error]);
+  const titleLevel = oneOf(parsed.value.titleLevel ?? "h3", ["h1", "h2", "h3", "h4"] as const, "Title size");
+  return result({ title: title.value, titleLevel: titleLevel.value, text: body.value }, [...parsed.errors, title.error, body.error, titleLevel.error]);
 }
 
 function callout(input: unknown): ValidationResult<BlockConfiguration> {

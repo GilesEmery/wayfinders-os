@@ -87,3 +87,13 @@ test("the server update is an atomic compare-and-swap and treats zero rows as co
   assert.doesNotMatch(mutation, /requirement_level:/);
   assert.doesNotMatch(mutation, /visibility:/);
 });
+
+
+test("changing the separate rich text title size preserves body text and its formatting", () => {
+  const text = "This week, we continue…\n\n[[size:h4]]Body text[[/size]]";
+  const content = { title: "Circle of Influence", text, titleLevel: "h3" };
+  const updated = mergeInlineTextContent("rich_text", content, { title: content.title, text, level: "h1" });
+  assert.equal(updated.titleLevel, "h1");
+  assert.equal(updated.text, text);
+  assert.equal(updated.title, content.title);
+});

@@ -41,7 +41,7 @@ export function inlineSaveNeedsFollowUp(saved: InlineDraft, latest: InlineDraft,
 export function mergeInlineTextContent(blockType: "heading" | "rich_text", content: Record<string, unknown>, next: InlineDraft): Record<string, unknown> {
   return blockType === "heading"
     ? { ...content, text: next.text.trim(), level: next.level }
-    : { ...content, title: next.title.trim(), text: next.text.trim() };
+    : { ...content, title: next.title.trim(), titleLevel: next.level, text: next.text.trim() };
 }
 
 export function sameInlineDocument(left: InlineDocumentIdentity, right: InlineDocumentIdentity) {

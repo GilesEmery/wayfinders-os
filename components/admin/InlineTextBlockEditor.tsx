@@ -39,6 +39,9 @@ export function InlineTextBlockEditor({ experienceId, versionId, sectionId, bloc
   const [linkWeek, setLinkWeek] = useState("");
   const [linkLesson, setLinkLesson] = useState("");
   const [linkPage, setLinkPage] = useState("");
+  const titleInput = useRef<HTMLInputElement>(null);
+  const titleSelection = useRef<{ from: number; to: number } | null>(null);
+  const formattingTarget = useRef<"title" | "body">("body");
   const formattingSelection = useRef<{ from: number; to: number } | null>(null);
   const linkSelection = useRef<{ from: number; to: number } | null>(null);
   const [active, setActive] = useState(false);
@@ -69,7 +72,7 @@ export function InlineTextBlockEditor({ experienceId, versionId, sectionId, bloc
     contentType: "markdown",
     extensions: [StarterKit.configure({ heading: { levels: [1, 2, 3, 4] }, code: false, codeBlock: false, horizontalRule: false, strike: false, link: { autolink: false, linkOnPaste: true, markdownLinks: true, openOnClick: false, defaultProtocol: "https", isAllowedUri: (url) => Boolean(safeRichTextLink(url)), HTMLAttributes: { rel: "noopener noreferrer", target: "_blank" } } }), CourseIndent, CourseTextSize, Markdown],
     editorProps: { attributes: { class: `inline-text-surface is-${kind}`, "aria-label": kind === "heading" ? "Heading text" : "Rich text content" } },
-    onFocus: () => setActive(true),
+    onFocus: () => { formattingTarget.current = "body"; setActive(true); },
   });
 
   const currentDraft = useCallback((override: Partial<InlineDraft> = {}): InlineDraft => ({
@@ -104,7 +107,8 @@ export function InlineTextBlockEditor({ experienceId, versionId, sectionId, bloc
     const form = new FormData();
     form.set("expected_revision", revision.current);
     form.set("text", draft.text);
-    if (kind === "heading") form.set("level", draft.level); else form.set("title", draft.title);
+    form.set("level", draft.level);
+    if (kind === "rich_text") form.set("title", draft.title);
     let continueSaving = false;
     try {
       const result = await saveAction(form);
@@ -251,12 +255,25 @@ export function InlineTextBlockEditor({ experienceId, versionId, sectionId, bloc
 
   if (!editor) return <div className="inline-text-loading">Preparing inline editor…</div>;
   const captureFormattingSelection = () => {
+    if (window.document.activeElement === titleInput.current && titleInput.current) {
+      formattingTarget.current = "title";
+      titleSelection.current = { from: titleInput.current.selectionStart ?? 0, to: titleInput.current.selectionEnd ?? 0 };
+      return;
+    }
+    if (editor.isFocused) formattingTarget.current = "body";
     const { from, to } = editor.state.selection;
     formattingSelection.current = { from, to };
   };
   const formattingChain = () => {
     const selection = formattingSelection.current ?? { from: editor.state.selection.from, to: editor.state.selection.to };
     return editor.chain().setTextSelection(selection).focus();
+  };
+  const sizeTitle = (next: InlineDraft["level"]) => {
+    setHeadingLevel(next);
+    changedRef.current({ level: next });
+    const range = titleSelection.current;
+    titleInput.current?.focus();
+    if (range) titleInput.current?.setSelectionRange(range.from, range.to);
   };
   const selectedText = !editor.state.selection.empty;
   const showToolbar = active || status !== "saved";
@@ -267,8 +284,8 @@ export function InlineTextBlockEditor({ experienceId, versionId, sectionId, bloc
     {conflict && <aside className="inline-text-recovery is-conflict" role="alert"><strong>Content changed elsewhere</strong><p>{conflict.message}</p><div><button type="button" onClick={keepLocalConflict}>Keep My Draft</button><button type="button" onClick={useLatestConflict}>Use Latest Saved</button></div></aside>}
     {showToolbar && <div className="inline-text-toolbar" role="toolbar" aria-label={`${kind === "heading" ? "Heading" : "Rich text"} formatting`}>
       {kind === "rich_text" ? <>
-        <label><span className="sr-only">Paragraph style</span><select aria-label="Paragraph style" onPointerDown={captureFormattingSelection} onFocus={captureFormattingSelection} value={editor.isActive("blockquote") ? "quote" : editor.isActive("heading", { level: 1 }) ? "h1" : editor.isActive("heading", { level: 2 }) ? "h2" : editor.isActive("heading", { level: 3 }) ? "h3" : editor.isActive("heading", { level: 4 }) ? "h4" : "body"} onChange={(event) => { const style = event.currentTarget.value; if (style === "body") formattingChain().setParagraph().run(); else if (style === "quote") formattingChain().setBlockquote().run(); else formattingChain().setHeading({ level: Number(style.slice(1)) as 1 | 2 | 3 | 4 }).run(); }}><option value="body">Body (H4 size)</option><option value="h1">Heading 1</option><option value="h2">Heading 2</option><option value="h3">Heading 3</option><option value="h4">Heading 4 / normal text</option><option value="quote">Quote</option></select></label>
-        <label><span className="sr-only">Selected text size</span><select aria-label="Selected text size" onPointerDown={captureFormattingSelection} onFocus={captureFormattingSelection} defaultValue="" onChange={event => { if (event.target.value) formattingChain().setMark("courseTextSize", { size: event.target.value }).run(); }}><option value="" disabled>Text size</option>{["h1", "h2", "h3", "h4"].map(size => <option key={size} value={size}>{size.toUpperCase()}</option>)}</select></label><ToolbarButton label="Bold" active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}><strong>B</strong></ToolbarButton><ToolbarButton label="Italic" active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()}><em>I</em></ToolbarButton><ToolbarButton label={editor.isActive("link") ? "Edit or remove link" : "Add link"} active={editor.isActive("link")} disabled={!selectedText && !editor.isActive("link")} onClick={setLink}>External link</ToolbarButton><ToolbarButton label="Insert internal course link" disabled={!internalLinks.length} onClick={() => { linkSelection.current = { from: editor.state.selection.from, to: editor.state.selection.to }; setLinkPicker(true); }}>Internal link</ToolbarButton><ToolbarButton label="Bulleted list" active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()}>• List</ToolbarButton><ToolbarButton label="Numbered list" active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()}>1. List</ToolbarButton><ToolbarButton label="Indent" disabled={editor.isActive("listItem") ? !editor.can().sinkListItem("listItem") : !editor.can().wrapIn("courseIndent")} onClick={() => { if (editor.isActive("listItem")) editor.chain().focus().sinkListItem("listItem").run(); else editor.chain().focus().wrapIn("courseIndent").run(); }}>→ Indent</ToolbarButton><ToolbarButton label="Outdent" disabled={editor.isActive("listItem") ? !editor.can().liftListItem("listItem") : !editor.isActive("courseIndent")} onClick={() => { if (editor.isActive("listItem")) editor.chain().focus().liftListItem("listItem").run(); else editor.chain().focus().lift("courseIndent").run(); }}>← Outdent</ToolbarButton><ToolbarButton label="Undo" disabled={!editor.can().chain().focus().undo().run()} onClick={() => editor.chain().focus().undo().run()}>↶</ToolbarButton><ToolbarButton label="Redo" disabled={!editor.can().chain().focus().redo().run()} onClick={() => editor.chain().focus().redo().run()}>↷</ToolbarButton>
+        <label><span className="sr-only">Paragraph style</span><select aria-label="Paragraph style" onPointerDown={captureFormattingSelection} onFocus={captureFormattingSelection} value={editor.isActive("blockquote") ? "quote" : editor.isActive("heading", { level: 1 }) ? "h1" : editor.isActive("heading", { level: 2 }) ? "h2" : editor.isActive("heading", { level: 3 }) ? "h3" : editor.isActive("heading", { level: 4 }) ? "h4" : "body"} onChange={(event) => { const style = event.currentTarget.value; if (formattingTarget.current === "title") { if (style !== "quote") sizeTitle((style === "body" ? "h4" : style) as InlineDraft["level"]); return; } if (style === "body") formattingChain().setParagraph().run(); else if (style === "quote") formattingChain().setBlockquote().run(); else formattingChain().setHeading({ level: Number(style.slice(1)) as 1 | 2 | 3 | 4 }).run(); }}><option value="body">Body (H4 size)</option><option value="h1">Heading 1</option><option value="h2">Heading 2</option><option value="h3">Heading 3</option><option value="h4">Heading 4 / normal text</option><option value="quote">Quote</option></select></label>
+        <label><span className="sr-only">Selected text size</span><select aria-label="Selected text size" onPointerDown={captureFormattingSelection} onFocus={captureFormattingSelection} defaultValue="" onChange={event => { if (formattingTarget.current === "title") { sizeTitle(event.target.value as InlineDraft["level"]); return; } if (event.target.value) formattingChain().setMark("courseTextSize", { size: event.target.value }).run(); }}><option value="" disabled>Text size</option>{["h1", "h2", "h3", "h4"].map(size => <option key={size} value={size}>{size.toUpperCase()}</option>)}</select></label><ToolbarButton label="Bold" active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}><strong>B</strong></ToolbarButton><ToolbarButton label="Italic" active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()}><em>I</em></ToolbarButton><ToolbarButton label={editor.isActive("link") ? "Edit or remove link" : "Add link"} active={editor.isActive("link")} disabled={!selectedText && !editor.isActive("link")} onClick={setLink}>External link</ToolbarButton><ToolbarButton label="Insert internal course link" disabled={!internalLinks.length} onClick={() => { linkSelection.current = { from: editor.state.selection.from, to: editor.state.selection.to }; setLinkPicker(true); }}>Internal link</ToolbarButton><ToolbarButton label="Bulleted list" active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()}>• List</ToolbarButton><ToolbarButton label="Numbered list" active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()}>1. List</ToolbarButton><ToolbarButton label="Indent" disabled={editor.isActive("listItem") ? !editor.can().sinkListItem("listItem") : !editor.can().wrapIn("courseIndent")} onClick={() => { if (editor.isActive("listItem")) editor.chain().focus().sinkListItem("listItem").run(); else editor.chain().focus().wrapIn("courseIndent").run(); }}>→ Indent</ToolbarButton><ToolbarButton label="Outdent" disabled={editor.isActive("listItem") ? !editor.can().liftListItem("listItem") : !editor.isActive("courseIndent")} onClick={() => { if (editor.isActive("listItem")) editor.chain().focus().liftListItem("listItem").run(); else editor.chain().focus().lift("courseIndent").run(); }}>← Outdent</ToolbarButton><ToolbarButton label="Undo" disabled={!editor.can().chain().focus().undo().run()} onClick={() => editor.chain().focus().undo().run()}>↶</ToolbarButton><ToolbarButton label="Redo" disabled={!editor.can().chain().focus().redo().run()} onClick={() => editor.chain().focus().redo().run()}>↷</ToolbarButton>
       </> : <label><span className="sr-only">Heading level</span><select aria-label="Heading level" value={headingLevel} onChange={(event) => { const next = event.currentTarget.value as InlineDraft["level"]; setHeadingLevel(next); changedRef.current({ level: next }); }}><option value="h1">H1 · Main title</option><option value="h2">H2 · Title</option><option value="h3">H3 · Subtitle</option><option value="h4">H4 · Normal text</option></select></label>}
       <button className="inline-text-save" type="button" onClick={requestSave} disabled={status === "saving" || status === "saved" || status === "recovery" || status === "conflict"}>{status === "saving" ? "Saving…" : status === "error" ? "Retry Save" : "Save"}</button>
     </div>}
@@ -286,7 +303,7 @@ export function InlineTextBlockEditor({ experienceId, versionId, sectionId, bloc
         setLinkPicker(false);
       }}>Insert link</button><button type="button" onClick={() => setLinkPicker(false)}>Cancel</button>
     </div>}
-    {kind === "rich_text" && (draftTitle || active) && <input className="inline-rich-title" aria-label="Optional Rich Text title" value={draftTitle} onChange={(event) => { const next = event.currentTarget.value; setDraftTitle(next); changedRef.current({ title: next.trim() }); }} placeholder="Optional title" maxLength={200}/>}
+    {kind === "rich_text" && (draftTitle || active) && <input ref={titleInput} style={{ fontSize: `var(--course-${headingLevel}-size, ${headingLevel === "h1" ? 40 : headingLevel === "h2" ? 28 : headingLevel === "h3" ? 20 : 16}px)` }} onSelect={event => { formattingTarget.current = "title"; titleSelection.current = { from: event.currentTarget.selectionStart ?? 0, to: event.currentTarget.selectionEnd ?? 0 }; }} onFocus={() => { formattingTarget.current = "title"; }} className="inline-rich-title" aria-label="Optional Rich Text title" value={draftTitle} onChange={(event) => { const next = event.currentTarget.value; setDraftTitle(next); changedRef.current({ title: next.trim() }); }} placeholder="Optional title" maxLength={200}/>}
     {kind === "heading" && eyebrow && <span className="inline-heading-eyebrow">{eyebrow}</span>}
     <EditorContent editor={editor}/><div className={`inline-text-status is-${status}`} aria-live="polite">{statusMessage}</div>
   </div>;
