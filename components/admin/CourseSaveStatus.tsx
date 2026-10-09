@@ -13,12 +13,25 @@ function editableForm(target: EventTarget | null) {
   return form;
 }
 
-export function CourseSaveStatus() {
+export function CourseSaveStatus({ serverReceipt }: { serverReceipt: { error?: string; saved?: string } }) {
   const [aggregate, setAggregate] = useState<Aggregate>({ dirty: 0, saving: 0 });
   const dirtyForms = useRef(new Set<HTMLFormElement>());
   const activeForm = useRef<HTMLFormElement | null>(null);
   const inlineStates = useRef(new Map<string, InlineSaveState>());
   const formSaving = useRef(false);
+  const submittedForm = useRef<HTMLFormElement | null>(null);
+
+  useEffect(() => {
+    // A fresh server payload acknowledges the mutation, even when its URL
+    // and success message are identical to the previous deletion.
+    formSaving.current = false;
+    if (!serverReceipt.error && submittedForm.current) dirtyForms.current.delete(submittedForm.current);
+    submittedForm.current = null;
+    for (const form of dirtyForms.current) {
+      if (!form.isConnected) dirtyForms.current.delete(form);
+    }
+    window.dispatchEvent(new Event("purposeos:form-save-complete"));
+  }, [serverReceipt]);
 
   useEffect(() => {
     const sync = () => {
@@ -36,6 +49,7 @@ export function CourseSaveStatus() {
       const form = editableForm(event.target);
       if (!form) return;
       activeForm.current = form;
+      submittedForm.current = form;
       formSaving.current = true;
       sync();
     };
@@ -67,6 +81,7 @@ export function CourseSaveStatus() {
     document.addEventListener("click", protectNavigation, true);
     window.addEventListener("beforeunload", beforeUnload);
     window.addEventListener("purposeos:save-status", onSaveStatus);
+    window.addEventListener("purposeos:form-save-complete", sync);
     window.dispatchEvent(new Event("purposeos:request-save-status"));
     return () => {
       document.removeEventListener("input", onChange, true);
@@ -75,6 +90,7 @@ export function CourseSaveStatus() {
       document.removeEventListener("click", protectNavigation, true);
       window.removeEventListener("beforeunload", beforeUnload);
       window.removeEventListener("purposeos:save-status", onSaveStatus);
+      window.removeEventListener("purposeos:form-save-complete", sync);
     };
   }, []);
 
