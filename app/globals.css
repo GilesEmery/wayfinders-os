@@ -3076,3 +3076,6 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
 :is(.inline-text-surface,.participant-rich-text-block) .course-text-size.is-h2{font-size:var(--course-h2-size,28px)}
 :is(.inline-text-surface,.participant-rich-text-block) .course-text-size.is-h3{font-size:var(--course-h3-size,20px)}
 :is(.inline-text-surface,.participant-rich-text-block) .course-text-size.is-h4{font-size:var(--course-h4-size,16px)}
+
+/* Short and long question prompts share the editorial course text style. */
+:is(.participant-course,.course-builder-canvas) .participant-response-block:is([data-response-kind="short_text"],[data-response-kind="long_text"])>header>h3{font-family:var(--font-editorial),serif;font-size:var(--course-h3-size,20px);font-weight:400;letter-spacing:normal;line-height:1.5;text-transform:none}
