@@ -2659,6 +2659,7 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
 .participant-course .participant-section-pagination :is(.participant-page-previous,.participant-page-next) :is(small,strong){color:#fff;line-height:1.5;overflow-wrap:anywhere}
 .participant-course .participant-section-pagination :is(.participant-page-previous,.participant-page-next) small{font-size:10px;font-weight:800}
 .participant-course .participant-section-pagination :is(.participant-page-previous,.participant-page-next) strong{font-size:14px}
+.participant-course .participant-section-pagination .participant-pagination-page{color:#fff;font-size:12px;font-weight:400;line-height:1.5;overflow-wrap:anywhere}
 .participant-course .participant-section-pagination :is(.participant-page-previous,.participant-page-next):hover::before{background:color-mix(in srgb,var(--experience-accent) 86%,#000)}
 .participant-course .participant-section-pagination :is(.participant-page-previous,.participant-page-next):focus-visible{outline:3px solid var(--experience-accent);outline-offset:4px}
 @media(max-width:760px){
@@ -2865,9 +2866,9 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
   .pis-contours{display:none!important}
 }
 
-/* Mobile course rails slide over the lesson instead of stacking beneath it. */
+/* Mobile and tablet course rails slide over the lesson instead of stacking beneath it. */
 .mobile-course-tab,.mobile-course-panel-dismiss{display:none}
-@media(max-width:760px){
+@media(max-width:1100px){
 
 .participant-course-layout.mobile-course-panels{display:block!important;overflow:visible!important}
 .participant-course-layout.mobile-course-panels>main{width:100%;min-width:0}
@@ -2885,49 +2886,49 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
 .participant-course-layout.mobile-course-panels>.participant-course-outline .participant-course-navigator{position:static}
 .participant-course-layout.mobile-course-panels>.participant-group-companion .participant-companion-content{padding:0}
 }
-.course-preview-frame.is-mobile{transform:translateZ(0)}
+.course-preview-frame:is(.is-mobile,.is-tablet){transform:translateZ(0)}
 
-.course-preview-frame.is-mobile .participant-course-layout.mobile-course-panels{display:block!important;overflow:visible!important}
-.course-preview-frame.is-mobile .participant-course-layout.mobile-course-panels>main{width:100%;min-width:0}
-.course-preview-frame.is-mobile .participant-course-layout.mobile-course-panels>.mobile-course-tab{align-items:center;background:linear-gradient(color-mix(in srgb,var(--experience-accent,#0054a1) 30%,transparent),color-mix(in srgb,var(--experience-accent,#0054a1) 30%,transparent)),linear-gradient(#ffffffb3,#ffffffb3);border:1px solid color-mix(in srgb,var(--experience-accent,#0054a1) 45%,transparent);color:var(--experience-text,#252a29);cursor:pointer;display:flex;font:inherit;font-size:12px;font-weight:800;justify-content:center;letter-spacing:.04em;min-width:44px;flex-direction:column;gap:8px;padding:14px 10px;position:fixed;touch-action:manipulation;transition:left .25s ease,right .25s ease;writing-mode:horizontal-tb;width:44px;z-index:122}
-.course-preview-frame.is-mobile .participant-course-layout.mobile-course-panels>.mobile-course-tab.is-outline{left:0;top:max(160px,calc(100dvh - 320px));transform:none;border-left:0;border-radius:0 18px 18px 0}
-.course-preview-frame.is-mobile .participant-course-layout.mobile-course-panels>.mobile-course-tab.is-companion{border-left:0;border-radius:0 18px 18px 0;left:0;top:max(290px,calc(100dvh - 190px))}
-.course-preview-frame.is-mobile .participant-course-layout.mobile-course-panels>.mobile-course-tab[aria-expanded=true]{background:color-mix(in srgb,var(--experience-accent,#0054a1) 55%,var(--experience-surface,#fff))}
-.course-preview-frame.is-mobile .participant-course-layout.mobile-course-panels>.mobile-course-tab:focus-visible{outline:3px solid var(--experience-accent,#0054a1);outline-offset:3px}
-.course-preview-frame.is-mobile .participant-course-layout.mobile-course-panels>.mobile-course-panel-dismiss{background:transparent;border:0;display:block;inset:0;position:fixed;z-index:119}
-.course-preview-frame.is-mobile .participant-course-layout.mobile-course-panels>.participant-course-outline,.course-preview-frame.is-mobile .participant-course-layout.mobile-course-panels>.participant-group-companion{background:color-mix(in srgb,var(--experience-surface,#fff) 92%,transparent)!important;backdrop-filter:blur(12px);border:1px solid var(--experience-border,#ddd);bottom:max(16px,env(safe-area-inset-bottom));box-shadow:0 12px 40px #0003;box-sizing:border-box;max-height:none!important;max-width:380px;overflow-y:auto!important;overscroll-behavior:contain;padding:24px 28px!important;position:fixed;top:max(84px,env(safe-area-inset-top));transition:transform .25s ease,visibility .25s;visibility:hidden;width:calc(100% - 48px);z-index:120}
-.course-preview-frame.is-mobile .participant-course-layout.mobile-course-panels>.participant-course-outline{border-radius:0 18px 18px 0;left:0;transform:translateX(-100%)}
-.course-preview-frame.is-mobile .participant-course-layout.mobile-course-panels>.participant-group-companion{border-radius:0 18px 18px 0;left:0;transform:translateX(-100%)}
-.course-preview-frame.is-mobile .participant-course-layout.mobile-course-panels.has-open-outline>.participant-course-outline,.course-preview-frame.is-mobile .participant-course-layout.mobile-course-panels.has-open-companion>.participant-group-companion{transform:translateX(0);visibility:visible}
-.course-preview-frame.is-mobile .participant-course-layout.mobile-course-panels>.participant-course-outline>details>summary{display:block!important;font-size:16px;padding:0 20px 18px!important}
-.course-preview-frame.is-mobile .participant-course-layout.mobile-course-panels>.participant-course-outline .participant-course-navigator{position:static}
-.course-preview-frame.is-mobile .participant-course-layout.mobile-course-panels>.participant-group-companion .participant-companion-content{padding:0}
+.course-preview-frame:is(.is-mobile,.is-tablet) .participant-course-layout.mobile-course-panels{display:block!important;overflow:visible!important}
+.course-preview-frame:is(.is-mobile,.is-tablet) .participant-course-layout.mobile-course-panels>main{width:100%;min-width:0}
+.course-preview-frame:is(.is-mobile,.is-tablet) .participant-course-layout.mobile-course-panels>.mobile-course-tab{align-items:center;background:linear-gradient(color-mix(in srgb,var(--experience-accent,#0054a1) 30%,transparent),color-mix(in srgb,var(--experience-accent,#0054a1) 30%,transparent)),linear-gradient(#ffffffb3,#ffffffb3);border:1px solid color-mix(in srgb,var(--experience-accent,#0054a1) 45%,transparent);color:var(--experience-text,#252a29);cursor:pointer;display:flex;font:inherit;font-size:12px;font-weight:800;justify-content:center;letter-spacing:.04em;min-width:44px;flex-direction:column;gap:8px;padding:14px 10px;position:fixed;touch-action:manipulation;transition:left .25s ease,right .25s ease;writing-mode:horizontal-tb;width:44px;z-index:122}
+.course-preview-frame:is(.is-mobile,.is-tablet) .participant-course-layout.mobile-course-panels>.mobile-course-tab.is-outline{left:0;top:max(160px,calc(100dvh - 320px));transform:none;border-left:0;border-radius:0 18px 18px 0}
+.course-preview-frame:is(.is-mobile,.is-tablet) .participant-course-layout.mobile-course-panels>.mobile-course-tab.is-companion{border-left:0;border-radius:0 18px 18px 0;left:0;top:max(290px,calc(100dvh - 190px))}
+.course-preview-frame:is(.is-mobile,.is-tablet) .participant-course-layout.mobile-course-panels>.mobile-course-tab[aria-expanded=true]{background:color-mix(in srgb,var(--experience-accent,#0054a1) 55%,var(--experience-surface,#fff))}
+.course-preview-frame:is(.is-mobile,.is-tablet) .participant-course-layout.mobile-course-panels>.mobile-course-tab:focus-visible{outline:3px solid var(--experience-accent,#0054a1);outline-offset:3px}
+.course-preview-frame:is(.is-mobile,.is-tablet) .participant-course-layout.mobile-course-panels>.mobile-course-panel-dismiss{background:transparent;border:0;display:block;inset:0;position:fixed;z-index:119}
+.course-preview-frame:is(.is-mobile,.is-tablet) .participant-course-layout.mobile-course-panels>.participant-course-outline,.course-preview-frame:is(.is-mobile,.is-tablet) .participant-course-layout.mobile-course-panels>.participant-group-companion{background:color-mix(in srgb,var(--experience-surface,#fff) 92%,transparent)!important;backdrop-filter:blur(12px);border:1px solid var(--experience-border,#ddd);bottom:max(16px,env(safe-area-inset-bottom));box-shadow:0 12px 40px #0003;box-sizing:border-box;max-height:none!important;max-width:380px;overflow-y:auto!important;overscroll-behavior:contain;padding:24px 28px!important;position:fixed;top:max(84px,env(safe-area-inset-top));transition:transform .25s ease,visibility .25s;visibility:hidden;width:calc(100% - 48px);z-index:120}
+.course-preview-frame:is(.is-mobile,.is-tablet) .participant-course-layout.mobile-course-panels>.participant-course-outline{border-radius:0 18px 18px 0;left:0;transform:translateX(-100%)}
+.course-preview-frame:is(.is-mobile,.is-tablet) .participant-course-layout.mobile-course-panels>.participant-group-companion{border-radius:0 18px 18px 0;left:0;transform:translateX(-100%)}
+.course-preview-frame:is(.is-mobile,.is-tablet) .participant-course-layout.mobile-course-panels.has-open-outline>.participant-course-outline,.course-preview-frame:is(.is-mobile,.is-tablet) .participant-course-layout.mobile-course-panels.has-open-companion>.participant-group-companion{transform:translateX(0);visibility:visible}
+.course-preview-frame:is(.is-mobile,.is-tablet) .participant-course-layout.mobile-course-panels>.participant-course-outline>details>summary{display:block!important;font-size:16px;padding:0 20px 18px!important}
+.course-preview-frame:is(.is-mobile,.is-tablet) .participant-course-layout.mobile-course-panels>.participant-course-outline .participant-course-navigator{position:static}
+.course-preview-frame:is(.is-mobile,.is-tablet) .participant-course-layout.mobile-course-panels>.participant-group-companion .participant-companion-content{padding:0}
 @media(prefers-reduced-motion:reduce){.mobile-course-panels>.participant-course-outline,.mobile-course-panels>.participant-group-companion{transition:none!important}}
 @media print{.mobile-course-tab,.mobile-course-panel-dismiss{display:none!important}}
 
 /* Drawer handles stay attached to the moving outer edge. */
-@media(max-width:760px){
+@media(max-width:1100px){
 .participant-course-layout.mobile-course-panels>.mobile-course-tab span{writing-mode:vertical-rl}
 .participant-course-layout.mobile-course-panels>.mobile-course-tab.is-outline span{transform:none}
 .participant-course-layout.mobile-course-panels>.mobile-course-tab svg{width:22px;height:22px;stroke-width:3;flex-shrink:0}
 .participant-course-layout.mobile-course-panels.has-open-outline>.mobile-course-tab.is-outline{left:min(380px,calc(100% - 48px))}
 .participant-course-layout.mobile-course-panels.has-open-companion>.mobile-course-tab.is-companion{left:min(380px,calc(100% - 48px))}
 }
-.course-preview-frame.is-mobile .participant-course-layout.mobile-course-panels>.mobile-course-tab span{writing-mode:vertical-rl}
-.course-preview-frame.is-mobile .participant-course-layout.mobile-course-panels>.mobile-course-tab.is-outline span{transform:none}
-.course-preview-frame.is-mobile .participant-course-layout.mobile-course-panels>.mobile-course-tab svg{width:22px;height:22px;stroke-width:3;flex-shrink:0}
-.course-preview-frame.is-mobile .participant-course-layout.mobile-course-panels.has-open-outline>.mobile-course-tab.is-outline{left:min(380px,calc(100% - 48px))}
-.course-preview-frame.is-mobile .participant-course-layout.mobile-course-panels.has-open-companion>.mobile-course-tab.is-companion{left:min(380px,calc(100% - 48px))}
+.course-preview-frame:is(.is-mobile,.is-tablet) .participant-course-layout.mobile-course-panels>.mobile-course-tab span{writing-mode:vertical-rl}
+.course-preview-frame:is(.is-mobile,.is-tablet) .participant-course-layout.mobile-course-panels>.mobile-course-tab.is-outline span{transform:none}
+.course-preview-frame:is(.is-mobile,.is-tablet) .participant-course-layout.mobile-course-panels>.mobile-course-tab svg{width:22px;height:22px;stroke-width:3;flex-shrink:0}
+.course-preview-frame:is(.is-mobile,.is-tablet) .participant-course-layout.mobile-course-panels.has-open-outline>.mobile-course-tab.is-outline{left:min(380px,calc(100% - 48px))}
+.course-preview-frame:is(.is-mobile,.is-tablet) .participant-course-layout.mobile-course-panels.has-open-companion>.mobile-course-tab.is-companion{left:min(380px,calc(100% - 48px))}
 @media(prefers-reduced-motion:reduce){.mobile-course-panels>.mobile-course-tab{transition:none!important}}
 
-/* Fade the lesson and inactive handle while a mobile drawer is open. */
-@media(max-width:760px){
+/* Fade the lesson and inactive handle while a mobile or tablet drawer is open. */
+@media(max-width:1100px){
 .participant-course-layout.mobile-course-panels.has-open-outline>main,.participant-course-layout.mobile-course-panels.has-open-companion>main{opacity:.25}
 .participant-course-layout.mobile-course-panels.has-open-outline>.mobile-course-tab.is-companion,.participant-course-layout.mobile-course-panels.has-open-companion>.mobile-course-tab.is-outline{opacity:.25}
 }
 
-.course-preview-frame.is-mobile .participant-course-layout.mobile-course-panels.has-open-outline>main,.course-preview-frame.is-mobile .participant-course-layout.mobile-course-panels.has-open-companion>main{opacity:.25}
-.course-preview-frame.is-mobile .participant-course-layout.mobile-course-panels.has-open-outline>.mobile-course-tab.is-companion,.course-preview-frame.is-mobile .participant-course-layout.mobile-course-panels.has-open-companion>.mobile-course-tab.is-outline{opacity:.25}
+.course-preview-frame:is(.is-mobile,.is-tablet) .participant-course-layout.mobile-course-panels.has-open-outline>main,.course-preview-frame:is(.is-mobile,.is-tablet) .participant-course-layout.mobile-course-panels.has-open-companion>main{opacity:.25}
+.course-preview-frame:is(.is-mobile,.is-tablet) .participant-course-layout.mobile-course-panels.has-open-outline>.mobile-course-tab.is-companion,.course-preview-frame:is(.is-mobile,.is-tablet) .participant-course-layout.mobile-course-panels.has-open-companion>.mobile-course-tab.is-outline{opacity:.25}
 
 /* Keep the training destination visible below the sticky platform header. */
 .wayfinder-dashboard #trainings{scroll-margin-top:94px}
