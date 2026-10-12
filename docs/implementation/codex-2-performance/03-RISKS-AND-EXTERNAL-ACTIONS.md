@@ -4,7 +4,7 @@
 
 - Authenticated browser acceptance is pending: real signed-in account initialization, back-navigation image bytes/cache hits, image replacement, revocation, progress/profile visibility and complete native-save flows. Unit fixtures cover logic but not provider/browser behavior. CODEX 1's staging waiver does not automatically waive CODEX 2.
 - The existing Vercel Preview environment shares production Supabase. A preview is not an isolated writable test database. No synthetic production save, profile change, user creation or upload is authorized.
-- Default Turbopack build validation remains an environment gap; webpack build passed. Confirm the ordinary Vercel build before promotion. Stop on failed build, login, access, save receipt or media behavior.
+- Default build gate is resolved: the approved Preview passed normal Node 24/Turbopack build. Stop on any future failed build, login, access, save receipt or media behavior.
 - Signed card reuse is process-local. Across server instances/cold starts URLs may change. Actual browser byte reuse, Storage headers, image dimensions/file sizes and LCP remain unmeasured. No private-image transformation/public CDN proxy was introduced.
 - Previously issued signed URLs/bytes are not instantly revoked; Storage/CDN behavior can outlive token expiry. This is an existing constraint, not a new longer lease.
 - Legacy implicit-page courses still hydrate all content. Full course landing/editor and exceptional historical missing-page fallback remain broader. Very large outlines/CRM filter intersections, eager CRM detail and resource-library usages still require measured volume/query-plan evidence before a heavier redesign.
@@ -13,7 +13,7 @@
 
 ## External Actions Required
 
-**1. Approval inside Codex for a preview and bounded verification.** No manual Vercel/Supabase configuration is currently required. Approve pushing only the CODEX 2 feature branch and creating one Preview deployment of the exact reviewed source in existing Vercel project `wayfinders-os`; no main push/promotion. Authorize up to twelve anonymous GET/HEAD requests to that preview's homepage, public catalogs, hashed public branding, signed-out login/admin and sentinel access-denial endpoints. No private participant records, signed image body downloads, writes, environment changes or paid resources. Effect: creates a preview build to check default Turbopack/static delivery. Risk: the existing Preview DB connection is production, so only read-only public/signed-out checks are allowed. Verify: deployment READY, expected statuses, cache headers and exact commit; no `git_info_fail` retry loop.
+**1. Preview verification completed.** Owner approved feature-branch push and one Preview deployment; it is READY at `93dac8a`. Owner also approved temporary Vercel access. Eleven signed-out URL checks passed; main/production remain CODEX 1. No owner configuration action is required for this completed step. See [00](00-BASELINE-AND-EVIDENCE.md).
 
 **2. Authenticated acceptance needs a separately identified test environment/actor.** In Codex, identify an existing isolated Supabase project and synthetic participant/admin actors, or request a scoped setup/cost quote. Never paste secrets; configure credentials securely in VS Code/Vercel. Approval must specify test writes, request caps and cleanup. Do not run the SQL migrations or copy production participant data as a workaround. After isolation is verified, execute:
 

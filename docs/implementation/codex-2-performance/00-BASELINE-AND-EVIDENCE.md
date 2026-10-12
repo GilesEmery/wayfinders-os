@@ -41,3 +41,23 @@ Synthetic 32-week fixture: eight curriculum requests in either cold loader; tran
 Production identity verified: Supabase `xxjiiqrhnniccnxujmnv`, `wayfinders-os`, `us-east-1`; Vercel `wayfinders-os`, Node 24.x, deployment region `iad1`. Regions already align. A read-only transaction inspected only `storage.buckets` and `pg_indexes`, followed by rollback. `purposeos-assets` is private, 25 MiB limit. Target module/version, lesson/version and block/section indexes already exist. No participant rows, Storage objects, credentials or query plans were read.
 
 The app uses SDK HTTP/PostgREST, not a raw Postgres driver: Supavisor is unnecessary. Object cache headers/actual file sizes, DB query latency, billing attribution, browser cache hits and Vercel function durations are unknown. No plan, region, RLS, migration or infrastructure changes were made.
+
+## Approved Preview verification
+
+Feature branch `codex/codex-2-performance` was pushed at `93dac8a`; remote `main` was verified unchanged at `e48acac`. One Preview deployment was created: `dpl_HAgSqtzUKquer98GnGsgJ8LLBaff`, READY, target Preview, exact commit `93dac8aed39adeb397b39197efa8886c47af1c46`. URL: https://wayfinders-76zn4kumf-gilesemerys-projects.vercel.app . No production promotion occurred.
+
+Provider logs confirm ordinary `npm run build`, Next 16.3.6 Turbopack: compilation 13.4 s, TypeScript complete, 95 page-generation tasks, `/` static, build completed in 55 s. This resolves the default-build gate; local worker-port failure was environment-specific.
+
+One anonymous HEAD reached Vercel SSO. Owner separately approved temporary connector access; eleven application URL checks then passed, with PurposeOS signed out. No temporary link/token was printed, stored in the repository or shared; no protection settings changed. Connector-managed authentication redirects were not separately instrumented.
+
+| Preview check | Status | Observed cache behavior |
+|---|---:|---|
+| Homepage first/repeat | 200 / 200 | PRERENDER → HIT; public browser revalidation |
+| Experiences | 200 | private/no-store, MISS |
+| Trainings first/repeat | 200 / 200 | private/no-store, MISS |
+| Admin login | 200 | private/no-store |
+| Sentinel Journey / private export | 403 / 403 | private/no-store |
+| LMU assessment, signed out | 401 | denied; connector supplied no response headers |
+| Hashed public SVG / PNG | 200 / 200 | public, max-age=31536000, immutable |
+
+No reliable preview TTFB, browser LCP, signed-image download counts or billed egress were collected. Connector response text is decoded content, not transferred wire bytes (particularly for PNG); do not use its length as image bandwidth. Production baseline and Preview cache outcomes are different environments. Sanitized evidence: `/private/tmp/codex2-preview-verification.json`.

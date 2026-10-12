@@ -18,7 +18,7 @@ Authenticated menus initialize after browser Auth resolution; controls display a
 - Six anonymous local HTTP checks passed: `/` 200 (`s-maxage=31536000`), `/admin/login` 200, `/admin` 307 to login, sentinel Journey API 403 (`private, no-store`), hashed PNG/SVG 200 (`public, max-age=31536000, immutable`). Local server stopped afterward.
 - Old assessment-navigation fixtures needed current imports/introduction entry; the LMU history fixture now emulates the completion JSON projection. Product assessment components were not redesigned.
 
-Network/browser/database integration is not implied by these local tests. The complete prior 264-test suite was not unnecessarily repeated.
+The approved Preview also passed its normal Node 24/Turbopack build and eleven signed-out application URL checks after owner-approved Vercel temporary access. Homepage repeat was a Vercel HIT; hashed branding immutable; private APIs denied. This resolves the default-build limitation. Network/browser/database integration is not implied by these local and anonymous checks. The complete prior 264-test suite was not unnecessarily repeated.
 
 ## Reproduce focused verification
 

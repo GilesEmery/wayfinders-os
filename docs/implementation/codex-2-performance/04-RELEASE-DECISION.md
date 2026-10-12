@@ -1,10 +1,10 @@
 # CODEX 2 — release decision
 
-**CONDITIONAL GO for preview validation; production is not approved.** The local implementation is complete for this bounded performance release. Local tests, TypeScript, lint, webpack build and anonymous HTTP checks pass. Default provider build, authenticated browser acceptance and deployed before/after measurements remain gates/owner decisions. No changes were pushed or deployed; CODEX 1 remains live. CODEX 3/4 were not started.
+**CONDITIONAL GO for production, subject to an explicit owner decision on authenticated acceptance and final push approval.** The local implementation is complete for this bounded performance release. Local tests, TypeScript, lint, webpack build and anonymous HTTP checks pass. The approved Preview passed the normal provider build and eleven signed-out checks, including repeat homepage HIT. Authenticated browser acceptance and real card-navigation/save measurements remain an owner decision. Only the feature branch was pushed/deployed to Preview; CODEX 1 remains live in production. CODEX 3/4 were not started.
 
 ## Local checkpoint
 
-Branch: `codex/codex-2-performance`. Implementation commit: `7c50525` (33 source/test files). The following report commit contains only these five release documents. Local `main` remains `e48acac`; no remote operation was performed.
+Branch: `codex/codex-2-performance`. Implementation commit: `7c50525` (33 source/test files). Report commit `93dac8a` contains these five documents and is the approved Preview commit. Subsequent local report-only updates record Preview evidence and do not change application source. Local `main` remains `e48acac`; remote main was verified unchanged. Feature branch `93dac8a` is pushed; Preview `dpl_HAgSqtzUKquer98GnGsgJ8LLBaff` is READY.
 
 ## Proposed release scope
 
@@ -15,7 +15,7 @@ Exclude existing untracked `docs/audits/`, CODEX 1 closeout and CODEX 1 ZIP. Nev
 ## Release gates / smoke / rollback
 
 1. Inspect source/diff and selective scope below; keep all unrelated files out. Local implementation/report checkpoints are prepared; main stays at CODEX 1.
-2. Obtain preview approval described in [03](03-RISKS-AND-EXTERNAL-ACTIONS.md), then verify normal Vercel build and bounded anonymous checks. If GitHub rate-limits Git acquisition, stop/cool down; do not disconnect integrations or reset credentials.
+2. Preview approval/build/anonymous verification completed; see [00](00-BASELINE-AND-EVIDENCE.md). If GitHub rate-limits Git acquisition, stop/cool down; do not disconnect integrations or reset credentials.
 3. Obtain isolated authenticated acceptance or an explicit informed owner decision on the gap. Real integration failure is a stop, not a waiver of correctness.
 4. **Ask for final approval before any main push or production promotion.** Check branch ancestry/remote status and exact commit. Never force push.
 5. After approved production deployment, verify READY/exact commit, `/` 200 with static delivery, public catalogs 200, `/admin/login` 200, `/admin` redirects signed out, sentinel Journey/private export denied with `no-store`, hashed assets immutable. Requests must have a separately approved cap. Compare numeric timings with baseline; do not claim LCP/browser bytes from HEAD checks.
