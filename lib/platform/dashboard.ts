@@ -10,7 +10,7 @@ import { completedJourneyRecords } from "./journey-policy";
 
 export type DashboardData = Awaited<ReturnType<typeof getWayfinderDashboard>>;
 
-export async function getWayfinderDashboard() {
+export async function getWayfinderDashboard({ includeNetworkOverview = true }: { includeNetworkOverview?: boolean } = {}) {
   const user = await getPlatformUser();
   if (!user) return null;
   const context = await ensurePlatformProfile(user);
@@ -49,11 +49,11 @@ export async function getWayfinderDashboard() {
     versionIds.length ? db.from("experience_versions").select("id,experience_id,title,theme_id,course_configuration").in("id", versionIds) : Promise.resolve({ data: [] }),
     organizationIds.length ? db.from("organizations").select("id,name").in("id", organizationIds) : Promise.resolve({ data: [] }),
     hubIds.length ? db.from("hubs").select("id,name,slug,description,location").in("id", hubIds).eq("status", "active") : Promise.resolve({ data: [] }),
-    hubIds.length ? db.from("hub_memberships").select("hub_id").in("hub_id", hubIds).eq("status", "active") : Promise.resolve({ data: [] }),
+    includeNetworkOverview && hubIds.length ? db.from("hub_memberships").select("hub_id").in("hub_id", hubIds).eq("status", "active") : Promise.resolve({ data: [] }),
     cohortIds.length ? db.from("cohorts").select("id,name,experience_id,status").in("id", cohortIds) : Promise.resolve({ data: [] }),
     cohortIds.length ? db.from("experience_offerings").select("id,cohort_id,experience_id,experience_version_id,status,is_default").in("cohort_id", cohortIds).eq("status", "active") : Promise.resolve({ data: [] }),
     tagIds.length ? db.from("tags").select("id,name,category").in("id", tagIds) : Promise.resolve({ data: [] }),
-    capabilities.isAdmin ? Promise.all([
+    includeNetworkOverview && capabilities.isAdmin ? Promise.all([
       db.from("participants").select("id", { count: "exact", head: true }),
       db.from("hubs").select("id", { count: "exact", head: true }).eq("status", "active"),
       db.from("organizations").select("id", { count: "exact", head: true }).eq("organization_type", "partner"),

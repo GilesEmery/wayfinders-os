@@ -3,16 +3,16 @@ import Link from "next/link";
 import { AccountSettings } from "@/components/platform/AccountSettings";
 import { PlatformAuthGate } from "@/components/platform/PlatformAuthGate";
 import { PlatformShell } from "@/components/platform/PlatformShell";
-import { getPlatformAccount } from "@/lib/platform/auth";
+import { getPlatformAdminRole, platformAccountFromProfile } from "@/lib/platform/auth";
 import { ensurePlatformProfile, getPlatformUser } from "@/lib/platform/auth";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
 export const metadata: Metadata = { title: "Account" };
 
 export default async function AccountPage() {
-  const account = await getPlatformAccount();
-  const user = account ? await getPlatformUser() : null;
-  const profile = user ? await ensurePlatformProfile(user) : null;
+  const user = await getPlatformUser();
+  const [profile, adminRole] = user ? await Promise.all([ensurePlatformProfile(user), getPlatformAdminRole(user.id)]) : [null, null];
+  const account = user ? platformAccountFromProfile(user, profile && !("error" in profile) ? profile.participant.full_name : null, adminRole) : null;
   let hubSettings = { hubs: [] as Array<{ id: string; name: string; slug: string; membership_mode: string }>, membershipIds: [] as string[], defaultHubId: null as string | null };
   if (profile && !("error" in profile)) {
     const db = createAdminSupabaseClient();

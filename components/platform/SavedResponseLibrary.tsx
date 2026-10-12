@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import type { ResponseCourse, ResponseLibraryData, SavedActivity } from "@/lib/platform/response-library-policy";
+import type { ResponseCourse, ResponseLibraryData, ResponseWeek, SavedActivity } from "@/lib/platform/response-library-policy";
 
 function Activity({ activity, inline = false }: { activity: SavedActivity; inline?: boolean }) {
   const tracked = activity.items.filter((item) => item.answered !== undefined);
@@ -34,11 +34,47 @@ function LazyResponseBox({ title, assessment, loadKey, endpoint }: { title: stri
       window.clearTimeout(timeout); request.current = null; if (mounted.current) setLoading(false);
     }
   }
-  return <details className={assessment ? "saved-response-assessment" : "saved-response-questions"} onToggle={(event) => { if (event.currentTarget.open) void load(); }}><summary><strong>{title}</strong><span>{assessment ? "View assessment results and responses →" : "View questions and responses →"}</span></summary>{loading ? <p role="status">Loading responses…</p> : error ? <div role="alert"><p>{error}</p><button type="button" onClick={() => void load()}>Try again</button></div> : activities ? activities.length ? activities.map((activity) => <Activity key={activity.id} activity={activity} inline/>) : <p>No saved responses yet.</p> : null}</details>;
+  return <details className={assessment ? "saved-response-assessment" : "saved-response-questions"} onToggle={(event) => { if (event.target === event.currentTarget && event.currentTarget.open) void load(); }}><summary><strong>{title}</strong><span>{assessment ? "View assessment results and responses →" : "View questions and responses →"}</span></summary>{loading ? <p role="status">Loading responses…</p> : error ? <div role="alert"><p>{error}</p><button type="button" onClick={() => void load()}>Try again</button></div> : activities ? activities.length ? activities.map((activity) => <Activity key={activity.id} activity={activity} inline/>) : <p>No saved responses yet.</p> : null}</details>;
 }
 function WeekActivities({ activities, responseEndpoint }: { activities: SavedActivity[]; responseEndpoint?: string }) {
   const questions = activities.filter((activity) => !activity.assessment);
   return <>{questions.length > 0 && (responseEndpoint && questions[0].loadKey ? <LazyResponseBox title="Questions" assessment={false} loadKey={questions[0].loadKey} endpoint={responseEndpoint}/> : <details className="saved-response-questions"><summary><strong>Questions</strong><span>View questions and responses →</span></summary>{questions.map((activity) => <Activity activity={activity} key={activity.id}/>)}</details>)}{activities.filter((activity) => activity.assessment).map((activity) => responseEndpoint && activity.loadKey ? <LazyResponseBox key={activity.id} title={activity.title} assessment loadKey={activity.loadKey} endpoint={responseEndpoint}/> : <Activity activity={activity} key={activity.id}/>)}</>;
+}
+
+function SavedWeek({ week, versionId, endpoint }: { week: ResponseWeek; versionId: string; endpoint?: string }) {
+  const [loaded, setLoaded] = useState<ResponseWeek | null>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const request = useRef<AbortController | null>(null);
+  useEffect(() => () => { request.current?.abort(); request.current = null; }, []);
+  async function load() {
+    if (!endpoint || request.current) return;
+    const controller = new AbortController(); request.current = controller;
+    setLoading(true); setError(""); setLoaded(null);
+    const timeout = window.setTimeout(() => controller.abort(), 30000);
+    try {
+      const separator = endpoint.includes("?") ? "&" : "?";
+      const response = await fetch(`${endpoint}${separator}week=${encodeURIComponent(`${versionId}:${week.id}`)}`, { cache: "no-store", signal: controller.signal });
+      if (!response.ok) throw new Error("Unable to load this week's responses. Please retry.");
+      const data = await response.json() as ResponseLibraryData;
+      const next = data.courses.flatMap(course => course.weeks).find(row => row.id === week.id);
+      if (!next) throw new Error("This week is unavailable. Reopen the Experience to refresh its course version.");
+      if (!controller.signal.aborted) setLoaded(next);
+    } catch (failure) {
+      if (request.current === controller) setError(failure instanceof Error ? failure.message : "Unable to load responses.");
+    } finally {
+      window.clearTimeout(timeout);
+      if (request.current === controller) { request.current = null; setLoading(false); }
+    }
+  }
+  const activities = endpoint ? loaded?.activities : week.activities;
+  return <details className="saved-response-week" onToggle={event => {
+    if (event.target !== event.currentTarget) return;
+    if (event.currentTarget.open) void load();
+    else { request.current?.abort(); request.current = null; }
+  }}><summary><strong>{week.title}</strong><span>{week.activities.length} {week.activities.length === 1 ? "activity" : "activities"}</span></summary>
+    {loading ? <p role="status">Loading this week’s responses…</p> : error ? <div role="alert"><p>{error}</p><button type="button" onClick={() => void load()}>Retry</button></div> : activities ? activities.length ? <WeekActivities activities={activities}/> : <p className="saved-response-empty">No saved responses for this week yet.</p> : null}
+  </details>;
 }
 
 export function SavedResponseLibrary({ data, collapseExperiences = false, responseEndpoint }: { data: ResponseLibraryData; collapseExperiences?: boolean; responseEndpoint?: string }) {
@@ -52,7 +88,7 @@ export function SavedResponseLibrary({ data, collapseExperiences = false, respon
       if (!versions.length) versions.push(course);
       experiences.set(key, versions);
     }
-    return <div className="purpose-profile-experience-list">{[...experiences.entries()].map(([id, courses]) => <details className="purpose-profile-experience" key={id}><summary><strong>{courses[0].title}</strong><span>View your information</span></summary><div className="purpose-profile-experience-content"><SavedResponseLibrary data={{ name: data.name, courses }}/></div></details>)}</div>;
+    return <div className="purpose-profile-experience-list">{[...experiences.entries()].map(([id, courses]) => <details className="purpose-profile-experience" key={id}><summary><strong>{courses[0].title}</strong><span>View your information</span></summary><div className="purpose-profile-experience-content"><SavedResponseLibrary data={{ name: data.name, courses }} responseEndpoint={responseEndpoint}/></div></details>)}</div>;
   }
-  return <div className="saved-response-library">{!data.courses.length && <p className="dashboard-empty">No saved course or assessment responses yet.</p>}{data.courses.map((course) => <section className="saved-response-course" key={course.id}><header><h3>{course.title}</h3><p>{course.version}</p></header>{course.locked ? <p>Unlock this Experience to view saved responses. <a href={course.href}>Open Experience →</a></p> : course.weeks.length ? course.weeks.map((week) => <details className="saved-response-week" key={week.id} open><summary><strong>{week.title}</strong><span>{week.activities.length} {week.activities.length === 1 ? "activity" : "activities"}</span></summary>{week.activities.length ? <WeekActivities activities={week.activities} responseEndpoint={responseEndpoint}/> : <p className="saved-response-empty">No saved responses for this week yet.</p>}</details>) : <p>No saved responses yet.</p>}</section>)}</div>;
+  return <div className="saved-response-library">{!data.courses.length && <p className="dashboard-empty">No saved course or assessment responses yet.</p>}{data.courses.map((course) => <section className="saved-response-course" key={course.id}><header><h3>{course.title}</h3><p>{course.version}</p></header>{course.locked ? <p>Unlock this Experience to view saved responses. <a href={course.href}>Open Experience →</a></p> : course.weeks.length ? course.weeks.map((week) => <SavedWeek key={week.id} week={week} versionId={course.id.split(":").at(-1)!} endpoint={course.id === "life-mapping-u" ? undefined : responseEndpoint}/>) : <p>No saved responses yet.</p>}</section>)}</div>;
 }

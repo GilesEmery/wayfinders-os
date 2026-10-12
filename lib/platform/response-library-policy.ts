@@ -11,6 +11,27 @@ export type ResponseWeek = { id: string; title: string; activities: SavedActivit
 export type ResponseCourse = { id: string; title: string; version: string; weeks: ResponseWeek[]; locked?: boolean; href?: string };
 export type ResponseLibraryData = { name: string; courses: ResponseCourse[] };
 
+// Combine only entries from one verified course block, never title matches
+// across different blocks, participants, enrollments or course versions.
+export function combineAssessmentActivities(entries: SavedActivity[]): SavedActivity {
+  const meaningful = entries.filter(entry => entry.results?.length || entry.items.some(item => item.answered !== false));
+  const primary = meaningful[0] ?? entries[0];
+  function combine(kind: "items" | "results") {
+    const rows = entries.flatMap(entry => (entry[kind] ?? []).map(item => ({ entry, item })));
+    const unique = new Map<string, typeof rows[number]>();
+    for (const row of rows) {
+      if (row.item.answered === false && rows.some(other => other.item.question === row.item.question && other.item.answered !== false)) continue;
+      const key = JSON.stringify([row.item.question, row.item.response]);
+      if (!unique.has(key)) unique.set(key, row);
+    }
+    const values = [...unique.values()];
+    return values.map(({ entry, item }) => values.some(other => other.item.question === item.question && other.item.response !== item.response)
+      ? { ...item, question: `${item.question} · ${entry.location || entry.title}${entry.updatedAt ? ` · ${entry.updatedAt}` : ""}` }
+      : item);
+  }
+  return { ...primary, title: entries[0].title, assessment: true, items: combine("items"), results: combine("results") };
+}
+
 export function isAssessmentActivity(responseKey: string, blockType: string, rendererKey: string | null, experienceType: string) {
   return experienceType === "assessment"
     || responseKey.endsWith("_assessment")

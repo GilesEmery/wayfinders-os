@@ -11,6 +11,7 @@ type AuthMode = "signin" | "signup";
 type AuthContextValue = {
   account: PlatformAccount | null;
   authenticated: boolean;
+  authUserId: string | null;
   ready: boolean;
   openAuth: (destination?: string, mode?: AuthMode) => void;
   requireAuth: (destination: string) => void;
@@ -28,6 +29,8 @@ export function WayfindersAuthProvider({ children, initialAccount }: { children:
   const router = useRouter();
   const pathname = usePathname();
   const [account, setAccount] = useState(initialAccount);
+  const identity = useRef(initialAccount?.authUserId ?? null);
+  const [authUserId, setAuthUserId] = useState(initialAccount?.authUserId ?? null);
   const authenticated = Boolean(account);
   const [ready, setReady] = useState(Boolean(initialAccount));
   const [open, setOpen] = useState(false);
@@ -51,7 +54,12 @@ export function WayfindersAuthProvider({ children, initialAccount }: { children:
       return response.ok ? response.json() as Promise<PlatformAccount> : null;
     }, value => { setAccount(value); setReady(true); });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session?.user) { refresh.clear(); return; }
+      if (!session?.user) { identity.current = null; setAuthUserId(null); refresh.clear(); return; }
+      setAuthUserId(session.user.id);
+      if (identity.current !== session.user.id) {
+        identity.current = session.user.id;
+        setAccount(null); setReady(false);
+      }
       void refresh.refresh(session.user.id);
     });
     return () => { refresh.dispose(); subscription.unsubscribe(); };
@@ -128,7 +136,7 @@ export function WayfindersAuthProvider({ children, initialAccount }: { children:
     }
   }
 
-  return <AuthContext.Provider value={{ account, authenticated, ready, openAuth, requireAuth, setAccount }}>
+  return <AuthContext.Provider value={{ account, authenticated, authUserId, ready, openAuth, requireAuth, setAccount }}>
     {children}
     {open && <div className="wayfinders-auth-backdrop" onMouseDown={(event) => {
       if (!required && event.target === event.currentTarget) setOpen(false);

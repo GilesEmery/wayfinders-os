@@ -7,9 +7,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ coho
   if (!UUID.test(cohortId) || !UUID.test(participantId)) return NextResponse.json({ error: "Saved responses are unavailable." }, { status: 404, headers });
   const search = new URL(request.url).searchParams;
   const box = search.get("box") ?? undefined;
+  const week = search.get("week") ?? undefined;
+  if (week && !/^[0-9a-f-]{36}:[0-9a-f-]{36}$/i.test(week)) return NextResponse.json({ error: "Invalid week." }, { status: 400, headers });
   if (box && !/^[0-9a-f-]{36}:(questions|assessment):[0-9a-f-]{36}$/i.test(box)) return NextResponse.json({ error: "Invalid response box." }, { status: 400, headers });
   try {
-    const data = await loadCohortMemberResponses(cohortId, participantId, { outline: !box && search.get("view") === "outline", box });
+    const data = await loadCohortMemberResponses(cohortId, participantId, { outline: !box && !week && search.get("view") === "outline", box, week });
     return NextResponse.json(box ? data.courses.flatMap((course) => course.weeks.flatMap((week) => week.activities)) : data, { headers });
   }
   catch (error) { return NextResponse.json({ error: "Saved responses are unavailable." }, { status: error instanceof ResponseLibraryAccessError ? error.status : 500, headers }); }

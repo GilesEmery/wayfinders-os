@@ -62,6 +62,14 @@ test('32-week fixture loads one page while preserving every navigation/completio
   const missing=await source.getExperienceStructure('e','v',database(rows,missingCalls),undefined,{moduleKey:'missing',lessonKey:'lesson',sectionKey:'page'});
   assert.equal(blocks(missing).length,0); assert.ok(!missingCalls.some(c=>['content_blocks','section_layouts','section_columns'].includes(c.table)));
 });
+test('response week loads layout and blocks only for the selected module, including legacy pages',async()=>{
+ const rows=curriculum(),calls=[]; const source=load('lib/experiences/builder/data.ts',{'@/lib/supabase/admin':{}});
+ const selected=await source.getExperienceStructure('e','v',database(rows,calls),undefined,undefined,'m9');
+ assert.equal(blocks(selected).length,1);assert.equal(blocks(selected)[0].id,'b9');
+ assert.deepEqual(calls.find(c=>c.table==='content_blocks').filters.find(f=>f[1]==='lesson_id')[2],['l9']);
+ rows.experience_sections=[];rows.content_blocks.forEach(b=>b.section_id=null);
+ const legacy=await source.getExperienceStructure('e','v',database(rows,[]),undefined,undefined,'m9');assert.equal(blocks(legacy).length,1);
+});
 test('legacy implicit-page courses retain their original content and outline', async () => {
   const rows=curriculum(); rows.experience_sections=[]; rows.content_blocks.forEach(b=>b.section_id=null);
   const source=load('lib/experiences/builder/data.ts',{'@/lib/supabase/admin':{}});

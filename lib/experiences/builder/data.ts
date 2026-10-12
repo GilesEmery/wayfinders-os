@@ -202,7 +202,7 @@ export async function getSectionWithLayout(sectionId: string, db: Db = createAdm
 
 export type CourseContentTarget = { moduleKey: string; lessonKey: string; sectionKey: string };
 
-export async function getExperienceStructure(experienceId: string, versionId: string, db: Db = createAdminSupabaseClient(), responseBlockIds?: string[], target?: CourseContentTarget): Promise<BuilderCourseStructure> {
+export async function getExperienceStructure(experienceId: string, versionId: string, db: Db = createAdminSupabaseClient(), responseBlockIds?: string[], target?: CourseContentTarget, responseModuleId?: string): Promise<BuilderCourseStructure> {
   const [experienceResult, versionResult, moduleResult, lessonResult, sectionResult] = await Promise.all([
     db.from("experiences").select("*").eq("id", experienceId).maybeSingle(),
     db.from("experience_versions").select("*").eq("id", versionId).eq("experience_id", experienceId).maybeSingle(),
@@ -224,9 +224,10 @@ export async function getExperienceStructure(experienceId: string, versionId: st
   const scoped = target && lessons.every((lesson) => sections.some((section) => section.lesson_id === lesson.id));
   const targetModule = scoped ? modules.find((module) => module.module_key === target.moduleKey) : null;
   const targetLesson = scoped ? lessons.find((lesson) => lesson.module_id === targetModule?.id && lesson.lesson_key === target.lessonKey) : null;
-  const targetSections = scoped ? sections.filter((section) => section.lesson_id === targetLesson?.id && section.section_key === target.sectionKey) : sections;
+  const responseLessonIds = responseModuleId ? lessons.filter(lesson => lesson.module_id === responseModuleId).map(lesson => lesson.id) : null;
+  const targetSections = responseLessonIds ? sections.filter(section => responseLessonIds.includes(section.lesson_id)) : scoped ? sections.filter((section) => section.lesson_id === targetLesson?.id && section.section_key === target.sectionKey) : sections;
   const sectionIds = targetSections.map((section) => section.id);
-  const lessonIds = scoped ? targetLesson && sectionIds.length ? [targetLesson.id] : [] : lessons.map((lesson) => lesson.id);
+  const lessonIds = responseLessonIds ?? (scoped ? targetLesson && sectionIds.length ? [targetLesson.id] : [] : lessons.map((lesson) => lesson.id));
   let blocksQuery = db.from("content_blocks").select("*").in("lesson_id", lessonIds).order("sort_order");
   if (scoped) blocksQuery = blocksQuery.in("section_id", sectionIds);
   // Response outlines need only answerable blocks and linked assessments, not

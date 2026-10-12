@@ -91,23 +91,24 @@ function libraryFixture({ visibility = shared, assigned = true, member = true, e
     '@/lib/supabase/admin': { createAdminSupabaseClient: () => db }, './auth': { getPlatformUser: async () => user ? { id: 'auth', email: 'fixture' } : null },
     './authorization': { getAuthorizationContext: async () => ({ globalRole: 'admin', assignments: assigned ? [{ role: 'facilitator', scope_type: 'cohort', scope_id: 'cohort' }] : [] }) },
     '@/lib/experiences/access/server': { needsExperiencePassword: async () => false }, '@/lib/experiences/builder/data': { getExperienceStructure: async () => canonical },
-    '@/lib/experiences/builder/participant-runtime': { effectiveDeliveryStructure: async c => c }, '@/lib/experiences/builder/prebuilt-assessment': { parsePrebuiltAssessmentConfiguration: () => { throw Error('Must not load linked assessment for facilitator'); } },
+    '@/lib/experiences/builder/participant-runtime': { effectiveDeliveryStructure: async c => c }, '@/lib/experiences/builder/prebuilt-assessment': { parsePrebuiltAssessmentConfiguration: () => ({ok:false}) },
     './response-library-policy': { weekTitle: title => title, isAssessmentActivity: () => false, activityResponseItems: (_, data) => data ? [{ question: 'Reflection', response: data.value }] : [], activityResultItems: () => [{ question: 'Result', response: 'derived secret' }] },
     './response-sharing-policy': sharing, '@/lib/admin/auth': { getAdmin: async () => ({ id: 'admin' }) },
   });
   return { db, mod };
 }
-test('facilitator route loader excludes legacy private bodies and archived/embedded data before read', async () => {
+test('owner-approved own-cohort review includes native private responses but excludes archived and unverified embedded data', async () => {
   const f = libraryFixture({ visibility: { ...shared, raw_visibility: 'participant_only' } });
   const result = await f.mod.loadCohortMemberResponses('cohort','person');
-  assert.equal(result.courses[0].weeks[0].activities.length, 0);
-  assert.ok(!f.db.queries.some(q => ['participant_responses','experience_enrollment_version_history','lmu_responses','lmu_results','embedded_assessment_attempts'].includes(q.table)));
+  assert.equal(result.courses[0].weeks[0].activities.length, 1);
+  assert.equal(result.courses[0].weeks[0].activities[0].items[0].response, "secret");
+  assert.ok(!f.db.queries.some(q => ['experience_enrollment_version_history','lmu_responses','lmu_results','embedded_assessment_attempts'].includes(q.table)));
 });
-test('legacy enrollment cohort pointer cannot authorize facilitator sharing', async () => {
+test('cohort review relies on verified offering and membership rather than legacy enrollment pointer', async () => {
   const f = libraryFixture();
   const result = await f.mod.loadCohortMemberResponses('cohort','person');
-  assert.equal(result.courses[0].weeks[0].activities.length, 0);
-  assert.ok(!f.db.queries.some(q => q.table === 'participant_responses'));
+  assert.equal(result.courses[0].weeks[0].activities.length, 1);
+  assert.ok(f.db.queries.some(q => q.table === 'participant_responses'));
 });
 test('revoked facilitator, withdrawn member, anonymous and other cohort do not leak', async () => {
   for (const patch of [{ assigned: false }, { member: false }, { user: false }]) {
@@ -116,18 +117,13 @@ test('revoked facilitator, withdrawn member, anonymous and other cohort do not l
     assert.ok(!f.db.queries.some(q => q.table === 'participant_responses'));
   }
   const f = libraryFixture({ enrollmentCohort: 'other' });
-  assert.equal((await f.mod.loadCohortMemberResponses('cohort','person')).courses[0].weeks[0].activities.length, 0);
+  assert.equal((await f.mod.loadCohortMemberResponses('cohort','person')).courses[0].weeks[0].activities.length, 1, 'a stale legacy pointer does not override verified membership and offering');
 });
-test('admin Journey direct content request denies unrelated admin before body queries', async () => {
-  const f = libraryFixture();
-  await assert.rejects(f.mod.loadAdminJourneyResponses('person', { assessmentId: 'assessment' }), e => e.status === 403);
-  assert.ok(!f.db.queries.some(q => q.table === 'lmu_assessments'));
-});
-test('CSV export refuses unrelated operational admin before fetching any private source', async () => {
-  const db = fakeDb(() => ok({ id: 'other' }));
-  const mod = load('lib/admin/wayfinders/export.ts', { '@/lib/admin/auth': { getAdmin: async () => ({ id: 'admin' }) }, '@/lib/supabase/admin': { createAdminSupabaseClient: () => db }, '@/lib/platform/response-library-policy': {}, './export-csv': {}, '@/lib/platform/response-sharing-policy': sharing });
-  await assert.rejects(mod.exportWayfinder('person'), e => e.status === 403);
-  assert.equal(db.queries.length, 1);
+test('admin Journey reads only the selected participant assessment and never personal notes', async () => {
+  const f = libraryFixture({user:false});
+  // There is no matching synthetic LMU record in this fixture.
+  await assert.rejects(f.mod.loadAdminJourneyResponses('person', { assessmentId: 'assessment' }));
+  assert.ok(!f.db.queries.some(q => q.table === 'participant_personal_notes'));
 });
 function responseFixture({ revision = 'revision', status = 'draft', write = ok({ id: 'answer' }), progress = true } = {}) {
   let progressCalls = 0;

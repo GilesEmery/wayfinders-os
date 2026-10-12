@@ -3066,7 +3066,7 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
 .course-item-text-field .inline-text-surface{border:1px solid #ddd;padding:12px;min-height:80px}
 .course-item-text-fields{display:grid;gap:14px}
 .course-item-content>.participant-pdf-reader>figcaption,
-.course-item-content>.assessment-launch-card>.assessment-launch-copy>:is(h2,p){display:none}
+.course-item-content>.assessment-launch-card>.assessment-launch-copy>p{display:none}
 .course-item-text-field.is-h1{--item-editor-size:40px}
 .course-item-text-field.is-h2{--item-editor-size:28px}
 .course-item-text-field.is-h3{--item-editor-size:20px}

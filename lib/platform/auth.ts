@@ -9,12 +9,13 @@ const ACCOUNT_LINK_AMBIGUOUS = "We found more than one existing Wayfinders recor
 const ACCOUNT_LINK_CONFLICT = "This email is already connected to another PurposeOS account. Please contact support if you believe this is incorrect.";
 
 export type PlatformAdminRole = "admin" | "super_admin";
-export type PlatformAccount = { email: string; fullName: string; displayName: string; isAdmin: boolean; adminRole: PlatformAdminRole | null };
+export type PlatformAccount = { authUserId?: string; email: string; fullName: string; displayName: string; isAdmin: boolean; adminRole: PlatformAdminRole | null };
 
 function accountFromUser(user: User, profileName?: string | null, adminRole: PlatformAdminRole | null = null): PlatformAccount {
   const metadataName = typeof user.user_metadata.full_name === "string" ? user.user_metadata.full_name.trim() : "";
   const fullName = profileName?.trim() || metadataName;
   return {
+    authUserId: user.id,
     email: user.email ?? "",
     fullName,
     displayName: fullName || user.email?.split("@")[0] || "Account",

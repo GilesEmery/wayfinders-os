@@ -13,7 +13,7 @@ import { activeJourneyCards } from "@/lib/platform/active-journey";
 export const metadata: Metadata = { title: "My Journey" };
 
 export default async function MyJourneyPage() {
-  const data = await getWayfinderDashboard();
+  const data = await getWayfinderDashboard({ includeNetworkOverview: false });
   if (!data) return <PlatformShell><PlatformAuthGate /></PlatformShell>;
   if ("error" in data) return <PlatformShell><main className="wayfinder-dashboard"><p>{data.error}</p></main></PlatformShell>;
   const activeCards = activeJourneyCards(data).sort((a, b) => a.card.headline.localeCompare(b.card.headline, "en", { sensitivity: "base", numeric: true }) || a.id.localeCompare(b.id));

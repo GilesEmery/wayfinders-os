@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { activityResultItems, activityResponseItems, canReviewMemberResponses, isAssessmentActivity, readableResponseFields, weekTitle } from "./response-library-policy.ts";
+import { combineAssessmentActivities, activityResultItems, activityResponseItems, canReviewMemberResponses, isAssessmentActivity, readableResponseFields, weekTitle } from "./response-library-policy.ts";
 
 test("assessments are expandable even when stored as structured responses", () => {
   for (const key of ["wayfinders_ethos_assessment", "activate_your_purpose_assessment", "launching_wayfinders_hub_assessment", "another_assessment"]) {
@@ -142,4 +142,16 @@ test("Ethos summary explicitly names highest and lowest and preserves tied growt
   assert.equal(items[0].question, "Highest Ethos · Strongest areas");
   assert.equal(items[1].question, "Lowest Ethos · Growth areas");
   assert.equal(items[1].response.split("; ").length, 4);
+});
+
+test("one course block combines legacy answers with its empty assessment link without duplicate panels", () => {
+ const old={id:"legacy",title:"Activate Your Purpose Assessment",location:"Week 1",assessment:true,status:"submitted",updatedAt:"2026-10-10",items:[{question:"Question",response:"Saved answer",answered:true}],results:[{question:"Result",response:"Saved result"}]};
+ const empty={...old,id:"linked",title:"Activate Your Purpose",status:"not_started",updatedAt:"",items:[],results:[]};
+ const combined=combineAssessmentActivities([old,empty]);assert.equal(combined.title,old.title);assert.equal(combined.status,"submitted");assert.deepEqual(combined.items,old.items);assert.deepEqual(combined.results,old.results);
+});
+test("assessment consolidation removes copied/unanswered duplicates but retains different saved answers", () => {
+ const base={id:"legacy",title:"Assessment",location:"Saved course",assessment:true,status:"submitted",updatedAt:"",items:[{question:"Q1",response:"First answer",answered:true},{question:"Q2",response:"Not answered",answered:false}],results:[]};
+ const linked={...base,id:"linked",location:"Linked assessment",items:[{question:"Q1",response:"Second answer",answered:true},{question:"Q2",response:"Completed answer",answered:true}]};
+ const combined=combineAssessmentActivities([base,linked]);assert.equal(combined.items.length,3);assert.ok(combined.items.some(row=>row.question.includes("Saved course")));assert.ok(combined.items.some(row=>row.question.includes("Linked assessment")));assert.ok(!combined.items.some(row=>row.answered===false));
+ assert.equal(combineAssessmentActivities([base,{...base}]).items.length,2);
 });

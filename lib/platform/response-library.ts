@@ -7,7 +7,7 @@ import { getExperienceStructure } from "@/lib/experiences/builder/data";
 import { effectiveDeliveryStructure } from "@/lib/experiences/builder/participant-runtime";
 import { parsePrebuiltAssessmentConfiguration } from "@/lib/experiences/builder/prebuilt-assessment";
 import type { Tables } from "@/lib/supabase/database.types";
-import { activityResultItems, activityResponseItems, isAssessmentActivity, readableResponseFields, weekTitle, type ResponseCourse, type ResponseLibraryData, type SavedActivity } from "./response-library-policy";
+import { combineAssessmentActivities, activityResultItems, activityResponseItems, isAssessmentActivity, readableResponseFields, weekTitle, type ResponseCourse, type ResponseLibraryData, type SavedActivity } from "./response-library-policy";
 
 import { canReadResponseContent, type ResponseAudience } from "./response-sharing-policy";
 
@@ -65,7 +65,7 @@ async function responseVersionIds(participantId: string, enrollment: Enrollment)
   if (responses.error || archived.error) throw new Error("Unable to load saved response versions.");
   return [...new Set([enrollment.experience_version_id, ...(responses.data ?? []).map((row) => row.experience_version_id), ...(archived.data ?? []).map((row) => row.experience_version_id)].filter((id): id is string => Boolean(id)))];
 }
-type ResponseRequest = { outline?: boolean; box?: string };
+type ResponseRequest = { outline?: boolean; box?: string; week?: string };
 
 // Keep deduplication inside one authorized request; never share participant data
 // or password decisions between viewers.
@@ -84,10 +84,10 @@ function responseLoadContext(includeUnanswered = false, request: ResponseRequest
       let pending = structures.get(key);
       if (!pending) {
         pending = (async () => {
-          if (!request.outline && !request.box) return getExperienceStructure(experienceId, versionId, dbClient());
+          if (!request.outline && !request.box && !request.week) return getExperienceStructure(experienceId, versionId, dbClient());
           const definitions = await dbClient().from("response_definitions").select("block_id").eq("experience_version_id", versionId);
           if (definitions.error) throw new Error("Unable to load question locations.");
-          return getExperienceStructure(experienceId, versionId, dbClient(), (definitions.data ?? []).map((row) => row.block_id).filter((id): id is string => Boolean(id)));
+          return getExperienceStructure(experienceId, versionId, dbClient(), (definitions.data ?? []).map((row) => row.block_id).filter((id): id is string => Boolean(id)), undefined, request.week?.split(":")[1]);
         })();
         structures.set(key, pending);
       }
@@ -133,7 +133,7 @@ async function loadCourse(participantId: string, enrollment: Pick<Enrollment, "e
   const allowed = (definition: NonNullable<typeof definitions.data>[number], kind: "raw" | "result") => !audience || canReadResponseContent(audience, definition, kind);
   const definitionsByBlock = new Map((definitions.data ?? []).filter((row) => allowed(row, "raw") || allowed(row, "result")).map((row) => [row.block_id, row]));
   const boxKey = (moduleId: string, blockId: string, assessment: boolean) => `${versionId}:${assessment ? "assessment" : "questions"}:${assessment ? blockId : moduleId}`;
-  const selected = (moduleId: string, blockId: string, assessment: boolean) => linked || !context.request.box || context.request.box === boxKey(moduleId, blockId, assessment);
+  const selected = (moduleId: string, blockId: string, assessment: boolean) => linked || (context.request.week ? context.request.week === `${versionId}:${moduleId}` : !context.request.box || context.request.box === boxKey(moduleId, blockId, assessment));
   const selectedIds = structure.modules.flatMap((module) => module.lessons.flatMap((lesson) => lesson.sections.flatMap((section) => (section.layout?.columns ?? []).flatMap((column) => column.blocks.flatMap((block) => {
     const definition = definitionsByBlock.get(block.id);
     return definition && selected(module.id, block.id, isAssessmentActivity(definition.response_key, block.block_type, block.custom_renderer_key, structure.experience.experience_type)) ? [definition.id] : [];
@@ -141,7 +141,7 @@ async function loadCourse(participantId: string, enrollment: Pick<Enrollment, "e
   const readResponses = !context.request.outline && enrollment.id && selectedIds.length > 0;
   const [responses, history] = await Promise.all([
     readResponses ? db.from("participant_responses").select("*").eq("participant_id", participantId).eq("enrollment_id", enrollment.id!).eq("experience_version_id", versionId).in("response_definition_id", selectedIds).order("updated_at", { ascending: false }) : { data: [], error: null },
-    readResponses && !audience ? db.from("experience_enrollment_version_history").select("id,artifact_snapshot:artifact_snapshot->removed_responses,ended_at").eq("participant_id", participantId).eq("enrollment_id", enrollment.id!).eq("experience_id", enrollment.experience_id).eq("experience_version_id", versionId) : { data: [], error: null },
+    readResponses && !audience && !context.request.week ? db.from("experience_enrollment_version_history").select("id,artifact_snapshot:artifact_snapshot->removed_responses,ended_at").eq("participant_id", participantId).eq("enrollment_id", enrollment.id!).eq("experience_id", enrollment.experience_id).eq("experience_version_id", versionId) : { data: [], error: null },
   ]);
   if (responses.error || history.error) throw new Error("Unable to load saved course responses.");
   const responsesByDefinition = new Map((responses.data ?? []).map((row) => [row.response_definition_id, row]));
@@ -151,39 +151,73 @@ async function loadCourse(participantId: string, enrollment: Pick<Enrollment, "e
     for (const saved of (Array.isArray(snapshot) ? snapshot : snapshot?.removed_responses) ?? []) if (!responsesByDefinition.has(saved.response_definition_id)) responsesByDefinition.set(saved.response_definition_id, { ...saved, id: `history:${archived.id}:${saved.response_definition_id}`, participant_id: participantId, enrollment_id: enrollment.id, experience_version_id: versionId, updated_at: saved.finalized_at ?? archived.ended_at ?? "", created_at: archived.ended_at ?? "" });
   }
   for (const [index, module] of structure.modules.entries()) {
+    if (!linked && context.request.week && context.request.week !== `${versionId}:${module.id}`) continue;
     const week = { id: module.id, title: weekTitle(module.title, index, structure.experience.experience_type === "assessment"), activities: [] as SavedActivity[] };
     for (const lesson of module.lessons) for (const section of lesson.sections) for (const column of section.layout?.columns ?? []) for (const block of column.blocks) {
+      const assessmentEntries: SavedActivity[] = [];
+      const entryIndex = week.activities.length;
+      function addActivity(...entries: SavedActivity[]) {
+        if (block.block_type !== "prebuilt_assessment") { week.activities.push(...entries); return; }
+        assessmentEntries.push(...entries);
+        if (!assessmentEntries.length) return;
+        week.activities[entryIndex] = assessmentEntries.length === 1 ? assessmentEntries[0] : combineAssessmentActivities(assessmentEntries);
+      }
       const definition = definitionsByBlock.get(block.id), response = definition ? responsesByDefinition.get(definition.id) : null;
       const location = [lesson.title, section.title].filter(Boolean).join(" · ");
       const assessment = definition ? isAssessmentActivity(definition.response_key, block.block_type, block.custom_renderer_key, structure.experience.experience_type) : true;
       if (!selected(module.id, block.id, assessment)) continue;
       if (context.request.outline) {
-        if (definition) week.activities.push({ id: definition.id, title: definition.label, location, assessment, status: "", updatedAt: "", items: [], loadKey: boxKey(module.id, block.id, assessment) });
-        if (!audience && !linked && block.block_type === "prebuilt_assessment") {
+        if (definition) addActivity({ id: definition.id, title: definition.label, location, assessment, status: "", updatedAt: "", items: [], loadKey: boxKey(module.id, block.id, assessment) });
+        if ((!audience || audience.cohortReviewAuthorized) && !linked && block.block_type === "prebuilt_assessment") {
           const parsed = parsePrebuiltAssessmentConfiguration(block.configuration);
-          if (parsed.ok) week.activities.push({ id: block.id, title: parsed.value.title || "Assessment", location, assessment: true, status: "", updatedAt: "", items: [], loadKey: boxKey(module.id, block.id, true) });
+          if (parsed.ok) addActivity({ id: block.id, title: parsed.value.title || "Assessment", location, assessment: true, status: "", updatedAt: "", items: [], loadKey: boxKey(module.id, block.id, true) });
         }
         continue;
       }
       if (definition && (response || context.includeUnanswered)) {
         const items = (allowed(definition, "raw") ? activityResponseItems(definition.response_key, response?.response_data, definition.configuration, context.includeUnanswered) : []).map((item) => ({ ...item, question: item.question || definition.label }));
         const results = allowed(definition, "result") ? activityResultItems(definition.response_key, response?.response_data, response?.status ?? "not_started", response?.finalized_at ?? null) : [];
-        if (items.length || results.length) week.activities.push({ id: response?.id ?? definition.id, title: definition.label, location, assessment: isAssessmentActivity(definition.response_key, block.block_type, block.custom_renderer_key, structure.experience.experience_type), status: response?.status ?? "not_started", updatedAt: response?.finalized_at ?? response?.updated_at ?? "", items, results });
+        if (items.length || results.length) addActivity({ id: response?.id ?? definition.id, title: definition.label, location, assessment: isAssessmentActivity(definition.response_key, block.block_type, block.custom_renderer_key, structure.experience.experience_type), status: response?.status ?? "not_started", updatedAt: response?.finalized_at ?? response?.updated_at ?? "", items, results });
       }
-      if (audience || linked || block.block_type !== "prebuilt_assessment") continue;
+      if ((audience && !audience.cohortReviewAuthorized) || linked || block.block_type !== "prebuilt_assessment") continue;
       const parsed = parsePrebuiltAssessmentConfiguration(block.configuration);
       if (!parsed.ok) continue;
       const childExperience = await context.assessment(parsed.value.assessmentExperienceId);
       if (!childExperience) continue;
       const childTitle = parsed.value.title || childExperience.name;
       if (await context.passwordRequired(childExperience.id)) {
-        week.activities.push({ id: block.id, title: childTitle, location, assessment: true, status: "locked", updatedAt: "", items: [], locked: true, href: `/experiences/${childExperience.slug}` });
+        addActivity({ id: block.id, title: childTitle, location, assessment: true, status: "locked", updatedAt: "", items: [], locked: true, href: `/experiences/${childExperience.slug}` });
+        continue;
+      }
+      if (audience) {
+        // A course attachment is the sharing boundary; never substitute an
+        // unrelated standalone enrollment or another LMU attempt.
+        const attachment = enrollment.id ? await db.from("embedded_assessment_attempts")
+          .select("assessment_enrollment_id,provider_attempt_id")
+          .eq("participant_id", participantId).eq("parent_enrollment_id", enrollment.id)
+          .eq("parent_content_block_id", block.id).eq("assessment_experience_id", childExperience.id).maybeSingle() : { data: null, error: null };
+        if (attachment.error) throw new Error("Unable to verify the cohort assessment attachment.");
+        if (!attachment.data) {
+          addActivity({ id: block.id, title: childTitle, location, assessment: true, status: "not_started", updatedAt: "", items: [] });
+          continue;
+        }
+        if (childExperience.slug === "life-mapping-u") {
+          if (attachment.data.provider_attempt_id) addActivity(...(await lmuActivities(participantId, attachment.data.provider_attempt_id)).map(activity => ({ ...activity, id: `${block.id}:${activity.id}`, title: childTitle, location })));
+          continue;
+        }
+        const child = await db.from("experience_enrollments").select("id,experience_id,experience_version_id")
+          .eq("id", attachment.data.assessment_enrollment_id).eq("participant_id", participantId)
+          .eq("experience_id", childExperience.id).in("status", ["enrolled", "in_progress", "completed"]).maybeSingle();
+        if (child.error) throw new Error("Unable to verify the attached assessment enrollment.");
+        if (!child.data?.experience_version_id) throw new ResponseLibraryAccessError(403);
+        const saved = await loadCourse(participantId, child.data, child.data.experience_version_id, null, true, responseLoadContext(true));
+        for (const activity of saved.weeks.flatMap(group => group.activities)) addActivity({ ...activity, id: `${block.id}:${activity.id}`, title: childTitle, location, assessment: true });
         continue;
       }
       if (childExperience.slug === "life-mapping-u") {
         const attempt = enrollment.id ? await db.from("embedded_assessment_attempts").select("provider_attempt_id").eq("participant_id", participantId).eq("parent_enrollment_id", enrollment.id).eq("parent_content_block_id", block.id).eq("assessment_experience_id", childExperience.id).maybeSingle() : { data: null, error: null };
         if (attempt.error) throw new Error("Unable to load the linked Life Mapping U attempt.");
-        week.activities.push(...(attempt.data?.provider_attempt_id ? await lmuActivities(participantId, attempt.data.provider_attempt_id) : []).map((activity) => ({ ...activity, id: `${block.id}:${activity.id}`, title: childTitle, location })));
+        addActivity(...(attempt.data?.provider_attempt_id ? await lmuActivities(participantId, attempt.data.provider_attempt_id) : []).map((activity) => ({ ...activity, id: `${block.id}:${activity.id}`, title: childTitle, location })));
         continue;
       }
       const childKey = `${participantId}:${childExperience.id}`;
@@ -204,7 +238,7 @@ async function loadCourse(participantId: string, enrollment: Pick<Enrollment, "e
         context.linkedCourses.set(childKey, pending);
       }
       for (const saved of await pending) {
-        for (const activity of saved.weeks.flatMap((group) => group.activities)) week.activities.push({ ...activity, id: `${block.id}:${activity.id}`, title: childTitle, location: `${location} · ${saved.version}`, assessment: true });
+        for (const activity of saved.weeks.flatMap((group) => group.activities)) addActivity({ ...activity, id: `${block.id}:${activity.id}`, title: childTitle, location: `${location} · ${saved.version}`, assessment: true });
       }
     }
     // Empty weeks remain visible so the course chronology is clear.
@@ -230,7 +264,7 @@ export async function loadCohortMemberResponses(cohortId: string, participantId:
   const assignedFacilitator = Boolean(authorization?.assignments.some((assignment) => assignment.role === "facilitator" && assignment.scope_type === "cohort" && assignment.scope_id === cohortId)) || viewerMembership.data?.membership_role === "facilitator";
   const isOwner = viewer.data?.id === participantId;
   const allowed = isOwner || assignedFacilitator;
-  if (!allowed) throw new ResponseLibraryAccessError(403);
+  if (!allowed || !viewer.data) throw new ResponseLibraryAccessError(403);
   if (await needsExperiencePassword(cohort.data.experience_id)) throw new ResponseLibraryAccessError(403);
   const [person, enrollment, offerings] = await Promise.all([
     db.from("participants").select("full_name,first_name").eq("id", participantId).maybeSingle(),
@@ -246,16 +280,18 @@ export async function loadCohortMemberResponses(cohortId: string, participantId:
     const context = responseLoadContext(true, request, isOwner ? undefined : {
       viewerParticipantId: viewer.data?.id ?? null, respondentParticipantId: participantId,
       cohortId, experienceId: cohort.data.experience_id,
-      // No persisted response-level cohort binding exists. Enrollment cohort_id
-      // is a legacy pointer, not sharing consent/scope (20260918112528).
+      // Cohort review is owner-approved separately from optional group sharing.
+      // Scope above comes from fresh membership, course and unique offering checks.
       responseCohortId: null,
+      cohortReviewAuthorized: true,
       enrollmentExperienceId: enrollment.data.experience_id, activeEnrollment: true,
       activeRespondentMembership: true, assignedFacilitator, currentVersion: true,
     });
     const memberEnrollment = enrollment.data;
-    const savedVersions = !isOwner ? [memberEnrollment.experience_version_id!] : request.outline || request.box ? await responseVersionIds(participantId, memberEnrollment) : await enrollmentVersions(participantId, memberEnrollment);
+    const savedVersions = !isOwner ? [memberEnrollment.experience_version_id!] : request.outline || request.box || request.week ? await responseVersionIds(participantId, memberEnrollment) : await enrollmentVersions(participantId, memberEnrollment);
     const visibleVersions = isOwner ? savedVersions : savedVersions.filter((version) => version === memberEnrollment.experience_version_id);
-    const versions = request.box ? visibleVersions.filter((version) => request.box!.startsWith(`${version}:`)) : visibleVersions;
+    const selection = request.box ?? request.week;
+    const versions = selection ? visibleVersions.filter((version) => selection.startsWith(`${version}:`)) : visibleVersions;
     courses.push(...await Promise.all(versions.map((version) => loadCourse(participantId, memberEnrollment, version, offering, false, context))));
   }
   if (!enrollment.data && isOwner) {
@@ -271,23 +307,67 @@ export async function loadCohortMemberResponses(cohortId: string, participantId:
   return { name: person.data?.full_name || person.data?.first_name || "Cohort member", courses };
 }
 
-export async function loadOwnResponseLibrary(): Promise<ResponseLibraryData | null> {
+async function readSavedIndexRows<T>(ids: string[], read: (batch: string[]) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>) {
+  const rows: T[] = [];
+  for (let offset = 0; offset < ids.length; offset += 50) {
+    const result = await read(ids.slice(offset, offset + 50));
+    if (result.error) throw new Error("Unable to load saved Experience labels.");
+    rows.push(...(result.data ?? []));
+  }
+  return rows;
+}
+
+// Initial Purpose Profile lists owned Experiences without curriculum or answers.
+export async function loadOwnResponseLibraryIndex() {
   const user = await getPlatformUser();
   if (!user) return null;
   const db = dbClient();
   const person = await db.from("participants").select("id,full_name,first_name").eq("auth_user_id", user.id).maybeSingle();
   if (person.error) throw new Error("Your saved work could not be verified. Please try again.");
   if (!person.data) return null;
-  const enrollments = await db.from("experience_enrollments").select("*").eq("participant_id", person.data.id).order("updated_at", { ascending: false });
+  const [enrollments, lmu] = await Promise.all([
+    db.from("experience_enrollments").select("id,experience_id,experience_version_id").eq("participant_id", person.data.id).order("updated_at", { ascending: false }),
+    db.from("lmu_assessments").select("id").eq("participant_id", person.data.id).in("status", ["in_progress", "completed"]).limit(1),
+  ]);
+  if (enrollments.error || lmu.error) throw new Error("Unable to load your saved work.");
+  const experienceIds = [...new Set((enrollments.data ?? []).map(row => row.experience_id))];
+  const versionIds = [...new Set((enrollments.data ?? []).flatMap(row => row.experience_version_id ? [row.experience_version_id] : []))];
+  const [experiences, versions] = await Promise.all([
+    readSavedIndexRows(experienceIds, ids => db.from("experiences").select("id,name,slug").in("id", ids)),
+    readSavedIndexRows(versionIds, ids => db.from("experience_versions").select("id,version_label").in("id", ids)),
+  ]);
+  const experienceById = new Map(experiences.map(row => [row.id, row]));
+  const versionById = new Map(versions.map(row => [row.id, row.version_label]));
+  const courses: ResponseCourse[] = (enrollments.data ?? []).flatMap(enrollment => {
+    const experience = experienceById.get(enrollment.experience_id);
+    if (!experience || experience.slug === "life-mapping-u") return [];
+    return [{ id: enrollment.id, title: experience.name, version: versionById.get(enrollment.experience_version_id ?? "") ?? "Saved work", href: `/experiences/${encodeURIComponent(experience.slug)}`, weeks: [] }];
+  });
+  if (lmu.data?.length) courses.push({ id: "life-mapping-u", title: "Life Mapping U", version: "Assessment history", href: "/experiences/life-mapping-u", weeks: [] });
+  return { name: person.data.full_name || person.data.first_name || "Your saved work", courses, viewerAuthUserId: user.id };
+}
+
+export async function loadOwnResponseLibrary(selectedEnrollmentId?: string, request: ResponseRequest = {}): Promise<ResponseLibraryData | null> {
+  const user = await getPlatformUser();
+  if (!user) return null;
+  const db = dbClient();
+  const person = await db.from("participants").select("id,full_name,first_name").eq("auth_user_id", user.id).maybeSingle();
+  if (person.error) throw new Error("Your saved work could not be verified. Please try again.");
+  if (!person.data) return null;
+  let query = db.from("experience_enrollments").select("*").eq("participant_id", person.data.id).order("updated_at", { ascending: false });
+  if (selectedEnrollmentId && selectedEnrollmentId !== "life-mapping-u") query = query.eq("id", selectedEnrollmentId);
+  const enrollments = selectedEnrollmentId === "life-mapping-u" ? { data: [], error: null } : await query;
   if (enrollments.error) throw new Error("Unable to load your saved work.");
   const courses: ResponseCourse[] = [];
   const lmuExperience = await db.from("experiences").select("id,slug").eq("slug", "life-mapping-u").maybeSingle();
   if (lmuExperience.error) throw new Error("Unable to verify assessment access.");
   for (const enrollment of enrollments.data ?? []) {
     if (enrollment.experience_id === lmuExperience.data?.id) continue;
-    for (const version of await enrollmentVersions(person.data.id, enrollment)) courses.push(await loadCourse(person.data.id, enrollment, version));
+    const versions = selectedEnrollmentId && enrollment.experience_version_id ? [enrollment.experience_version_id] : await enrollmentVersions(person.data.id, enrollment);
+    // The collapsed Profile previously displayed only the first/current Version.
+    for (const version of selectedEnrollmentId ? versions.slice(0, 1) : versions) courses.push(await loadCourse(person.data.id, enrollment, version, null, false, responseLoadContext(false, request)));
   }
-  if (lmuExperience.data) {
+  if (lmuExperience.data && (!selectedEnrollmentId || selectedEnrollmentId === "life-mapping-u")) {
     const locked = await needsExperiencePassword(lmuExperience.data.id);
     const activities = locked ? [] : await lmuActivities(person.data.id);
     if (activities.length || locked) courses.push({ id: "life-mapping-u", title: "Life Mapping U", version: "Assessment history", locked, href: "/experiences/life-mapping-u", weeks: [{ id: "lmu", title: "Assessments", activities }] });
@@ -301,8 +381,6 @@ export async function loadAdminJourneyResponses(participantId: string, selection
   const identity = await getAdmin();
   if (!identity) throw new ResponseLibraryAccessError(403);
   const db = dbClient();
-  const owner = await db.from("participants").select("id").eq("auth_user_id", identity.id).maybeSingle();
-  if (owner.error || !canReadResponseContent({ viewerParticipantId: owner.data?.id ?? null, respondentParticipantId: participantId }, null, "raw")) throw new ResponseLibraryAccessError(403);
   if (selection.assessmentId) {
     const assessment = await db.from("lmu_assessments").select("id").eq("id", selection.assessmentId).eq("participant_id", participantId).maybeSingle();
     if (assessment.error) throw new Error("Unable to load assessment.");

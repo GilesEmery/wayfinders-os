@@ -95,7 +95,7 @@ test('new completion survives older acknowledged completion', async () => {
   receipts[1](true); assert.equal(await fresh,true);
   assert.equal(mod.getModuleProgress('course','values').responses.answer,'new');
 });
-function assessmentFixture({ owner = true, identityError = false, anonymous = false } = {}) {
+function assessmentFixture({ owner = true, identityError = false, anonymous = false, adminRole = null } = {}) {
   const db = fakeDb(q => q.table === 'participants' ? { data: { id: owner ? 'person' : 'other' }, error: identityError ? {} : null } : ok(q.table === 'lmu_assessments' ? { id: 'assessment', completed_at: '2026-10-10' } : [{ section_key: 'values', result_data: { secret: 'own result' } }]));
   let passwords = 0;
   const mod = load('lib/assessment-results.ts', {
@@ -103,6 +103,7 @@ function assessmentFixture({ owner = true, identityError = false, anonymous = fa
     '@/lib/supabase/admin': { createAdminSupabaseClient: () => db }, '@/lib/experiences/access/server': { requireExperiencePasswordBySlug: async () => { passwords++; } },
     '@/lib/experiences/builder/circle-of-influence': { CIRCLE_RESPONSE_KEY: 'circle' }, '@/lib/experiences/builder/personal-impact-statement': { PERSONAL_IMPACT_RESPONSE_KEY: 'pis' }, '@/lib/experiences/builder/start-something': { START_SOMETHING_RESPONSE_KEY: 'start' },
     '@/lib/platform/journey-policy': {}, '@/lib/assessment-results-policy': { NATIVE_ASSESSMENT_RESULTS: {} },
+    '@/lib/admin/auth': { getAdmin: async () => adminRole ? {id:'verified-admin',role:adminRole} : null },
   });
   return { mod, db, passwords: () => passwords };
 }
@@ -154,7 +155,7 @@ test('global admin successful identity remains available', async () => {
   });
   assert.equal((await mod.getAdmin()).role,'admin');
 });
-test('owner-admin Journey LMU content succeeds through ownership gate', async () => {
+test('active admin Journey LMU content succeeds through participant-bound assessment lookup', async () => {
   const db = fakeDb(q => ok(q.table === 'participants' ? { id: 'person' } : q.table === 'lmu_assessments' ? q.calls.some(([m]) => m === 'maybeSingle') ? { id: 'assessment' } : [{ id: 'assessment', status: 'completed', started_at: 'today' }] : q.table === 'lmu_responses' ? [{ assessment_id: 'assessment', section_key: 'values', response_data: { value: 'own text' } }] : []));
   const mod = load('lib/platform/response-library.ts', {
     '@/lib/supabase/admin': { createAdminSupabaseClient: () => db }, './auth': {}, './authorization': {},
@@ -164,7 +165,18 @@ test('owner-admin Journey LMU content succeeds through ownership gate', async ()
   });
   const result = await mod.loadAdminJourneyResponses('person',{ assessmentId: 'assessment' });
   assert.equal(result.courses[0].weeks[0].activities[0].items[0].response,'own text');
-  assert.equal(db.queries[0].table,'participants');
+  assert.equal(db.queries[0].table,'lmu_assessments');
+  assert.ok(db.queries[0].calls.some(([method,column,value])=>method==='eq'&&column==='participant_id'&&value==='person'));
+});
+test('completed results admit fresh Admin and Super Admin review while non-admin review flags deny',async()=>{
+ for(const role of ['admin','super_admin']) {
+ const f=assessmentFixture({owner:false,adminRole:role});
+ const result=await f.mod.loadCompletedAssessmentResult('person','life-mapping-u','assessment',{adminReview:true});
+ assert.equal(result.data[0].result_data.secret,'own result');
+ assert.ok(f.db.queries[0].calls.some(([m,k,v])=>m==='eq'&&k==='participant_id'&&v==='person'));
+ assert.ok(!f.db.queries.some(q=>q.table==='participant_personal_notes'));
+ }
+ const f=assessmentFixture({owner:false});assert.equal(await f.mod.loadCompletedAssessmentResult('person','life-mapping-u','assessment',{adminReview:true}),null);assert.equal(f.db.queries.length,0);
 });
 test('duplicate generic form submit while receipt pending invokes persistence once', async () => {
   let finish, calls = 0;

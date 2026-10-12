@@ -64,8 +64,11 @@ export async function listCompletedAssessmentResults(participantId: string): Pro
   ].sort((left, right) => right.completedAt.localeCompare(left.completedAt));
 }
 
-export async function loadCompletedAssessmentResult(participantId: string, kind: AssessmentResultKind, id: string) {
-  if (!await ownsAssessmentResults(participantId)) return null;
+export async function loadCompletedAssessmentResult(participantId: string, kind: AssessmentResultKind, id: string, options: { adminReview?: boolean } = {}) {
+  if (options.adminReview) {
+    const { getAdmin } = await import("@/lib/admin/auth");
+    if (!await getAdmin()) return null;
+  } else if (!await ownsAssessmentResults(participantId)) return null;
   await requireExperiencePasswordBySlug(kind, `/account/results/${encodeURIComponent(kind)}/${encodeURIComponent(id)}`);
   const db = createAdminSupabaseClient();
   if (kind === "life-mapping-u") {
