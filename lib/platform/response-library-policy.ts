@@ -19,7 +19,8 @@ export function isAssessmentActivity(responseKey: string, blockType: string, ren
 }
 
 export function canReviewMemberResponses(input: { globalRole: string | null; scopedFacilitator: boolean; memberRole: string | null }) {
-  return input.globalRole === "admin" || input.globalRole === "super_admin" || input.scopedFacilitator || input.memberRole === "facilitator";
+  // Review entry only; each body still requires canReadResponseContent.
+  return input.scopedFacilitator || input.memberRole === "facilitator";
 }
 export function weekTitle(title: string, index: number, assessment = false) {
   return assessment ? title : /^week\b/i.test(title.trim()) ? title : `Week ${index + 1} · ${title}`;

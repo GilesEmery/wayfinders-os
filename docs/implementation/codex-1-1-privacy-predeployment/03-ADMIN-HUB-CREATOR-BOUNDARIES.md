@@ -1,0 +1,66 @@
+# Administrative, Hub, creator and facilitator boundaries
+
+October 10, 2026. Current findings are **verified from code**. Recommendations are **proposed policy** and do not widen access. Runtime behavior remains **requires live verification** unless explicitly covered by isolated tests.
+
+## Administrative reporting versus private content
+
+| Path | Current entry/ownership and queries | Failure / retained use case | Evidence |
+| --- | --- | --- | --- |
+| Admin identity | Auth user, active matching admin member role/email; optional display profile | New returned-error checks reject, including owner/role-shaped partial data. Absent user/member denies. Rejected requests propagate without a grant. | `lib/admin/auth.ts:15`, `:22`, `:29`, `:37`; isolated tests `scripts/security/codex1-1.test.mjs:135`, `:148` |
+| Journey overview | Global admin; target participant exists; enrollment/status, LMU status, cohort titles, archived completion projection | Metadata retained; checked query errors throw. No answer body/snapshot read for overview. | `lib/admin/wayfinders/journey.ts:8`, `:20`, `:42`; existing `lib/admin/wayfinders/journey.test.mjs:1` |
+| Journey answer detail | Global admin AND session participant equals target before LMU answers/results or course history | Unrelated admin denies 403 before content reads. Owner-admin LMU works in isolated mock. LMU branch does not reuse the account-result password gate; this is an existing path inconsistency, not a new access grant. | `lib/platform/response-library.ts:299`, `:305`, `:306`; `scripts/security/codex1-1.test.mjs:157` |
+| CSV | Global admin AND respondent owner before all sources | Owner export keeps readable answers/results/notes and archived entries; other admins blocked. Operational CSV is not supplied by this private export. Download audit failure rejects. | `lib/admin/wayfinders/export.ts:21`, `:30`, `:99`, `:118`; `lib/admin/wayfinders/export.test.mjs:34`; `scripts/security/codex1.test.mjs:126` |
+| Shared assessment-result loader | Viewer participant owner before native responses, canonical completion snapshots and LMU results; detail checks experience password | Nonowner unavailable; identity error throws; owner finalized LMU result tested. Own result lists fetch answer payloads to calculate labels and full history for completion; not safe to reuse as operational-admin metadata. | `lib/assessment-results.ts:16`, `:24`, `:36`, `:46`, `:67`; `scripts/security/codex1-1.test.mjs:109` |
+| Admin user result page | Global admin; target name lookup; delegates private result to owner loader | Owner branch exists; nonowner loader returns null/notFound. Actual render not executed. Existing `audit` ignores returned insert error; future auditable exceptions cannot rely on it. | `app/admin/users/[userId]/results/[kind]/[resultId]/page.tsx:10`, `:16`; `lib/admin/auth.ts:59` |
+| LMU admin result page | Global admin; status/current module/timestamps/contact and section progress; independent owner check for interpreted results | Nonowner progress retained; `lmu_results` query only if owner; errors stop. Static source check only in this iteration. Name/email remains operational PII, not public information. | `app/admin/life-mapping-u/[assessmentId]/page.tsx:15`, `:23`, `:24`, `:37`; `scripts/security/codex1.test.mjs:203` |
+| Analytics | Admin architecture placeholder | No live or local aggregate engine validated; do not describe it as restored reporting | `app/admin/analytics/page.tsx:2` |
+
+**Proposed policy — OWNER APPROVAL REQUIRED:** retain existing progress/completion summaries while deciding exact admin scope. Do not restore answer screens by removing owner guards. If needed, build a narrowly projected operational export from status tables, not the private CSV or answer-derived result list. An individual interpreted result is not an aggregate. Choose separately whether Super Admin sees all results; recommended no blanket exception, with audited purpose-specific access only if approved.
+
+**Verified from code:** effective-policy explicit denies beat ordinary allows but existing Super Admin precedence remains; direct global/course helpers are separate (`lib/platform/effective-access-policy.ts:32`, `:41`; `lib/platform/authorization.ts:54`). A future exception must not accidentally bypass revoked identity or failed reads. No claim that every administrative path already enforces every effective override.
+
+## Hub routes and membership modes
+
+**Verified from code:** `/hubs/[hubSlug]` reads any active Hub's name, description and membership mode before login. It uses viewer active membership or manager status for public/unlisted/private offering metadata, then fetches member names for any signed-in user. `membership_mode` does not gate the directory (`app/hubs/[hubSlug]/page.tsx:16`, `:28`, `:34`, `:39`, `:52`). Profile links use `wayfinder.view` with exact Hub scope, while global roles point to CRM; hiding links does not protect the names already fetched (`:38`, `:47`).
+
+**Verified from code:** the member profile route requires login, fresh effective `wayfinder.view` for the requested Hub and active target membership before contact fields. Returned Hub/membership errors now reject; permission resolver errors return an unavailable page (`app/hubs/[hubSlug]/members/[participantId]/page.tsx:10`, `:13`, `:17`, `:20`, `:23`). This permission gate does not itself require the viewer to be a Hub member; role permissions/overrides determine the grant. No new ordinary-member profile grant was introduced.
+
+**Verified from code:** the open-Hub connection helper limits Hub lookup to active/open but its existing-membership and preference reads still ignore returned errors (`lib/platform/hub-membership.ts:9`, `:12`, `:18`). A failed prior-membership read can take the insert branch. This was inventoried, not changed or executed; revisit with narrow mutation tests before an onboarding change. Hub offering/experience display queries still ignore returned errors (`app/hubs/[hubSlug]/page.tsx:34`, `:36`); the new membership checks prevent failed prerequisites from selecting private visibility, but this is not a blanket certification of every Hub query.
+
+**Proposed policy — OWNER APPROVAL REQUIRED:** apply one explicit policy to all roster/name routes before fetching member IDs or names. Leave public description decisions separate from directory and contact details. No directory restriction was applied because exact leader/admin/nonmember exceptions and visibility of closed Hubs are unapproved; changing them could break established operations under a plausible owner choice.
+
+| Viewer | Public Hub landing | Directory names | Individual profile/contact | Recommendation status |
+| --- | --- | --- | --- | --- |
+| Anonymous | Open: public approved description; approval/invite: owner chooses public or discoverability-restricted | Deny | Deny | **OWNER APPROVAL REQUIRED** for closed-Hub discoverability |
+| Signed-in nonmember | Same landing rules; public offerings only | Deny | Deny, except separately permissioned operational case | **OWNER APPROVAL REQUIRED**; current names exposure remains a blocker |
+| Active member | Visible own Hub landing/eligible offerings | Exact own Hub names | Owner chooses name/bio subset; contact separately authorized/opt-in | **OWNER APPROVAL REQUIRED** |
+| Exact Hub leader | Own Hub metadata | Exact assigned Hub, with fresh assignment | Minimal operational contacts for managed active members | **OWNER APPROVAL REQUIRED**; no answers/results |
+| Admin | Approved operational Hub context | Purpose-scoped exception rather than automatic signed-in grant | Approved operational CRM fields | **OWNER APPROVAL REQUIRED** |
+| Super Admin | Same separation | Owner chooses scoped exception or all operational directories | Same; no implicit assessment contents | **OWNER APPROVAL REQUIRED** |
+
+**Proposed policy:** open membership permits an explicit successful join, not directory access before joining. Approval-required membership grants no directory while pending; invite-only grants none from possessing an invite until accepted/active. Withdrawn/suspended memberships deny future directory/profile access. Do not auto-reactivate withdrawal merely to restore visibility. Apply the same fresh checks to APIs, search, exports and client data, not just pages. Public profile publication would need separate field-level opt-in; current bios/contacts are not public consent.
+
+**Proposed targeted patch (not implemented):** after approval, calculate `directoryAllowed` from verified active viewer membership, exact active leader assignment or approved operational exception, rejecting all failed lookups. Skip `hub_memberships` roster and participant-name queries entirely on denial. Use that same helper across alternate rosters/search. Profile permission must be separately field-specific; directory permission must not imply email/phone access. Add all three membership-mode tests plus direct URL/API tests after separately authorized staging.
+
+## Course Creator boundaries and blocked workflows
+
+**Verified from code:** the effective policy has owned/assigned creator editing, but legacy helpers recognize `course_builder`/`course_admin`, experience/global/owner-organization assignments and global admins. They do not consume all effective-policy overrides. Moreover most authoring actions first require global admin. Granting a creator `admin_members` to reach them would also grant unrelated CRM and operational capabilities (`lib/platform/effective-access-policy.ts:51`; `lib/platform/authorization.ts:58`, `:67`, `:71`; `lib/experiences/admin/block-mutations.ts:87`).
+
+| Action | Exact current source boundary | Recommended scoped policy — OWNER APPROVAL REQUIRED |
+| --- | --- | --- |
+| Create course | `requireAdmin`, then `canBuildExperience(context, "new", ownerId)`; inserts draft | Separate create capability and verified organization ownership/assignment; do not trust submitted owner ID or use dummy course ID as ownership proof. `lib/experiences/admin/mutations.ts:33`, `:47`, `:53` |
+| Edit draft structure/content | Global admin then course helper, exact version/section/lesson hierarchy, editable draft | Only owned/assigned course draft; published version immutable; fresh scoped deny/revocation enforced. `lib/experiences/admin/block-mutations.ts:87`, `:97`, `:103` |
+| Edit course metadata/access | Global admin then course-admin helper | Separate metadata authoring from catalog/admission administration. `lib/experiences/admin/mutations.ts:68`, `:87` |
+| Preview | Global admin then course build permission; version belongs to course; answers null and progress synthetic | Owned/assigned draft/published preview, no real participant bodies. Asset signing still needs verification. `lib/experiences/admin/preview.ts:15`, `:21`, `:28`, `:44` |
+| Publish/clone | Global admin; publish uses course-admin, clone uses course-builder helper | Publish separate explicit permission; creator edit is not publish. `lib/experiences/admin/version-release.ts:10`, `:27`, `:61` |
+| Enrollment administration | Global admin then course-admin; canonical version/participant/enrollment verification | Separately assigned enrollment manager only; no general CRM directory implied. `lib/experiences/admin/enrollment-mutations.ts:9`, `:20`, `:39` |
+| Learner progress | Admin delivery/enrollment screens read participant names/email and enrollments | No reporting from creator label alone; optionally assign separate course operations capability. `app/admin/trainings/[experienceId]/delivery/page.tsx:28` |
+| Course registry/details | Admin route calls helpers returning registry/course metadata; helpers are not self-authorizing | Scope both page and data loader before draft metadata reads; no global registry for ordinary creator. `app/admin/trainings/[experienceId]/page.tsx:27`; `lib/experiences/admin/data.ts:5`, `:20` |
+
+**Proposed policy:** retain current restrictive gates pending a scoped entry/data-loader patch. Owner must map `course_creator`, `course_builder`, `course_admin`, owned-user and organization assignments to one contract. Preview and authoring must never inherit Hub management, private responses, broad people search, or global authority. Local CODEX 1.1 did not remove those gates or implement CODEX 3.
+
+## Facilitator boundary
+
+**Verified from code:** cohort review checks exact facilitator assignment or active facilitator membership and exact active respondent membership. A global role alone does not authorize it; unique applicable offering is required. Adapter scope null blocks raw/derived bodies and avoids nonowner history/embedded assessments (`lib/platform/response-library.ts:216`, `:230`, `:243`, `:246`, `:256`; `scripts/security/codex1.test.mjs:100`). A cohort marked completed is accepted for metadata entry, but that does not enable shared bodies (`:227`).
+
+**Proposed policy — OWNER APPROVAL REQUIRED:** offer minimal assigned-cohort status/completion reporting separately. Private content needs explicit participant grant and durable scope, not assignment alone. No grant should cover all participants of an experience because its facilitator runs one cohort. Kaleo is a reference case only; no Kaleo content, workflow, schema or cohort was created/migrated here.

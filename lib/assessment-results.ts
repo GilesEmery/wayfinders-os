@@ -2,6 +2,8 @@ import { CIRCLE_RESPONSE_KEY } from "@/lib/experiences/builder/circle-of-influen
 import "server-only";
 import { requireExperiencePasswordBySlug } from "@/lib/experiences/access/server";
 
+import { getPlatformUser } from "@/lib/platform/auth";
+import { canReadResponseContent } from "@/lib/platform/response-sharing-policy";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { PERSONAL_IMPACT_RESPONSE_KEY } from "@/lib/experiences/builder/personal-impact-statement";
 import { START_SOMETHING_RESPONSE_KEY } from "@/lib/experiences/builder/start-something";
@@ -10,6 +12,14 @@ import { NATIVE_ASSESSMENT_RESULTS, completedGenericResult, completedLegacyActiv
 
 export type AssessmentResultKind = "circle-of-influence" | "life-mapping-u" | "personal-impact-statement" | "start-something" | "activate-your-purpose" | "wayfinders-ethos" | "launching-your-wayfinders-hub";
 export type AssessmentResultSummary = { kind: AssessmentResultKind; id: string; name: string; completedAt: string; enrollmentId?: string; versionId?: string };
+
+async function ownsAssessmentResults(participantId: string) {
+  const user = await getPlatformUser();
+  if (!user) return false;
+  const viewer = await createAdminSupabaseClient().from("participants").select("id").eq("auth_user_id", user.id).maybeSingle();
+  if (viewer.error) throw new Error("Assessment access could not be verified. Please try again.");
+  return canReadResponseContent({ viewerParticipantId: viewer.data?.id ?? null, respondentParticipantId: participantId }, null, "result");
+}
 
 async function canonicalGenericCompletions(participantId: string) {
   const db = createAdminSupabaseClient();
@@ -24,6 +34,7 @@ async function canonicalGenericCompletions(participantId: string) {
 const GENERIC_KEYS = [CIRCLE_RESPONSE_KEY, PERSONAL_IMPACT_RESPONSE_KEY, START_SOMETHING_RESPONSE_KEY, ...Object.keys(NATIVE_ASSESSMENT_RESULTS)];
 
 export async function listCompletedAssessmentResults(participantId: string): Promise<AssessmentResultSummary[]> {
+  if (!await ownsAssessmentResults(participantId)) throw new Error("Assessment results are unavailable.");
   const db = createAdminSupabaseClient();
   const [lmu, definitions] = await Promise.all([
     db.from("lmu_assessments").select("id,completed_at").eq("participant_id", participantId).eq("status", "completed").not("completed_at", "is", null),
@@ -54,6 +65,7 @@ export async function listCompletedAssessmentResults(participantId: string): Pro
 }
 
 export async function loadCompletedAssessmentResult(participantId: string, kind: AssessmentResultKind, id: string) {
+  if (!await ownsAssessmentResults(participantId)) return null;
   await requireExperiencePasswordBySlug(kind, `/account/results/${encodeURIComponent(kind)}/${encodeURIComponent(id)}`);
   const db = createAdminSupabaseClient();
   if (kind === "life-mapping-u") {

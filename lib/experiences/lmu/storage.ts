@@ -6,6 +6,9 @@ import { deleteServerSection, scheduleSectionSave, SECTION_TO_MODULE, type Serve
 import { LMU_ORIGINAL_EXPERIENCE_ID } from "./original-journey";
 
 const STORAGE_KEY = "lmu-platform-v1";
+const saveVersions = new Map<string, number>();
+let resetGeneration = 0;
+
 const PROGRESS_EVENT = "lmu-progress-change";
 
 interface StoredProgress {
@@ -46,7 +49,7 @@ export function getExperienceProgress(experienceId: string) {
 
 export function bindAssessment(assessmentId: string) {
   const store = readStore();
-  if (store.assessmentId !== assessmentId) store.experiences = {};
+  if (store.assessmentId !== assessmentId) { store.experiences = {}; resetGeneration++; }
   store.assessmentId = assessmentId;
   writeStore(store);
 }
@@ -84,6 +87,11 @@ export async function saveModuleProgress(
 ) {
   const store = readStore();
   if (!store.assessmentId) return false;
+  const assessmentId = store.assessmentId;
+  const generation = resetGeneration;
+  const saveKey = `${experienceId}:${progress.moduleId}`;
+  const saveVersion = (saveVersions.get(saveKey) ?? 0) + 1;
+  saveVersions.set(saveKey, saveVersion);
   const previous = getExperienceProgress(experienceId);
   const updatedProgress = { ...progress, updatedAt: new Date().toISOString() };
   const experience = getExperienceProgress(experienceId) ?? {
@@ -95,37 +103,52 @@ export async function saveModuleProgress(
   );
   saveExperienceProgress({
     ...experience,
-    moduleProgress: [...otherModules, updatedProgress],
+    moduleProgress: [...otherModules, updatedProgress.status === "completed"
+      ? { ...updatedProgress, status: "in-progress", completedAt: undefined, result: undefined }
+      : updatedProgress],
   });
-  const persisted = await scheduleSectionSave(updatedProgress);
-  if (!persisted) {
-    const rollbackStore = readStore();
-    if (previous) rollbackStore.experiences[experienceId] = previous;
-    else delete rollbackStore.experiences[experienceId];
-    writeStore(rollbackStore);
+  const persisted = await scheduleSectionSave(updatedProgress, assessmentId);
+  // A receipt for a discarded local context must not resurrect its completion.
+  if (readStore().assessmentId !== assessmentId || generation !== resetGeneration
+    || saveVersions.get(saveKey) !== saveVersion) return false;
+  if (updatedProgress.status === "completed" && saveVersions.get(saveKey) === saveVersion) {
+    const currentStore = readStore();
+    const current = currentStore.experiences[experienceId];
+    if (current) {
+      const previousModule = previous?.moduleProgress.find((item) => item.moduleId === updatedProgress.moduleId);
+      if (persisted || previousModule?.status === "completed") {
+        current.moduleProgress = current.moduleProgress.filter((item) => item.moduleId !== updatedProgress.moduleId);
+        current.moduleProgress.push(persisted ? updatedProgress : previousModule!);
+        writeStore(currentStore);
+      }
+    }
   }
+  // Failed drafts stay recoverable locally; they are not reported as cloud-saved.
   return persisted;
 }
 
 export function clearExperienceProgress(experienceId: string) {
+  resetGeneration++;
   const store = readStore();
   delete store.experiences[experienceId];
   writeStore(store);
 }
 
 export function removeModuleProgress(experienceId: string, moduleId: string) {
+  const saveKey = `${experienceId}:${moduleId}`;
+  saveVersions.set(saveKey, (saveVersions.get(saveKey) ?? 0) + 1);
   const experience = getExperienceProgress(experienceId);
   if (!experience) return;
   saveExperienceProgress({
     ...experience,
     moduleProgress: experience.moduleProgress.filter((item) => item.moduleId !== moduleId),
   });
-  if (experienceId === LMU_ORIGINAL_EXPERIENCE_ID) deleteServerSection(moduleId);
+  if (experienceId === LMU_ORIGINAL_EXPERIENCE_ID) deleteServerSection(moduleId, readStore().assessmentId);
 }
 
 export function hydrateFromServer(server: ServerAssessment) {
   const store = readStore();
-  if (store.assessmentId !== server.assessment.id) store.experiences = {};
+  if (store.assessmentId !== server.assessment.id) { store.experiences = {}; resetGeneration++; }
   store.assessmentId = server.assessment.id;
   store.participantProfile = { firstName: server.participant.first_name, email: server.participant.email };
   const localExperience = store.experiences[LMU_ORIGINAL_EXPERIENCE_ID] ?? { experienceId: LMU_ORIGINAL_EXPERIENCE_ID, moduleProgress: [] };

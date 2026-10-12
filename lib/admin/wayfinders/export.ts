@@ -4,6 +4,8 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { activityResultItems, activityResponseItems } from "@/lib/platform/response-library-policy";
 import { readExportPages, wayfinderCsv, type ExportRecord } from "./export-csv";
 
+import { canReadResponseContent } from "@/lib/platform/response-sharing-policy";
+
 export class WayfinderExportError extends Error {
   constructor(public status: number, message: string) { super(message); }
 }
@@ -20,6 +22,8 @@ export async function exportWayfinder(participantId: string) {
   const identity = await getAdmin();
   if (!identity) throw new WayfinderExportError(403, "Admin access is required.");
   const db = createAdminSupabaseClient();
+  const owner = await db.from("participants").select("id").eq("auth_user_id", identity.id).maybeSingle();
+  if (owner.error || !canReadResponseContent({ viewerParticipantId: owner.data?.id ?? null, respondentParticipantId: participantId }, null, "raw")) throw new WayfinderExportError(403, "Private response exports require respondent access. Use the separate operational metadata export for progress.");
   const person = await db.from("participants").select("id,full_name").eq("id", participantId).maybeSingle();
   if (person.error) throw new Error("Unable to load Wayfinder.");
   if (!person.data) throw new WayfinderExportError(404, "Wayfinder not found.");

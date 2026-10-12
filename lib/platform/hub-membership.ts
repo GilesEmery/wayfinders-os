@@ -9,13 +9,15 @@ export async function connectParticipantToOpenHub(participantId: string, request
   const { data: hub, error: hubError } = await db.from("hubs").select("id,slug,name").eq("slug", slug).eq("status", "active").eq("membership_mode", "open").maybeSingle();
   if (hubError) throw new Error("Unable to resolve Hub context.");
   if (!hub) return null;
-  const { data: existing } = await db.from("hub_memberships").select("id,membership_role,status").eq("participant_id", participantId).eq("hub_id", hub.id).maybeSingle();
+  const { data: existing, error: existingError } = await db.from("hub_memberships").select("id,membership_role,status").eq("participant_id", participantId).eq("hub_id", hub.id).maybeSingle();
+  if (existingError) throw new Error("Unable to verify existing Hub membership.");
   const membershipResult = existing
     ? await db.from("hub_memberships").update({ status: "active", joined_at: new Date().toISOString() }).eq("id", existing.id)
     : await db.from("hub_memberships").insert({ participant_id: participantId, hub_id: hub.id, membership_role: "member", status: "active", joined_at: new Date().toISOString() });
   const membershipError = membershipResult.error;
   if (membershipError) throw new Error("Unable to connect the participant to the Hub.");
-  const { data: preference } = await db.from("participant_preferences").select("default_hub_id").eq("participant_id", participantId).maybeSingle();
+  const { data: preference, error: preferenceReadError } = await db.from("participant_preferences").select("default_hub_id").eq("participant_id", participantId).maybeSingle();
+  if (preferenceReadError) throw new Error("Hub connected, but default Hub preference could not be verified.");
   if (!preference?.default_hub_id) {
     const { error: preferenceError } = await db.from("participant_preferences").upsert({ participant_id: participantId, default_hub_id: hub.id }, { onConflict: "participant_id" });
     if (preferenceError) throw new Error("Unable to set the participant's default Hub.");

@@ -14,11 +14,11 @@ test("assessments are expandable even when stored as structured responses", () =
   }
 });
 
-test("cohort review requires verified facilitator capacity, scoped authority, or active global administration", () => {
+test("cohort review entry requires verified facilitator capacity; global administration alone grants no response access", () => {
   for (const memberRole of [null, "participant", "member", "hub_leader"]) assert.equal(canReviewMemberResponses({ globalRole: null, scopedFacilitator: false, memberRole }), false);
   assert.equal(canReviewMemberResponses({ globalRole: null, scopedFacilitator: false, memberRole: "facilitator" }), true);
   assert.equal(canReviewMemberResponses({ globalRole: null, scopedFacilitator: true, memberRole: null }), true);
-  for (const globalRole of ["admin", "super_admin"]) assert.equal(canReviewMemberResponses({ globalRole, scopedFacilitator: false, memberRole: null }), true);
+  for (const globalRole of ["admin", "super_admin"]) assert.equal(canReviewMemberResponses({ globalRole, scopedFacilitator: false, memberRole: null }), false);
 });
 test("weeks retain existing names and repeated questions are not combined", () => {
   assert.equal(weekTitle("Week 2: Calling", 1), "Week 2: Calling");

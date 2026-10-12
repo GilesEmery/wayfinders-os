@@ -14,25 +14,27 @@ export type AdminIdentity = {
 
 export async function getAdmin(): Promise<AdminIdentity | null> {
   const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const identityRead = await supabase.auth.getUser();
+  if (identityRead.error) throw new Error("Admin access could not be verified. Please try again.");
+  const { user } = identityRead.data;
   if (!user?.email) return null;
   const admin = createAdminSupabaseClient();
-  const { data: member } = await admin
+  const { data: member, error: memberError } = await admin
     .from("admin_members")
     .select("id,email_normalized,auth_user_id,role,status")
     .eq("auth_user_id", user.id)
     .eq("email_normalized", user.email.toLowerCase())
     .eq("status", "active")
     .maybeSingle();
+  if (memberError) throw new Error("Admin access could not be verified. Please try again.");
   if (!member || (member.role !== "admin" && member.role !== "super_admin"))
     return null;
-  const { data: participant } = await admin
+  const { data: participant, error: participantError } = await admin
     .from("participants")
     .select("full_name,first_name")
     .eq("auth_user_id", user.id)
     .maybeSingle();
+  if (participantError) throw new Error("Admin profile could not be verified. Please try again.");
   return {
     id: user.id,
     email: member.email_normalized,

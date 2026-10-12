@@ -1,13 +1,15 @@
 import "server-only";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { getPlatformUser } from "./auth";
-import { canAccessCohortContext, getAuthorizationContext } from "./authorization";
+import { getAuthorizationContext } from "./authorization";
 import { needsExperiencePassword } from "@/lib/experiences/access/server";
 import { getExperienceStructure } from "@/lib/experiences/builder/data";
 import { effectiveDeliveryStructure } from "@/lib/experiences/builder/participant-runtime";
 import { parsePrebuiltAssessmentConfiguration } from "@/lib/experiences/builder/prebuilt-assessment";
 import type { Tables } from "@/lib/supabase/database.types";
-import { activityResultItems, activityResponseItems, canReviewMemberResponses, isAssessmentActivity, readableResponseFields, weekTitle, type ResponseCourse, type ResponseLibraryData, type SavedActivity } from "./response-library-policy";
+import { activityResultItems, activityResponseItems, isAssessmentActivity, readableResponseFields, weekTitle, type ResponseCourse, type ResponseLibraryData, type SavedActivity } from "./response-library-policy";
+
+import { canReadResponseContent, type ResponseAudience } from "./response-sharing-policy";
 
 type Enrollment = Tables<"experience_enrollments">;
 type Offering = Tables<"experience_offerings">;
@@ -67,12 +69,13 @@ type ResponseRequest = { outline?: boolean; box?: string };
 
 // Keep deduplication inside one authorized request; never share participant data
 // or password decisions between viewers.
-function responseLoadContext(includeUnanswered = false, request: ResponseRequest = {}) {
+function responseLoadContext(includeUnanswered = false, request: ResponseRequest = {}, audience?: ResponseAudience) {
   const passwords = new Map<string, Promise<boolean>>();
   const assessments = new Map<string, Promise<Pick<Tables<"experiences">, "id" | "name" | "slug" | "current_published_version_id"> | null>>();
   const linkedCourses = new Map<string, Promise<ResponseCourse[]>>();
   const structures = new Map<string, ReturnType<typeof getExperienceStructure>>();
   return {
+    audience,
     linkedCourses,
     includeUnanswered,
     request,
@@ -123,10 +126,12 @@ async function loadCourse(participantId: string, enrollment: Pick<Enrollment, "e
   if (locked) return { ...course, locked: true };
   const [structure, definitions] = await Promise.all([
     effectiveDeliveryStructure(canonical, offering, db),
-    db.from("response_definitions").select("id,block_id,response_key,label,configuration").eq("experience_version_id", versionId),
+    db.from("response_definitions").select("id,block_id,response_key,label,configuration,raw_visibility,result_visibility,share_mode").eq("experience_version_id", versionId),
   ]);
   if (definitions.error) throw new Error("Unable to load course questions.");
-  const definitionsByBlock = new Map((definitions.data ?? []).map((row) => [row.block_id, row]));
+  const audience = context.audience;
+  const allowed = (definition: NonNullable<typeof definitions.data>[number], kind: "raw" | "result") => !audience || canReadResponseContent(audience, definition, kind);
+  const definitionsByBlock = new Map((definitions.data ?? []).filter((row) => allowed(row, "raw") || allowed(row, "result")).map((row) => [row.block_id, row]));
   const boxKey = (moduleId: string, blockId: string, assessment: boolean) => `${versionId}:${assessment ? "assessment" : "questions"}:${assessment ? blockId : moduleId}`;
   const selected = (moduleId: string, blockId: string, assessment: boolean) => linked || !context.request.box || context.request.box === boxKey(moduleId, blockId, assessment);
   const selectedIds = structure.modules.flatMap((module) => module.lessons.flatMap((lesson) => lesson.sections.flatMap((section) => (section.layout?.columns ?? []).flatMap((column) => column.blocks.flatMap((block) => {
@@ -136,7 +141,7 @@ async function loadCourse(participantId: string, enrollment: Pick<Enrollment, "e
   const readResponses = !context.request.outline && enrollment.id && selectedIds.length > 0;
   const [responses, history] = await Promise.all([
     readResponses ? db.from("participant_responses").select("*").eq("participant_id", participantId).eq("enrollment_id", enrollment.id!).eq("experience_version_id", versionId).in("response_definition_id", selectedIds).order("updated_at", { ascending: false }) : { data: [], error: null },
-    readResponses ? db.from("experience_enrollment_version_history").select("id,artifact_snapshot:artifact_snapshot->removed_responses,ended_at").eq("participant_id", participantId).eq("enrollment_id", enrollment.id!).eq("experience_id", enrollment.experience_id).eq("experience_version_id", versionId) : { data: [], error: null },
+    readResponses && !audience ? db.from("experience_enrollment_version_history").select("id,artifact_snapshot:artifact_snapshot->removed_responses,ended_at").eq("participant_id", participantId).eq("enrollment_id", enrollment.id!).eq("experience_id", enrollment.experience_id).eq("experience_version_id", versionId) : { data: [], error: null },
   ]);
   if (responses.error || history.error) throw new Error("Unable to load saved course responses.");
   const responsesByDefinition = new Map((responses.data ?? []).map((row) => [row.response_definition_id, row]));
@@ -154,17 +159,18 @@ async function loadCourse(participantId: string, enrollment: Pick<Enrollment, "e
       if (!selected(module.id, block.id, assessment)) continue;
       if (context.request.outline) {
         if (definition) week.activities.push({ id: definition.id, title: definition.label, location, assessment, status: "", updatedAt: "", items: [], loadKey: boxKey(module.id, block.id, assessment) });
-        if (!linked && block.block_type === "prebuilt_assessment") {
+        if (!audience && !linked && block.block_type === "prebuilt_assessment") {
           const parsed = parsePrebuiltAssessmentConfiguration(block.configuration);
           if (parsed.ok) week.activities.push({ id: block.id, title: parsed.value.title || "Assessment", location, assessment: true, status: "", updatedAt: "", items: [], loadKey: boxKey(module.id, block.id, true) });
         }
         continue;
       }
       if (definition && (response || context.includeUnanswered)) {
-        const items = activityResponseItems(definition.response_key, response?.response_data, definition.configuration, context.includeUnanswered).map((item) => ({ ...item, question: item.question || definition.label }));
-        if (items.length) week.activities.push({ id: response?.id ?? definition.id, title: definition.label, location, assessment: isAssessmentActivity(definition.response_key, block.block_type, block.custom_renderer_key, structure.experience.experience_type), status: response?.status ?? "not_started", updatedAt: response?.finalized_at ?? response?.updated_at ?? "", items, results: activityResultItems(definition.response_key, response?.response_data, response?.status ?? "not_started", response?.finalized_at ?? null) });
+        const items = (allowed(definition, "raw") ? activityResponseItems(definition.response_key, response?.response_data, definition.configuration, context.includeUnanswered) : []).map((item) => ({ ...item, question: item.question || definition.label }));
+        const results = allowed(definition, "result") ? activityResultItems(definition.response_key, response?.response_data, response?.status ?? "not_started", response?.finalized_at ?? null) : [];
+        if (items.length || results.length) week.activities.push({ id: response?.id ?? definition.id, title: definition.label, location, assessment: isAssessmentActivity(definition.response_key, block.block_type, block.custom_renderer_key, structure.experience.experience_type), status: response?.status ?? "not_started", updatedAt: response?.finalized_at ?? response?.updated_at ?? "", items, results });
       }
-      if (linked || block.block_type !== "prebuilt_assessment") continue;
+      if (audience || linked || block.block_type !== "prebuilt_assessment") continue;
       const parsed = parsePrebuiltAssessmentConfiguration(block.configuration);
       if (!parsed.ok) continue;
       const childExperience = await context.assessment(parsed.value.assessmentExperienceId);
@@ -221,7 +227,9 @@ export async function loadCohortMemberResponses(cohortId: string, participantId:
   if (!cohort.data || !member.data || !["active", "open", "completed"].includes(cohort.data.status)) throw new ResponseLibraryAccessError(404);
   const viewerMembership = viewer.data ? await db.from("cohort_memberships").select("membership_role").eq("cohort_id", cohortId).eq("participant_id", viewer.data.id).eq("status", "active").limit(1).maybeSingle() : { data: null, error: null };
   if (viewerMembership.error) throw new ResponseLibraryAccessError(403);
-  const allowed = canReviewMemberResponses({ globalRole: authorization?.globalRole ?? null, scopedFacilitator: canAccessCohortContext(authorization, cohortId), memberRole: viewerMembership.data?.membership_role ?? null });
+  const assignedFacilitator = Boolean(authorization?.assignments.some((assignment) => assignment.role === "facilitator" && assignment.scope_type === "cohort" && assignment.scope_id === cohortId)) || viewerMembership.data?.membership_role === "facilitator";
+  const isOwner = viewer.data?.id === participantId;
+  const allowed = isOwner || assignedFacilitator;
   if (!allowed) throw new ResponseLibraryAccessError(403);
   if (await needsExperiencePassword(cohort.data.experience_id)) throw new ResponseLibraryAccessError(403);
   const [person, enrollment, offerings] = await Promise.all([
@@ -235,13 +243,22 @@ export async function loadCohortMemberResponses(cohortId: string, participantId:
     const matchingOfferings = (offerings.data ?? []).filter((row) => row.experience_version_id === null || row.experience_version_id === enrollment.data!.experience_version_id);
     const offering = matchingOfferings.length === 1 ? matchingOfferings[0] : null;
     if (!offering) throw new ResponseLibraryAccessError(403);
-    const context = responseLoadContext(true, request);
+    const context = responseLoadContext(true, request, isOwner ? undefined : {
+      viewerParticipantId: viewer.data?.id ?? null, respondentParticipantId: participantId,
+      cohortId, experienceId: cohort.data.experience_id,
+      // No persisted response-level cohort binding exists. Enrollment cohort_id
+      // is a legacy pointer, not sharing consent/scope (20260918112528).
+      responseCohortId: null,
+      enrollmentExperienceId: enrollment.data.experience_id, activeEnrollment: true,
+      activeRespondentMembership: true, assignedFacilitator, currentVersion: true,
+    });
     const memberEnrollment = enrollment.data;
-    const savedVersions = request.outline || request.box ? await responseVersionIds(participantId, memberEnrollment) : await enrollmentVersions(participantId, memberEnrollment);
-    const versions = request.box ? savedVersions.filter((version) => request.box!.startsWith(`${version}:`)) : savedVersions;
+    const savedVersions = !isOwner ? [memberEnrollment.experience_version_id!] : request.outline || request.box ? await responseVersionIds(participantId, memberEnrollment) : await enrollmentVersions(participantId, memberEnrollment);
+    const visibleVersions = isOwner ? savedVersions : savedVersions.filter((version) => version === memberEnrollment.experience_version_id);
+    const versions = request.box ? visibleVersions.filter((version) => request.box!.startsWith(`${version}:`)) : visibleVersions;
     courses.push(...await Promise.all(versions.map((version) => loadCourse(participantId, memberEnrollment, version, offering, false, context))));
   }
-  if (!enrollment.data) {
+  if (!enrollment.data && isOwner) {
     const offering = offerings.data?.length === 1 ? offerings.data[0] : null;
     if (!offering) throw new ResponseLibraryAccessError(403);
     const experience = await db.from("experiences").select("current_published_version_id").eq("id", cohort.data.experience_id).maybeSingle();
@@ -259,7 +276,8 @@ export async function loadOwnResponseLibrary(): Promise<ResponseLibraryData | nu
   if (!user) return null;
   const db = dbClient();
   const person = await db.from("participants").select("id,full_name,first_name").eq("auth_user_id", user.id).maybeSingle();
-  if (person.error || !person.data) return null;
+  if (person.error) throw new Error("Your saved work could not be verified. Please try again.");
+  if (!person.data) return null;
   const enrollments = await db.from("experience_enrollments").select("*").eq("participant_id", person.data.id).order("updated_at", { ascending: false });
   if (enrollments.error) throw new Error("Unable to load your saved work.");
   const courses: ResponseCourse[] = [];
@@ -280,8 +298,11 @@ export async function loadOwnResponseLibrary(): Promise<ResponseLibraryData | nu
 // CRM access is global-admin-only, independent of cohort facilitator access.
 export async function loadAdminJourneyResponses(participantId: string, selection: { enrollmentId?: string; versionId?: string; assessmentId?: string }): Promise<ResponseLibraryData> {
   const { getAdmin } = await import("@/lib/admin/auth");
-  if (!await getAdmin()) throw new ResponseLibraryAccessError(403);
+  const identity = await getAdmin();
+  if (!identity) throw new ResponseLibraryAccessError(403);
   const db = dbClient();
+  const owner = await db.from("participants").select("id").eq("auth_user_id", identity.id).maybeSingle();
+  if (owner.error || !canReadResponseContent({ viewerParticipantId: owner.data?.id ?? null, respondentParticipantId: participantId }, null, "raw")) throw new ResponseLibraryAccessError(403);
   if (selection.assessmentId) {
     const assessment = await db.from("lmu_assessments").select("id").eq("id", selection.assessmentId).eq("participant_id", participantId).maybeSingle();
     if (assessment.error) throw new Error("Unable to load assessment.");

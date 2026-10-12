@@ -17,6 +17,8 @@ export async function POST(request: NextRequest, context: Context) {
     if (!isLMUSectionKey(sectionKey)) return apiError("Unknown LMU section.", 404);
     const resolved = await resolveAuthenticatedParticipant();
     if (!resolved) return apiError("Sign in to finalize this assessment.", 401);
+    // A delayed request must not write into a different account or retake.
+    if (request.headers.get("x-lmu-assessment-id") !== resolved.assessment.id) return apiError("Assessment context changed. Reload before saving.", 409);
     const body = await readJsonObject(request);
     const responseData = body.responseData;
     const resultData = body.resultData;
@@ -39,8 +41,11 @@ export async function POST(request: NextRequest, context: Context) {
       finalResultData = { result: { moduleId: "current-motivator-rankings", completedAt: now, highlights: rankedItems.map((item) => item.label), rankedItems, structuredData: { orderedMotivatorIds: order, topPriorityReflection: reflection ?? "" } }, derivedResults: { orderedMotivatorIds: order, topPriorityReflection: reflection ?? "" } };
 
     }
+    // Preserve the response paired with an existing immutable result on retry.
+    const finalized = await admin.from("lmu_results").select("assessment_id").eq("assessment_id", assessment.id).eq("section_key", sectionKey).maybeSingle();
+    if (finalized.error) return apiError("Unable to verify completed section state.", 500);
     // Persist the draft before creating an immutable completed result.
-    const responseWrite = responseData ? await admin.from("lmu_responses").upsert({ assessment_id: assessment.id, section_key: sectionKey, response_data: responseData as Json }, { onConflict: "assessment_id,section_key" }) : { error: null };
+    const responseWrite = responseData && !finalized.data ? await admin.from("lmu_responses").upsert({ assessment_id: assessment.id, section_key: sectionKey, response_data: responseData as Json }, { onConflict: "assessment_id,section_key" }) : { error: null };
     if (responseWrite.error) return apiError("Unable to save your responses. Please retry.", 500);
     const resultWrite = await admin.from("lmu_results").upsert({ assessment_id: assessment.id, section_key: sectionKey, result_data: finalResultData as Json, finalized_at: now }, { onConflict: "assessment_id,section_key", ignoreDuplicates: true });
     if (resultWrite.error) return apiError("Unable to save your completed result. Please retry.", 500);

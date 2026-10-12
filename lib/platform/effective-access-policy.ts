@@ -1,4 +1,4 @@
-export type AuthorizationScopeType = "platform" | "hub" | "training" | "cohort" | "resource";
+export type AuthorizationScopeType = "platform" | "organization" | "hub" | "training" | "cohort" | "resource";
 export type AuthorizationScope = { type: AuthorizationScopeType; id: string | null };
 export type AuthorizationEffect = "allow" | "deny";
 export type EffectiveRole = { key: string; scope: AuthorizationScope };

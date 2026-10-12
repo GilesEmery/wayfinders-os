@@ -7,6 +7,7 @@ import { appendParticipantQuery, participantSectionHref } from "./participant-ru
 
 export async function recordSectionVisitAction(slug: string, moduleKey: string, lessonKey: string, sectionKey: string, cohortId?: string | null) {
   const result = await recordParticipantSectionVisit(slug, moduleKey, lessonKey, sectionKey, cohortId);
+  if (!result.ok) throw new Error("Progress could not be confirmed. Reload and try again.");
   if (result.ok) {
     revalidatePath(participantSectionHref(slug, moduleKey, lessonKey, sectionKey, cohortId));
     revalidatePath("/dashboard"); revalidatePath("/my-journey");
@@ -16,6 +17,7 @@ export async function recordSectionVisitAction(slug: string, moduleKey: string, 
 
 export async function markSectionCompleteAction(slug: string, moduleKey: string, lessonKey: string, sectionKey: string, cohortId?: string | null) {
   const result = await completeParticipantSection(slug, moduleKey, lessonKey, sectionKey, cohortId);
+  if (!result.ok) throw new Error("Completion could not be confirmed. Reload and try again.");
   if (result.ok) {
     revalidatePath(participantSectionHref(slug, moduleKey, lessonKey, sectionKey, cohortId));
     revalidatePath("/dashboard"); revalidatePath("/my-journey");

@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
-import { getAuthorizationContext } from "@/lib/platform/authorization";
+import { getAuthorizationContext, AuthorizationUnavailableError } from "@/lib/platform/authorization";
 import {
   can,
   hasEntitlement,
@@ -13,24 +13,28 @@ import {
 export { can, hasEntitlement, hasPermission };
 export type { AuthorizationScope, EffectiveAccessSnapshot };
 
-const toScope = (scopeType: string, scopeId: string | null): AuthorizationScope => ({
-  type: scopeType === "global" || scopeType === "platform" ? "platform" : scopeType === "experience" ? "training" : scopeType as AuthorizationScope["type"],
-  id: scopeType === "global" || scopeType === "platform" ? null : scopeId,
-});
+const toScope = (scopeType: string, scopeId: string | null): AuthorizationScope => {
+  const type = scopeType === "global" ? "platform" : scopeType === "experience" ? "training" : scopeType;
+  if (!["platform", "organization", "hub", "training", "cohort", "resource"].includes(type)
+    || (type === "platform" ? scopeId !== null : !scopeId)) throw new AuthorizationUnavailableError();
+  return { type: type as AuthorizationScope["type"], id: scopeId };
+};
 
 export async function resolveEffectiveAccess(authUserId: string): Promise<EffectiveAccessSnapshot> {
   const db = createAdminSupabaseClient();
   const [participant, context, roleEntitlements, rolePermissions, entitlementOverrides, permissionOverrides] = await Promise.all([
     db.from("participants").select("id").eq("auth_user_id", authUserId).maybeSingle(),
     getAuthorizationContext(authUserId),
-    db.from("authorization_role_entitlements").select("role_key,entitlement_key"),
-    db.from("authorization_role_permissions").select("role_key,permission_key"),
-    db.from("authorization_entitlement_overrides").select("entitlement_key,effect").eq("auth_user_id", authUserId),
-    db.from("authorization_permission_overrides").select("permission_key,effect,scope_type,scope_id").eq("auth_user_id", authUserId),
-  ]);
-  const roleKeys = new Set(["member"]);
-  if (context?.globalRole) roleKeys.add(context.globalRole);
-  for (const assignment of context?.assignments ?? []) roleKeys.add(assignment.role);
+    db.from("authorization_role_entitlements").select("role_key,entitlement_key", { count: "exact" }),
+    db.from("authorization_role_permissions").select("role_key,permission_key", { count: "exact" }),
+    db.from("authorization_entitlement_overrides").select("entitlement_key,effect", { count: "exact" }).eq("auth_user_id", authUserId),
+    db.from("authorization_permission_overrides").select("permission_key,effect,scope_type,scope_id", { count: "exact" }).eq("auth_user_id", authUserId),
+  ]).catch(() => { throw new AuthorizationUnavailableError(); });
+  // A missing deny must never turn a partial snapshot into an authorization grant.
+  if ([participant, roleEntitlements, rolePermissions, entitlementOverrides, permissionOverrides].some((result) => result.error)
+    || !context || context.authUserId !== authUserId) throw new AuthorizationUnavailableError();
+  if ([roleEntitlements, rolePermissions, entitlementOverrides, permissionOverrides].some(result => !Array.isArray(result.data) || result.count !== result.data.length)) throw new AuthorizationUnavailableError();
+  if ([...(entitlementOverrides.data ?? []), ...(permissionOverrides.data ?? [])].some((row) => row.effect !== "allow" && row.effect !== "deny")) throw new AuthorizationUnavailableError();
   const entitlementMap = new Map<string, Set<string>>();
   for (const row of roleEntitlements.data ?? []) {
     if (!entitlementMap.has(row.role_key)) entitlementMap.set(row.role_key, new Set());

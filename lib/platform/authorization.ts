@@ -20,17 +20,27 @@ export type DashboardCapabilities = {
   hubLeaderships: Array<{ hubId: string }>;
 };
 
+export class AuthorizationUnavailableError extends Error {
+  constructor() { super("Access could not be verified. Please try again."); this.name = "AuthorizationUnavailableError"; }
+}
+
 export async function getAuthorizationContext(authUserId?: string, userEmail?: string): Promise<PlatformAuthorizationContext | null> {
-  const platformUser = authUserId && userEmail ? null : await getPlatformUser();
+  const platformUser = authUserId ? null : await getPlatformUser();
   const resolvedId = authUserId ?? platformUser?.id;
   if (!resolvedId) return null;
   const db = createAdminSupabaseClient();
   const [memberResult, assignmentsResult] = await Promise.all([
     db.from("admin_members").select("role,status").eq("auth_user_id", resolvedId).eq("status", "active").maybeSingle(),
-    db.from("platform_role_assignments").select("role,scope_type,scope_id").eq("auth_user_id", resolvedId).eq("status", "active"),
-  ]);
+    db.from("platform_role_assignments").select("role,scope_type,scope_id", { count: "exact" }).eq("auth_user_id", resolvedId).eq("status", "active"),
+  ]).catch(() => { throw new AuthorizationUnavailableError(); });
+  if (memberResult.error || assignmentsResult.error) throw new AuthorizationUnavailableError();
+  if (!Array.isArray(assignmentsResult.data) || assignmentsResult.count !== assignmentsResult.data.length) throw new AuthorizationUnavailableError();
   const member = memberResult.data;
   const assignments = assignmentsResult.data;
+  const scopeTypes = new Set(["platform", "global", "organization", "hub", "cohort", "experience", "training", "resource"]);
+  const roles = new Set(["super_admin", "admin", "organization_admin", "hub_leader", "facilitator", "course_builder", "course_admin", "course_creator"]);
+  if ((assignments ?? []).some(a => !roles.has(a.role) || !scopeTypes.has(a.scope_type)
+    || (["platform", "global"].includes(a.scope_type) ? a.scope_id !== null : !a.scope_id))) throw new AuthorizationUnavailableError();
   const globalRole = member?.role === "super_admin" || member?.role === "admin" ? member.role : null;
   return { authUserId: resolvedId, globalRole, assignments: (assignments ?? []) as PlatformRoleAssignment[] };
 }
@@ -112,28 +122,34 @@ export async function canViewHub(context: PlatformAuthorizationContext | null, h
   if (!context) return false;
   if (canManageHub(context, hubId)) return true;
   const db = createAdminSupabaseClient();
-  const { data: participant } = await db.from("participants").select("id").eq("auth_user_id", context.authUserId).maybeSingle();
+  const { data: participant, error: participantError } = await db.from("participants").select("id").eq("auth_user_id", context.authUserId).maybeSingle();
+  if (participantError) throw new AuthorizationUnavailableError();
   if (!participant) return false;
-  const { data: membership } = await db.from("hub_memberships").select("id").eq("participant_id", participant.id).eq("hub_id", hubId).eq("status", "active").maybeSingle();
+  const { data: membership, error: membershipError } = await db.from("hub_memberships").select("id").eq("participant_id", participant.id).eq("hub_id", hubId).eq("status", "active").maybeSingle();
+  if (membershipError) throw new AuthorizationUnavailableError();
   return Boolean(membership);
 }
 
 export async function canManageWayfinderInHub(context: PlatformAuthorizationContext | null, participantId: string, hubId: string) {
   if (!canManageHub(context, hubId)) return false;
   if (canManagePlatform(context)) return true;
-  const { data } = await createAdminSupabaseClient().from("hub_memberships").select("id").eq("participant_id", participantId).eq("hub_id", hubId).eq("status", "active").maybeSingle();
+  const { data, error } = await createAdminSupabaseClient().from("hub_memberships").select("id").eq("participant_id", participantId).eq("hub_id", hubId).eq("status", "active").maybeSingle();
+  if (error) throw new AuthorizationUnavailableError();
   return Boolean(data);
 }
 
 export async function canManageExperienceOffering(context: PlatformAuthorizationContext | null, offeringId: string) {
   if (!context) return false;
   const db = createAdminSupabaseClient();
-  const { data: offering } = await db.from("experience_offerings").select("hub_id,cohort_id").eq("id", offeringId).maybeSingle();
+  const { data: offering, error: offeringError } = await db.from("experience_offerings").select("hub_id,cohort_id").eq("id", offeringId).maybeSingle();
+  if (offeringError) throw new AuthorizationUnavailableError();
   if (!offering) return false;
   if (offering.hub_id) return canManageHub(context, offering.hub_id);
   if (offering.cohort_id) {
-    const { data: cohort } = await db.from("cohorts").select("hub_id").eq("id", offering.cohort_id).maybeSingle();
-    return cohort?.hub_id ? canManageHub(context, cohort.hub_id) : canManagePlatform(context);
+    const { data: cohort, error: cohortError } = await db.from("cohorts").select("hub_id").eq("id", offering.cohort_id).maybeSingle();
+    if (cohortError) throw new AuthorizationUnavailableError();
+    if (!cohort) return false;
+    return cohort.hub_id ? canManageHub(context, cohort.hub_id) : canManagePlatform(context);
   }
   return canManagePlatform(context);
 }

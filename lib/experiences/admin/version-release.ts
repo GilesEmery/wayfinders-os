@@ -41,9 +41,9 @@ export async function publishVersion(experienceId: string, versionId: string): P
       throw new Error("A Companion module containing saved learner notes was removed from this Draft. Restore that module before publishing so the notes remain available.");
     }
     if (result.error.message.startsWith("Cannot publish:")) throw new Error(result.error.message);
-    throw new Error("Publication could not be completed. No Version state was changed.");
+    throw new Error("Publication could not be confirmed. Reload to verify Version state before retrying.");
   }
-  if (result.data !== versionId) throw new Error("Publication returned an unexpected Version ID.");
+  if (result.data !== versionId) throw new Error("Publication returned an unexpected Version ID. Reload to verify the Published Version before retrying.");
   if (experience.current_published_version_id && experience.current_published_version_id !== versionId) {
     const [sourceModules, targetModules] = await Promise.all([db.from("companion_modules").select("id,module_key").eq("experience_version_id", experience.current_published_version_id), db.from("companion_modules").select("id,module_key").eq("experience_version_id", versionId)]);
     if (sourceModules.error || targetModules.error) throw new Error("The Version was Published, but Cohort Companion continuity could not be resolved.");
@@ -51,7 +51,7 @@ export async function publishVersion(experienceId: string, versionId: string): P
     const overrides = sourceIds.length ? await db.from("companion_delivery_overrides").select("companion_module_id,offering_id,cohort_course_plan_id,visibility,configuration,updated_by").in("companion_module_id", sourceIds) : { data: [], error: null };
     if (overrides.error) throw new Error("The Version was Published, but Cohort Companion delivery settings could not be loaded.");
     const keyBySource = new Map((sourceModules.data ?? []).map((module) => [module.id, module.module_key]));
-    for (const override of overrides.data ?? []) { if (!override.offering_id) continue; const targetId = targetByKey.get(keyBySource.get(override.companion_module_id) ?? ""); if (!targetId) continue; const existing = await db.from("companion_delivery_overrides").select("id").eq("companion_module_id", targetId).eq("offering_id", override.offering_id).maybeSingle(); if (!existing.data) { const copied = await db.from("companion_delivery_overrides").insert({ companion_module_id: targetId, experience_version_id: versionId, offering_id: override.offering_id, visibility: override.visibility, configuration: override.configuration, updated_by: override.updated_by }); if (copied.error && copied.error.code !== "23505") throw new Error("The Version was Published, but Cohort Companion delivery settings could not be carried forward."); } }
+    for (const override of overrides.data ?? []) { if (!override.offering_id) continue; const targetId = targetByKey.get(keyBySource.get(override.companion_module_id) ?? ""); if (!targetId) continue; const existing = await db.from("companion_delivery_overrides").select("id").eq("companion_module_id", targetId).eq("offering_id", override.offering_id).maybeSingle(); if (existing.error) throw new Error("The Version was Published, but existing Cohort Companion delivery settings could not be verified."); if (!existing.data) { const copied = await db.from("companion_delivery_overrides").insert({ companion_module_id: targetId, experience_version_id: versionId, offering_id: override.offering_id, visibility: override.visibility, configuration: override.configuration, updated_by: override.updated_by }); if (copied.error && copied.error.code !== "23505") throw new Error("The Version was Published, but Cohort Companion delivery settings could not be carried forward."); } }
   }
   const activated = await db.from("experiences").update({ status: "active" }).eq("id", experienceId).in("status", ["draft", "active"]).select("id").maybeSingle();
   if (activated.error || !activated.data) throw new Error("The Version was Published, but the Experience could not be activated. Review its lifecycle status before sharing it.");

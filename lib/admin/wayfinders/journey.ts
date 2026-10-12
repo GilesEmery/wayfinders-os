@@ -18,12 +18,13 @@ export async function loadWayfinderJourney(participantId: string, selection?: { 
     return data;
   }
   const [enrollments, history, assessments, memberships] = await Promise.all([
-    db.from("experience_enrollments").select("id,experience_id,experience_version_id,cohort_id,status,enrolled_at,completed_at").eq("participant_id", participantId).order("updated_at", { ascending: false }),
-    db.from("experience_enrollment_version_history").select("id,enrollment_id,experience_id,experience_version_id,artifact_snapshot:artifact_snapshot->completion").eq("participant_id", participantId),
-    db.from("lmu_assessments").select("id,status,started_at,completed_at").eq("participant_id", participantId).order("started_at", { ascending: false }),
-    db.from("cohort_memberships").select("cohort_id").eq("participant_id", participantId),
+    db.from("experience_enrollments").select("id,experience_id,experience_version_id,cohort_id,status,enrolled_at,completed_at", { count: "exact" }).eq("participant_id", participantId).order("updated_at", { ascending: false }),
+    db.from("experience_enrollment_version_history").select("id,enrollment_id,experience_id,experience_version_id,artifact_snapshot:artifact_snapshot->completion", { count: "exact" }).eq("participant_id", participantId),
+    db.from("lmu_assessments").select("id,status,started_at,completed_at", { count: "exact" }).eq("participant_id", participantId).order("started_at", { ascending: false }),
+    db.from("cohort_memberships").select("cohort_id", { count: "exact" }).eq("participant_id", participantId),
   ]);
   if (enrollments.error || history.error || assessments.error || memberships.error) throw new Error("Unable to load Journey records.");
+  if ([enrollments, history, assessments, memberships].some(result => !Array.isArray(result.data) || result.count !== result.data.length)) throw new Error("Journey records are incomplete. Please retry.");
   const experienceIds = [...new Set((enrollments.data ?? []).map(row => row.experience_id))];
   const cohortIds = [...new Set([...(enrollments.data ?? []).flatMap(row => row.cohort_id ? [row.cohort_id] : []), ...(memberships.data ?? []).map(row => row.cohort_id)])];
   const [experiences, cohorts] = await Promise.all([
@@ -47,5 +48,6 @@ export async function loadWayfinderJourney(participantId: string, selection?: { 
     records.push({ id: completion.id, kind: experienceMap.get(enrollment.experience_id)?.experience_type === "assessment" ? "assessment" : "course", title: experienceMap.get(enrollment.experience_id)?.name ?? "Unavailable experience", status: "completed", enrolledAt: enrollment.enrolled_at, completedAt: completion.completedAt, cohort: cohortName(enrollment), versionId: completion.versionId, enrollmentId: enrollment.id, historical: true });
   }
   for (const row of assessments.data ?? []) records.push({ id: row.id, kind: "assessment", title: "Life Mapping U", status: row.status, enrolledAt: row.started_at, completedAt: row.completed_at, cohort: null, versionId: null, enrollmentId: null, historical: false });
+  await auditSecurityEvent(identity, "wayfinder.operational_journey_viewed", "participant", participantId, { recordCount: records.length });
   return { records } satisfies WayfinderJourneyData;
 }

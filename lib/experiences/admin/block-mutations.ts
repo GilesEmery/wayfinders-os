@@ -8,6 +8,7 @@ import { mergeInlineTextContent, type InlineDraft, type InlineSaveResult } from 
 import type { Json, TablesInsert } from "@/lib/supabase/database.types";
 import { getBlockDefinition, parseBlockConfiguration } from "../builder/block-registry";
 import { assertVersionEditable, validateBuilderBlockPlacement } from "../builder/validation";
+import { inspectBlockResourceLinks, resourceBelongsToCourse } from "./resource-copy";
 import { uploadCourseAsset } from "../builder/resource-assets";
 
 type Db = ReturnType<typeof createAdminSupabaseClient>;
@@ -345,6 +346,7 @@ export async function setBlockAsset(experienceId: string, versionId: string, sec
   }
   const resource = await db.from("resources").select("id,resource_type,status,storage_path,mime_type").eq("id", resourceId).eq("status", "active").not("storage_path", "is", null).maybeSingle();
   if (resource.error || !resource.data) throw new Error("Choose an available uploaded asset.");
+  if (!resourceBelongsToCourse(resource.data.storage_path, experienceId)) throw new Error("This uploaded asset belongs to a different course.");
   if (block.block_type === "image" && resource.data.resource_type !== "image") throw new Error("Image Blocks require an uploaded image.");
   if (block.block_type === "pdf_reader" && (resource.data.resource_type !== "pdf" || resource.data.mime_type !== "application/pdf")) throw new Error("PDF Reader Blocks require an uploaded PDF.");
   if (!["image", "pdf_reader"].includes(block.block_type) && !["pdf", "download", "worksheet", "guide"].includes(resource.data.resource_type)) throw new Error("Choose a PDF or document asset.");
@@ -394,6 +396,7 @@ export async function duplicateBlock(experienceId: string, versionId: string, se
   if (!definition?.duplicable) throw new Error("This Block type cannot be duplicated.");
   const parsed = definition.validateConfiguration(block.content);
   if (!parsed.ok) throw new Error(`The source Block configuration is invalid: ${parsed.errors.join(" ")}`);
+  const sourceLinks = await inspectBlockResourceLinks(db, blockId, experienceId);
   const blockKey = await uniqueBlockKey(db, sectionId, block.block_key || block.block_type);
   const siblings = await columnBlocks(db, block.column_id!);
   const payload: TablesInsert<"content_blocks"> = { lesson_id: block.lesson_id, section_id: sectionId, column_id: block.column_id, block_key: blockKey, block_type: block.block_type, sort_order: await nextLessonOrder(db, block.lesson_id), content: parsed.value as Json, settings: block.settings, requirement_level: block.requirement_level, status: block.status, visibility: block.visibility, completion_rule: block.completion_rule, custom_renderer_key: block.custom_renderer_key, metadata: block.metadata };
@@ -403,23 +406,32 @@ export async function duplicateBlock(experienceId: string, versionId: string, se
     result = await db.from("content_blocks").insert(payload).select("id").single();
   }
   if (result.error) throw new Error(`Unable to duplicate Block: ${result.error.message}`);
-  if (MEDIA_TYPES.has(block.block_type) && parsed.value.url) {
-    try { await linkExternalResource(db, result.data.id, block.block_type, parsed.value, admin.id); }
-    catch (error) {
-      await db.from("content_block_resources").delete().eq("content_block_id", result.data.id);
-      await db.from("content_blocks").delete().eq("id", result.data.id);
-      throw error;
+  try {
+    if (sourceLinks.length) {
+      const copied = await db.from("content_block_resources").insert(sourceLinks.map((link) => ({ ...link, content_block_id: result.data.id })));
+      if (copied.error) throw new Error("Unable to copy the Block's resource links.");
+    } else if (MEDIA_TYPES.has(block.block_type) && parsed.value.url) {
+      await linkExternalResource(db, result.data.id, block.block_type, parsed.value, admin.id);
     }
+  } catch (error) {
+    const unlinked = await db.from("content_block_resources").delete().eq("content_block_id", result.data.id);
+    const removed = await db.from("content_blocks").delete().eq("id", result.data.id);
+    if (unlinked.error || removed.error) throw new Error("The copy failed and cleanup could not be confirmed. Reload and review the copied Block before retrying.");
+    throw error;
   }
   if (definition.response) {
     const source = await db.from("response_definitions").select("*").eq("block_id", blockId).eq("experience_version_id", versionId).maybeSingle();
     if (source.error || !source.data) {
-      await db.from("content_blocks").delete().eq("id", result.data.id);
+      const unlinked = await db.from("content_block_resources").delete().eq("content_block_id", result.data.id);
+      const removed = await db.from("content_blocks").delete().eq("id", result.data.id);
+      if (unlinked.error || removed.error) throw new Error("The copy failed and cleanup could not be confirmed. Reload and review the copied Block before retrying.");
       throw new Error("Unable to duplicate the linked response definition.");
     }
     const responseResult = await db.from("response_definitions").insert(responsePayload(definition, result.data.id, block.lesson_id, versionId, blockKey.replace(/-/g, "_"), source.data.configuration, source.data.label, source.data.instructions, source.data.is_required));
     if (responseResult.error) {
-      await db.from("content_blocks").delete().eq("id", result.data.id);
+      const unlinked = await db.from("content_block_resources").delete().eq("content_block_id", result.data.id);
+      const removed = await db.from("content_blocks").delete().eq("id", result.data.id);
+      if (unlinked.error || removed.error) throw new Error("The copy failed and cleanup could not be confirmed. Reload and review the copied Block before retrying.");
       throw new Error(`Unable to duplicate the linked response definition: ${responseResult.error.message}`);
     }
   }

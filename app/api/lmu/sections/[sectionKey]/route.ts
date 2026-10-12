@@ -16,6 +16,8 @@ export async function PUT(request: NextRequest, context: Context) {
     if (!isLMUSectionKey(sectionKey)) return apiError("Unknown LMU section.", 404);
     const resolved = await resolveAuthenticatedParticipant();
     if (!resolved) return apiError("Sign in to save this assessment.", 401);
+    // A delayed request must not write into a different account or retake.
+    if (request.headers.get("x-lmu-assessment-id") !== resolved.assessment.id) return apiError("Assessment context changed. Reload before saving.", 409);
     const body = await readJsonObject(request);
     const responseData = body.responseData;
     const progress = body.progress;
@@ -27,6 +29,10 @@ export async function PUT(request: NextRequest, context: Context) {
     const now = new Date().toISOString();
     const { admin, participant, assessment } = resolved;
     if (assessment.status === "completed") return apiError("Completed results are preserved. Start an authorized retake to begin again.", 409);
+    const finalized = await admin.from("lmu_results").select("assessment_id").eq("assessment_id", assessment.id).eq("section_key", sectionKey).maybeSingle();
+    const sectionProgress = await admin.from("lmu_section_progress").select("status").eq("assessment_id", assessment.id).eq("section_key", sectionKey).maybeSingle();
+    if (finalized.error || sectionProgress.error) return apiError("Unable to verify section state.", 500);
+    if (finalized.data || sectionProgress.data?.status === "completed") return apiError("Completed section responses are preserved. Reset the section before starting again.", 409);
     const progressInsert = await admin.from("lmu_section_progress").upsert({ assessment_id: assessment.id, section_key: sectionKey, status, started_at: now }, { onConflict: "assessment_id,section_key", ignoreDuplicates: true });
     if (progressInsert.error) return apiError("Unable to save this section.", 500);
     const [responseQuery, progressQuery, assessmentQuery] = await Promise.all([
@@ -48,6 +54,8 @@ export async function DELETE(request: NextRequest, context: Context) {
     if (!isLMUSectionKey(sectionKey)) return apiError("Unknown LMU section.", 404);
     const resolved = await resolveAuthenticatedParticipant();
     if (!resolved) return apiError("Sign in to reset this assessment.", 401);
+    // A delayed request must not write into a different account or retake.
+    if (request.headers.get("x-lmu-assessment-id") !== resolved.assessment.id) return apiError("Assessment context changed. Reload before saving.", 409);
     const { admin, assessment } = resolved;
     if (assessment.status === "completed") return apiError("Completed results are preserved. Start an authorized retake to begin again.", 409);
     const [responseQuery, progressQuery, resultQuery] = await Promise.all([
