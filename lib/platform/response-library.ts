@@ -79,15 +79,15 @@ function responseLoadContext(includeUnanswered = false, request: ResponseRequest
     linkedCourses,
     includeUnanswered,
     request,
-    structure(experienceId: string, versionId: string) {
-      const key = `${experienceId}:${versionId}`;
+    structure(experienceId: string, versionId: string, linked = false) {
+      const key = `${experienceId}:${versionId}:${linked ? "linked" : "parent"}`;
       let pending = structures.get(key);
       if (!pending) {
         pending = (async () => {
           if (!request.outline && !request.box && !request.week) return getExperienceStructure(experienceId, versionId, dbClient());
           const definitions = await dbClient().from("response_definitions").select("block_id").eq("experience_version_id", versionId);
           if (definitions.error) throw new Error("Unable to load question locations.");
-          return getExperienceStructure(experienceId, versionId, dbClient(), (definitions.data ?? []).map((row) => row.block_id).filter((id): id is string => Boolean(id)), undefined, request.week?.split(":")[1]);
+          return getExperienceStructure(experienceId, versionId, dbClient(), (definitions.data ?? []).map((row) => row.block_id).filter((id): id is string => Boolean(id)), undefined, linked ? undefined : request.week?.split(":")[1]);
         })();
         structures.set(key, pending);
       }
@@ -118,7 +118,7 @@ async function loadCourse(participantId: string, enrollment: Pick<Enrollment, "e
   const db = dbClient();
   // Callers select this enrollment with participant_id and authorize the requested version.
   const [canonical, locked] = await Promise.all([
-    context.structure(enrollment.experience_id, versionId),
+    context.structure(enrollment.experience_id, versionId, linked),
     context.passwordRequired(enrollment.experience_id),
   ]);
   const href = `/experiences/${encodeURIComponent(canonical.experience.slug)}`;
