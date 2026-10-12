@@ -60,3 +60,28 @@ vercel --scope gilesemerys-projects project pause wayfinders-os
 ```
 
 This blocks the active production deployment and disables automatic production-domain assignment; it does not alter Supabase data or restore older vulnerable code. Verify `https://wayfinders-os.vercel.app` no longer serves the application, with one anonymous request. Do not execute this as part of normal release preparation. Resuming/promoting requires a reviewed safe artifact and separate approval. If login is required, use the provider's browser login flow; never share a token in chat.
+
+## Approved release attempt — October 12
+
+Final owner approval was received in Codex (first approval option). Exactly 72 approved files were staged, byte-checked against the approval manifest, committed as `b0b34e94bea07b1524cff24344389f496fa29221`, and pushed without force to `origin/main`. Unrelated original audits and ZIP remained excluded. GitHub confirms author login `GilesEmery`; author email matches the prior successful commit. No code correction, schema change or participant write occurred.
+
+Vercel production deployment `dpl_An4tMhwwzhd6XtSWW2N7JAeB5uHH` failed with `git_info_fail` before build logs were produced; GitHub Vercel status is failure. No diagnosis beyond Git metadata/integration failure is proven. Prior READY deployment `dpl_Ds3DAazwS1PEXMDnemMcbhJAHixe` still owns production aliases. One approved anonymous HEAD request to `https://wayfinders-os.vercel.app` returned 200; zero body bytes were read. This does not validate the new release. CODEX 1 is not deployed/closed yet.
+
+### External Actions Required if the Git connection needs owner attention
+
+1. Open `https://vercel.com/gilesemerys-projects/wayfinders-os/An4tMhwwzhd6XtSWW2N7JAeB5uHH` in your signed-in browser. Review the error details for `git_info_fail`; do not redeploy automatically or change settings yet.
+2. In Vercel → `wayfinders-os` → Settings → Git, confirm the connected repository is `GilesEmery/wayfinders-os`. In `https://vercel.com/account/settings/authentication`, confirm the owner account's GitHub login connection is `GilesEmery`. These are inspections, not instructions to disconnect/reconnect or upgrade plans. Report only the error text/connection status to Codex or ChatGPT HAL; never send tokens.
+3. Recommended first correction for approval: one server-side Vercel redeployment of failed deployment ID `dpl_An4tMhwwzhd6XtSWW2N7JAeB5uHH`, preserving source commit `b0b34e94bea07b1524cff24344389f496fa29221` and existing production settings. Codex can execute this with the connected Vercel API after approval. No force push, code change, paid upgrade, environment change or Supabase mutation is required. If it fails again, stop and obtain the specific provider connection/login remedy rather than loop.
+4. Verify success only when Vercel reports READY for the exact release SHA and assigns the production alias; then complete the remaining approved anonymous read-only smoke requests. Any wider authenticated/write smoke needs separate approval.
+
+## Deployment retry and anonymous-login correction
+
+The owner approved one Vercel retry. Deployment `dpl_GXL56qNb5oGinvU7SQ6jH2oeBFs2` reached READY for `b0b34e94bea07b1524cff24344389f496fa29221` and received the production aliases. No setting or Git identity change was needed. Approved anonymous smoke then found public landing 200 and `/admin/login` 500; testing stopped. The earlier Git integration failure is resolved, but CODEX 1 cannot close with a broken anonymous login.
+
+Local root-cause verification using the installed Supabase SDK confirms `getUser()` with no session returns `AuthSessionMissingError`. The strict new admin guard treated this ordinary signed-out result as an exceptional identity outage. A two-line correction in `lib/admin/auth.ts` returns null only for that named missing-session state, before any privileged lookup. All other identity errors remain unavailable/denied; contradictory partial identity data cannot grant access. No permission, schema or participant-data change.
+
+Four focused regressions were added in `scripts/security/codex1-final.test.mjs`. `node --test --test-name-pattern='admin' scripts/security/codex1-final.test.mjs scripts/security/codex1-1.test.mjs` passed 10/10 checks (four new plus six relevant retained cases). Auth-file ESLint and diff checks passed. Corrected Node 24 guarded production build passed. Original 264-check evidence is retained, not claimed as a new full run after this two-line change.
+
+Actual loopback-only production HTTP checks with the database guard retained: login HEAD 200; admin HEAD 307 to `/admin/login`; anonymous private export, operational export and Journey HEAD each 403, with no-store. Five passes, zero body bytes read. Additional LMU HEAD returned 503 from the database-backed password proxy when its configuration lookup was blocked by the guard; that integration check is NOT TESTED, not evidence of an LMU defect or pass. The guard remains intact.
+
+Approval requested: commit/push only `lib/admin/auth.ts`, `scripts/security/codex1-final.test.mjs`, and this release checklist, with title `Handle signed-out admin sessions without login errors`. This includes the live deployment/failure record and the focused fix. No rollback to old privacy behavior, Supabase write or new cloud resource is proposed. Remaining approved anonymous production smoke budget: seven requests (three already used, including the prior-deployment health HEAD). Wider authenticated/write smoke still requires separate authorization.

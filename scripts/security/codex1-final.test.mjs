@@ -35,3 +35,32 @@ test('explicit directory deny blocks active member and Super Admin before names'
   assert.equal(await mod.loadHubDirectory({from(){throw Error('unexpected query');}},'hub','auth',{authUserId:'auth'},access),null);
  }
 });
+
+function adminIdentityFixture(getUser) {
+ let privilegedReads=0;
+ const mod=load('lib/admin/auth.ts',{
+  'next/navigation':{redirect:destination=>{throw Error(destination);}},
+  '@/lib/supabase/server':{createServerSupabaseClient:async()=>({auth:{getUser}})},
+  '@/lib/supabase/admin':{createAdminSupabaseClient:()=>{privilegedReads++;throw Error('Unexpected privileged lookup');}},
+ });
+ return {mod,reads:()=>privilegedReads};
+}
+test('admin signed-out SDK session state opens login without privileged reads',async()=>{
+ const {createClient}=await import('@supabase/supabase-js');
+ const sdk=createClient('https://fixture.invalid','fixture-key',{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},global:{fetch:()=>{throw Error('No network allowed');}}});
+ const receipt=await sdk.auth.getUser();assert.equal(receipt.error.name,'AuthSessionMissingError');
+ const f=adminIdentityFixture(async()=>receipt);assert.equal(await f.mod.getAdmin(),null);assert.equal(f.reads(),0);
+ await assert.rejects(f.mod.requireAdmin(),/\/admin\/login/);assert.equal(f.reads(),0);
+});
+test('admin missing session cannot trust contradictory partial identity data',async()=>{
+ const f=adminIdentityFixture(async()=>({data:{user:{id:'untrusted',email:'fixture@example.invalid'}},error:{name:'AuthSessionMissingError'}}));
+ assert.equal(await f.mod.getAdmin(),null);assert.equal(f.reads(),0);
+});
+test('admin other identity failures remain unavailable even with partial user',async()=>{
+ const f=adminIdentityFixture(async()=>({data:{user:{id:'untrusted',email:'fixture@example.invalid'}},error:{name:'AuthApiError'}}));
+ await assert.rejects(f.mod.getAdmin(),/could not be verified/);assert.equal(f.reads(),0);
+});
+test('admin rejected identity lookup cannot grant or read privileged data',async()=>{
+ const f=adminIdentityFixture(async()=>{throw Error('transport unavailable');});
+ await assert.rejects(f.mod.getAdmin());assert.equal(f.reads(),0);
+});

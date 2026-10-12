@@ -15,6 +15,8 @@ export type AdminIdentity = {
 export async function getAdmin(): Promise<AdminIdentity | null> {
   const supabase = await createServerSupabaseClient();
   const identityRead = await supabase.auth.getUser();
+  // No session is the normal signed-out state, never an authorization grant.
+  if (identityRead.error?.name === "AuthSessionMissingError") return null;
   if (identityRead.error) throw new Error("Admin access could not be verified. Please try again.");
   const { user } = identityRead.data;
   if (!user?.email) return null;
