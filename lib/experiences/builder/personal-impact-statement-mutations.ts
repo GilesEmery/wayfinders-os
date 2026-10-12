@@ -15,7 +15,7 @@ export async function savePersonalImpactStatement(slug: string, moduleKey: strin
 
 async function persistPersonalImpactStatement(slug: string, moduleKey: string, lessonKey: string, sectionKey: string, blockKey: string, cohortId: string | null | undefined, input: unknown, finish: boolean, retakeCompletedAt?: string) {
   if (![slug, moduleKey, lessonKey, sectionKey, blockKey].every((value) => value.length <= 120 && KEY.test(value))) throw new Error("This assessment is unavailable.");
-  const resolution = await resolveParticipantCourseForMutation(slug, cohortId ?? null);
+  const resolution = await resolveParticipantCourseForMutation(slug, cohortId ?? null, { moduleKey, lessonKey, sectionKey });
   if (resolution.status !== "ready" || !resolution.enrollmentId) throw new Error("This assessment is unavailable.");
   const target = resolution.structure.modules.flatMap((module) => module.lessons.flatMap((lesson) => lesson.sections.map((section) => ({ module, lesson, section })))).find(({ module, lesson, section }) => module.module_key === moduleKey && lesson.lesson_key === lessonKey && section.section_key === sectionKey);
   const block = target?.section.layout?.columns.flatMap((column) => column.blocks).find((candidate) => candidate.block_key === blockKey);

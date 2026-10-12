@@ -20,11 +20,11 @@ export function PublicLandingAuthLink({
   mode = "signin",
 }: PublicLandingAuthLinkProps) {
   const router = useRouter();
-  const { authenticated, openAuth } = useWayfindersAuth();
+  const { authenticated, ready, openAuth } = useWayfindersAuth();
   const label = children ?? (authenticated ? signedInLabel : signedOutLabel);
 
   return (
-    <button className={className} onClick={() => authenticated ? router.push("/dashboard") : openAuth("/dashboard", mode)} type="button">
+    <button disabled={!ready} aria-busy={!ready} className={className} onClick={() => authenticated ? router.push("/dashboard") : openAuth("/dashboard", mode)} type="button">
       {label}
     </button>
   );

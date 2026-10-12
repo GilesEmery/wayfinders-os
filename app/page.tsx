@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import lmuMark from "@/public/brand/lmu/lmu-u-mark-white.png";
 import Link from "next/link";
 import { PlatformFooter } from "@/components/platform/PlatformFooter";
 import { PlatformHeader } from "@/components/platform/PlatformHeader";
@@ -41,7 +42,7 @@ export default function Home() {
 
         <section className="purpose-lmu-feature" aria-labelledby="lmu-feature-title">
           <div className="purpose-lmu-visual" aria-hidden="true">
-            <Image src="/brand/lmu/lmu-u-mark-white.png" alt="" width={360} height={360} />
+            <Image src={lmuMark} alt="" width={360} height={360} />
             <span>Begin with your story</span>
           </div>
           <div className="purpose-lmu-copy">

@@ -12,7 +12,7 @@ const KEY = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 async function context(slug: string, moduleKey: string, lessonKey: string, sectionKey: string, blockKey: string, cohortId?: string | null) {
   if (![slug, moduleKey, lessonKey, sectionKey, blockKey].every((value) => value.length <= 120 && KEY.test(value))) return null;
-  const resolution = await resolveParticipantCourseForMutation(slug, cohortId ?? null);
+  const resolution = await resolveParticipantCourseForMutation(slug, cohortId ?? null, { moduleKey, lessonKey, sectionKey });
   if (resolution.status !== "ready" || !resolution.enrollmentId) return null;
   const target = resolution.structure.modules.flatMap((module) => module.lessons.flatMap((lesson) => lesson.sections.map((section) => ({ module, lesson, section })))).find(({ module, lesson, section }) => module.module_key === moduleKey && lesson.lesson_key === lessonKey && section.section_key === sectionKey);
   if (!target || target.section.legacy || target.section.renderer_mode === "custom" || target.section.renderer_mode === "route_handoff" || target.section.custom_renderer_key) return null;

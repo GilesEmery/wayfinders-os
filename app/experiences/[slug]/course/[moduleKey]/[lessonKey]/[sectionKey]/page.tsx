@@ -12,7 +12,7 @@ export default async function ParticipantCoursePage({ params, searchParams }: { 
   const { slug, moduleKey, lessonKey, sectionKey } = await params;
   const { progressError, companionError, companionSaved, cohort } = await searchParams;
   const cohortId = typeof cohort === "string" ? cohort : null;
-  const result = await resolveParticipantCourse(slug, cohortId);
+  const result = await resolveParticipantCourse(slug, cohortId, { moduleKey, lessonKey, sectionKey });
   if (result.status === "not_found") notFound();
   if (result.status === "custom") redirect(result.route);
 

@@ -23,23 +23,27 @@ function intersect(current: Set<string> | null, ids: string[]) {
 
 export async function loadWayfinderRegistry(filters: WayfinderRegistryFilters) {
   const db = createAdminSupabaseClient();
-  const [{ data: hubs }, { data: tags }, { data: experiences }, { data: cohorts }] = await Promise.all([
+  const catalogs = await Promise.all([
     db.from("hubs").select("id,name").eq("status", "active").order("name"),
     db.from("tags").select("id,name").eq("status", "active").order("name"),
     db.from("experiences").select("id,name").order("name"),
     db.from("cohorts").select("id,name").in("status", ["open", "active", "completed"]).order("name"),
   ]);
 
+  if (catalogs.some(row => row.error)) throw new Error("Unable to load Wayfinder filter catalogs.");
+  const [{ data: hubs }, { data: tags }, { data: experiences }, { data: cohorts }] = catalogs;
+
   let matchingIds: Set<string> | null = null;
   const idLookups: Array<PromiseLike<string[]>> = [];
-  if (filters.hub) idLookups.push(db.from("hub_memberships").select("participant_id").eq("hub_id", filters.hub).eq("status", "active").then(({ data }) => (data ?? []).map((row) => row.participant_id)));
-  if (filters.tag) idLookups.push(db.from("participant_tags").select("participant_id").eq("tag_id", filters.tag).then(({ data }) => (data ?? []).map((row) => row.participant_id)));
-  if (filters.cohort) idLookups.push(db.from("cohort_memberships").select("participant_id").eq("cohort_id", filters.cohort).in("status", ["active", "completed"]).then(({ data }) => (data ?? []).map((row) => row.participant_id)));
-  if (filters.experience) idLookups.push(db.from("experience_enrollments").select("participant_id").eq("experience_id", filters.experience).then(({ data }) => (data ?? []).map((row) => row.participant_id)));
+  if (filters.hub) idLookups.push(db.from("hub_memberships").select("participant_id").eq("hub_id", filters.hub).eq("status", "active").then(({ data, error }) => { if (error) throw new Error("Unable to load Wayfinder filters."); return (data ?? []).map((row) => row.participant_id); }));
+  if (filters.tag) idLookups.push(db.from("participant_tags").select("participant_id").eq("tag_id", filters.tag).then(({ data, error }) => { if (error) throw new Error("Unable to load Wayfinder filters."); return (data ?? []).map((row) => row.participant_id); }));
+  if (filters.cohort) idLookups.push(db.from("cohort_memberships").select("participant_id").eq("cohort_id", filters.cohort).in("status", ["active", "completed"]).then(({ data, error }) => { if (error) throw new Error("Unable to load Wayfinder filters."); return (data ?? []).map((row) => row.participant_id); }));
+  if (filters.experience) idLookups.push(db.from("experience_enrollments").select("participant_id").eq("experience_id", filters.experience).then(({ data, error }) => { if (error) throw new Error("Unable to load Wayfinder filters."); return (data ?? []).map((row) => row.participant_id); }));
   if (filters.role && filters.role !== "none") {
-    const { data: roleUsers } = await db.from("platform_role_assignments").select("auth_user_id").eq("role", filters.role).eq("status", "active");
+    const { data: roleUsers, error: roleError } = await db.from("platform_role_assignments").select("auth_user_id").eq("role", filters.role).eq("status", "active");
+    if (roleError) throw new Error("Unable to load Wayfinder role filters.");
     const authIds = (roleUsers ?? []).map((row) => row.auth_user_id);
-    idLookups.push(authIds.length ? db.from("participants").select("id").in("auth_user_id", authIds).then(({ data }) => (data ?? []).map((row) => row.id)) : Promise.resolve([]));
+    idLookups.push(authIds.length ? db.from("participants").select("id").in("auth_user_id", authIds).then(({ data, error }) => { if (error) throw new Error("Unable to load Wayfinder filters."); return (data ?? []).map((row) => row.id); }) : Promise.resolve([]));
   }
   for (const ids of await Promise.all(idLookups)) matchingIds = intersect(matchingIds, ids);
 
@@ -51,14 +55,16 @@ export async function loadWayfinderRegistry(filters: WayfinderRegistryFilters) {
   if (filters.account === "unclaimed") query = query.is("auth_user_id", null);
   if (matchingIds) query = matchingIds.size ? query.in("id", [...matchingIds]) : query.in("id", ["00000000-0000-0000-0000-000000000000"]);
   const from = (filters.page - 1) * WAYFINDER_PAGE_SIZE;
-  const { data: people, count, error } = await query.order(orderColumn, { ascending, nullsFirst: false }).range(from, from + WAYFINDER_PAGE_SIZE - 1);
+  const { data: people, count, error } = await query.order(orderColumn, { ascending, nullsFirst: false }).order("id").range(from, from + WAYFINDER_PAGE_SIZE - 1);
   if (error) throw error;
+  if (count === null) throw new Error("Unable to confirm the Wayfinder total.");
   const ids = (people ?? []).map((person) => person.id);
   const authIds = (people ?? []).flatMap((person) => person.auth_user_id ? [person.auth_user_id] : []);
   const pageEmails = [...new Set((people ?? []).map((person) => person.email_normalized))];
   const duplicateEmailRows = pageEmails.length
     ? await db.from("participants").select("id,email_normalized").in("email_normalized", pageEmails)
     : { data: [] };
+  if ("error" in duplicateEmailRows && duplicateEmailRows.error) throw new Error("Unable to load account linking indicators.");
   const emailCounts = new Map<string, number>();
   for (const row of duplicateEmailRows.data ?? []) emailCounts.set(row.email_normalized, (emailCounts.get(row.email_normalized) ?? 0) + 1);
   const linkingIssueIds = new Set((people ?? []).filter((person) => (emailCounts.get(person.email_normalized) ?? 0) > 1).map((person) => person.id));
@@ -71,6 +77,8 @@ export async function loadWayfinderRegistry(filters: WayfinderRegistryFilters) {
     authIds.length ? db.from("admin_members").select("auth_user_id,role,status").in("auth_user_id", authIds).eq("status", "active") : Promise.resolve({ data: [] }),
     authIds.length ? db.from("platform_role_assignments").select("auth_user_id,role,scope_type,scope_id").in("auth_user_id", authIds).eq("status", "active") : Promise.resolve({ data: [] }),
   ]) : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }];
+
+  if ([hubRows, tagRows, enrollments, assessments, preferences, adminMembers, scopedRoles].some(row => "error" in row && row.error)) throw new Error("Unable to load Wayfinder page details.");
 
   return { people: people ?? [], count: count ?? 0, linkingIssueIds, hubs: hubs ?? [], tags: tags ?? [], experiences: experiences ?? [], cohorts: cohorts ?? [], hubRows: hubRows.data ?? [], tagRows: tagRows.data ?? [], enrollments: enrollments.data ?? [], assessments: assessments.data ?? [], preferences: preferences.data ?? [], adminMembers: adminMembers.data ?? [], scopedRoles: scopedRoles.data ?? [] };
 }

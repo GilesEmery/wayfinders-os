@@ -200,7 +200,9 @@ export async function getSectionWithLayout(sectionId: string, db: Db = createAdm
   };
 }
 
-export async function getExperienceStructure(experienceId: string, versionId: string, db: Db = createAdminSupabaseClient(), responseBlockIds?: string[]): Promise<BuilderCourseStructure> {
+export type CourseContentTarget = { moduleKey: string; lessonKey: string; sectionKey: string };
+
+export async function getExperienceStructure(experienceId: string, versionId: string, db: Db = createAdminSupabaseClient(), responseBlockIds?: string[], target?: CourseContentTarget): Promise<BuilderCourseStructure> {
   const [experienceResult, versionResult, moduleResult, lessonResult, sectionResult] = await Promise.all([
     db.from("experiences").select("*").eq("id", experienceId).maybeSingle(),
     db.from("experience_versions").select("*").eq("id", versionId).eq("experience_id", experienceId).maybeSingle(),
@@ -216,9 +218,17 @@ export async function getExperienceStructure(experienceId: string, versionId: st
   const modules = moduleResult.data ?? [];
   const lessons = lessonResult.data ?? [];
   const sections = (sectionResult.data ?? []).map(asSection);
-  const sectionIds = sections.map((section) => section.id);
-  const lessonIds = lessons.map((lesson) => lesson.id);
+  // Keep the complete outline for navigation/completion; hydrate only the requested
+  // page. Legacy courses retain the original loader until their implicit outline
+  // can be determined without losing pages.
+  const scoped = target && lessons.every((lesson) => sections.some((section) => section.lesson_id === lesson.id));
+  const targetModule = scoped ? modules.find((module) => module.module_key === target.moduleKey) : null;
+  const targetLesson = scoped ? lessons.find((lesson) => lesson.module_id === targetModule?.id && lesson.lesson_key === target.lessonKey) : null;
+  const targetSections = scoped ? sections.filter((section) => section.lesson_id === targetLesson?.id && section.section_key === target.sectionKey) : sections;
+  const sectionIds = targetSections.map((section) => section.id);
+  const lessonIds = scoped ? targetLesson && sectionIds.length ? [targetLesson.id] : [] : lessons.map((lesson) => lesson.id);
   let blocksQuery = db.from("content_blocks").select("*").in("lesson_id", lessonIds).order("sort_order");
+  if (scoped) blocksQuery = blocksQuery.in("section_id", sectionIds);
   // Response outlines need only answerable blocks and linked assessments, not
   // teaching text, video configuration, or other course content.
   if (responseBlockIds) blocksQuery = responseBlockIds.length

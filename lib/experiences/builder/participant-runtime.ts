@@ -6,7 +6,8 @@ import type { User } from "@supabase/supabase-js";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { getPlatformUser } from "@/lib/platform/auth";
 import type { Tables } from "@/lib/supabase/database.types";
-import { getExperienceStructure } from "./data";
+import { getExperienceStructure, type CourseContentTarget } from "./data";
+import { loadPublishedCourseContent } from "./published-content";
 import { loadParticipantProgress, type ParticipantProgressSnapshot } from "./progress";
 import { resolveExperienceRuntime } from "./runtime";
 import type { BuilderCourseStructure, ExperienceDeliveryMode } from "./types";
@@ -186,18 +187,18 @@ export async function authorizeParticipantCourse(slug: string, requestedCohortId
   return { status: "ready", experience, version: versionResult.data, access, participantId: participant.id, requirementsBypassed };
 }
 
-export async function resolveParticipantCourse(slug: string, requestedCohortId: string | null = null): Promise<ParticipantCourseResolution> {
-  return measureOperation("course-render-data", () => loadParticipantCourse(slug, requestedCohortId, false));
+export async function resolveParticipantCourse(slug: string, requestedCohortId: string | null = null, target?: CourseContentTarget): Promise<ParticipantCourseResolution> {
+  return measureOperation("course-render-data", () => loadParticipantCourse(slug, requestedCohortId, false, target));
 }
 
 // Mutation callers need authorized curriculum/contracts, not appearance, assets or chat.
-export async function resolveParticipantCourseForMutation(slug: string, requestedCohortId: string | null = null) {
-  return measureOperation("course-mutation-data", () => loadParticipantCourse(slug, requestedCohortId, true));
+export async function resolveParticipantCourseForMutation(slug: string, requestedCohortId: string | null = null, target?: CourseContentTarget) {
+  return measureOperation("course-mutation-data", () => loadParticipantCourse(slug, requestedCohortId, true, target));
 }
 
-function loadParticipantCourse(slug: string, requestedCohortId: string | null, mutation: true): Promise<ParticipantMutationResolution>;
-function loadParticipantCourse(slug: string, requestedCohortId: string | null, mutation: false): Promise<ParticipantCourseResolution>;
-async function loadParticipantCourse(slug: string, requestedCohortId: string | null, mutation: boolean): Promise<ParticipantCourseResolution | ParticipantMutationResolution> {
+function loadParticipantCourse(slug: string, requestedCohortId: string | null, mutation: true, target?: CourseContentTarget): Promise<ParticipantMutationResolution>;
+function loadParticipantCourse(slug: string, requestedCohortId: string | null, mutation: false, target?: CourseContentTarget): Promise<ParticipantCourseResolution>;
+async function loadParticipantCourse(slug: string, requestedCohortId: string | null, mutation: boolean, target?: CourseContentTarget): Promise<ParticipantCourseResolution | ParticipantMutationResolution> {
   const context = await authorizeParticipantCourse(slug, requestedCohortId);
   if (context.status !== "ready") return context;
   const db = createAdminSupabaseClient();
@@ -206,11 +207,14 @@ async function loadParticipantCourse(slug: string, requestedCohortId: string | n
   const versionResult = { data: context.version };
   const themeId = versionResult.data.theme_id ?? experience.default_theme_id;
   const [canonicalStructure, themeResult] = await Promise.all([
-    getExperienceStructure(experience.id, versionResult.data.id, db),
+    mutation
+      ? getExperienceStructure(experience.id, versionResult.data.id, db, undefined, target)
+      : loadPublishedCourseContent(experience.id, versionResult.data.id, target?.moduleKey ?? "", target?.lessonKey ?? "", target?.sectionKey ?? ""),
     !mutation && themeId ? db.from("experience_themes").select("configuration").eq("id", themeId).maybeSingle() : Promise.resolve({ data: null, error: null }),
   ]);
   if (themeResult.error) throw new Error(`Unable to load the Experience theme: ${themeResult.error.message}`);
-  const structure = await effectiveDeliveryStructure(canonicalStructure, access.offering, db);
+  // Lifecycle/appearance on Experience and delivery overrides remain current.
+  const structure = await effectiveDeliveryStructure({ ...canonicalStructure, experience: { ...experience, delivery_mode: experience.delivery_mode as ExperienceDeliveryMode } }, access.offering, db);
   // Progress foreign keys require the enrollment itself to be pinned to this Version.
   const enrollmentId = access.enrollment?.experience_version_id === versionResult.data.id ? access.enrollment.id : null;
   const blockIds = structure.modules.flatMap((module) => module.lessons.flatMap((lesson) => lesson.sections.flatMap((section) => section.layout?.columns.flatMap((column) => column.blocks.map((block) => block.id)) ?? [])));
@@ -226,7 +230,10 @@ async function loadParticipantCourse(slug: string, requestedCohortId: string | n
   const themeConfiguration = themeResult.data?.configuration ?? null;
   const [coverUrl, logoUrl, headerLogoUrl] = await Promise.all([resolveCourseCoverUrl(structure.version.course_configuration, themeConfiguration, db), resolveCourseLogoUrl(structure.version.course_configuration, themeConfiguration, db), resolveCourseHeaderLogoUrl(structure.version.course_configuration, themeConfiguration, db)]);
   const sections = structure.modules.flatMap((module) => module.lessons.flatMap((lesson) => lesson.sections));
-  const [assets, companion] = await Promise.all([resolveCourseAssets(db, blockIds, sections), loadCompanionRuntime({ versionId: structure.version.id, offering: access.offering, participantId: participant.id, enrollmentId, db })]);
+  const assetSections = target ? structure.modules.filter(module => module.module_key === target.moduleKey)
+    .flatMap(module => module.lessons.filter(lesson => lesson.lesson_key === target.lessonKey))
+    .flatMap(lesson => lesson.sections.filter(section => section.section_key === target.sectionKey)) : sections;
+  const [assets, companion] = await Promise.all([resolveCourseAssets(db, blockIds, assetSections), loadCompanionRuntime({ versionId: structure.version.id, offering: access.offering, participantId: participant.id, enrollmentId, db })]);
   return { status: "ready", structure, courseTemplate: resolveCourseTemplate(experience.delivery_mode as ExperienceDeliveryMode, structure.version.shell_mode), themeConfiguration, coverUrl, logoUrl, headerLogoUrl, assets, companion, accessSource: access.source, participantId: participant.id, enrollmentId, cohortId: access.cohortId, requirementsBypassed, progress, responses };
 }
 

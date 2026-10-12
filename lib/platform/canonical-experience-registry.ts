@@ -1,4 +1,5 @@
 import "server-only";
+import { connection } from "next/server";
 
 import { platformExperiences } from "@/data/platform/experiences";
 import { getCustomExperience } from "@/lib/experiences/builder/runtime-registry";
@@ -12,12 +13,15 @@ function publicType(type: string): PlatformExperienceType {
 }
 
 export async function getCanonicalPublicExperiences(): Promise<PlatformExperienceDefinition[]> {
+  await connection();
   const db = createAdminSupabaseClient();
-  const [experienceResult, versionResult] = await Promise.all([
-    db.from("experiences").select("id,slug,name,description,experience_type,delivery_mode,status,current_published_version_id").eq("status", "active").eq("visibility", "public").order("name"),
-    db.from("experience_versions").select("id,version_label"),
-  ]);
-  if (experienceResult.error || versionResult.error) return platformExperiences;
+  const experienceResult = await db.from("experiences").select("id,slug,name,description,experience_type,delivery_mode,status,current_published_version_id").eq("status", "active").eq("visibility", "public").order("name");
+  if (experienceResult.error) return platformExperiences;
+  const versionIds = [...new Set((experienceResult.data ?? []).flatMap(row => row.current_published_version_id ? [row.current_published_version_id] : []))];
+  const versionResult = versionIds.length
+    ? await db.from("experience_versions").select("id,version_label").in("id", versionIds).eq("status", "published")
+    : { data: [], error: null };
+  if (versionResult.error) return platformExperiences;
   const versions = new Map((versionResult.data ?? []).map((version) => [version.id, version.version_label]));
   return (experienceResult.data ?? []).map((experience) => {
     const custom = getCustomExperience(experience.slug);

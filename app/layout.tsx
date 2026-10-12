@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Cormorant_Garamond, Geist } from "next/font/google";
 import "./globals.css";
 import { WayfindersAuthProvider } from "@/components/platform/WayfindersAuthProvider";
-import { getPlatformAccount } from "@/lib/platform/auth";
 import { EmbeddedAssessmentDocument } from "@/components/platform/EmbeddedAssessmentDocument";
 
 const geist = Geist({
@@ -25,11 +24,10 @@ export const metadata: Metadata = {
     "Guided experiences, tools, and resources for moving toward meaningful action.",
 };
 
-export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const account = await getPlatformAccount();
+export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${geist.variable} ${cormorant.variable}`}>
-      <body><EmbeddedAssessmentDocument/><WayfindersAuthProvider initialAccount={account}>{children}</WayfindersAuthProvider></body>
+      <body><EmbeddedAssessmentDocument/><WayfindersAuthProvider initialAccount={null}>{children}</WayfindersAuthProvider></body>
     </html>
   );
 }

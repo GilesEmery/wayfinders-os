@@ -24,6 +24,7 @@ function runtimeFixture(passwordDenied = false, user = { id: 'user', email: 'fix
   const runtime = load('lib/experiences/builder/participant-runtime.ts', {
     './performance-measurement': { measureOperation: (_, work) => work() }, '@/lib/experiences/access/server': { requireExperiencePassword() { if (passwordDenied) throw new Error('Password required'); } },
     '@/lib/supabase/admin': { createAdminSupabaseClient: () => db }, '@/lib/platform/auth': { getPlatformUser: async () => user },
+    './published-content': { loadPublishedCourseContent: never },
     './data': { getExperienceStructure: async () => structure }, './progress': { loadParticipantProgress: never, summarizeParticipantProgress: () => ({ sections: {}, lessons: {}, modules: {}, experience: {} }) },
     './runtime': { resolveExperienceRuntime: () => ({ kind: 'builder' }) }, './course-templates': { resolveCourseTemplate: () => ({}) },
     './course-cover': { resolveCourseCoverUrl: never, resolveCourseLogoUrl: never, resolveCourseHeaderLogoUrl: never },

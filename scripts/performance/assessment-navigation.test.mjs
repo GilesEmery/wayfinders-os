@@ -30,7 +30,8 @@ for (const [component, dataFile, questionsKey, action] of cases) {
       react, 'react-dom': {}, 'react/jsx-runtime': { jsx, jsxs: jsx },
       [`@/lib/experiences/builder/${dataFile}`]: data,
       [`@/lib/experiences/builder/${dataFile}-actions`]: { [action]() { throw new Error('No real saves permitted'); } },
-      './AssessmentFocusFrame': {}, './AssessmentLaunchCard': {},
+      '@/lib/experiences/builder/assessment-return': { returnFromAssessment() { throw Error('Unexpected navigation'); } }, 'lucide-react': {},
+      './NativeAssessmentShell': {}, './AssessmentFocusFrame': {}, './AssessmentLaunchCard': {},
     });
     const render = () => { index = 0; return assessmentModule[component]({ initialData: {}, route: {}, preview: true, autoStart: true }); };
     const button = (tree, label) => children(tree).find(node => node.type === 'button' && text(node).includes(label));

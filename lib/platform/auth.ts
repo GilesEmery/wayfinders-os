@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import type { User } from "@supabase/supabase-js";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -34,7 +35,8 @@ async function recordAccountLinked(participantId: string, user: User, normalized
   if (result.error) console.error("Participant account link audit failed", { participantId, authUserId: user.id, message: result.error.message });
 }
 
-export async function getPlatformUser() {
+// React memoization lasts only for the current server render, never a TTL grant.
+export const getPlatformUser = cache(async function getPlatformUser() {
   try {
     const supabase = await createServerSupabaseClient();
     const { data: { user }, error } = await supabase.auth.getUser();
@@ -42,7 +44,7 @@ export async function getPlatformUser() {
   } catch {
     return null;
   }
-}
+});
 
 export async function getPlatformAccount() {
   const user = await getPlatformUser();

@@ -17,7 +17,7 @@ function DrawerGroups({ groups, close, pathname, hash }: { groups: DashboardNavi
 }
 
 export function PlatformAccountControl() {
-  const { account, openAuth } = useWayfindersAuth();
+  const { account, ready, openAuth } = useWayfindersAuth();
   const [open, setOpen] = useState(false);
   const [hash, setHash] = useState("");
   const pathname = usePathname();
@@ -45,6 +45,7 @@ export function PlatformAccountControl() {
     };
   }, [open]);
 
+  if (!ready) return <button className="platform-account-trigger" disabled aria-busy="true" type="button">Account</button>;
   if (!account) return <button className="platform-account-trigger" onClick={() => openAuth(undefined, "signin")} type="button">Sign In</button>;
 
   const personalGroups = buildPersonalNavigation();

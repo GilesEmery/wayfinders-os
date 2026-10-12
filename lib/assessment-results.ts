@@ -25,10 +25,10 @@ async function canonicalGenericCompletions(participantId: string) {
   const db = createAdminSupabaseClient();
   const [enrollments, history] = await Promise.all([
     db.from("experience_enrollments").select("id,experience_id,experience_version_id,status,completed_at").eq("participant_id", participantId),
-    db.from("experience_enrollment_version_history").select("id,enrollment_id,experience_id,experience_version_id,artifact_snapshot").eq("participant_id", participantId),
+    db.from("experience_enrollment_version_history").select("id,enrollment_id,experience_id,experience_version_id,completion:artifact_snapshot->completion").eq("participant_id", participantId),
   ]);
   if (enrollments.error || history.error) throw new Error("Unable to confirm completed Experience records.");
-  return completedJourneyRecords(enrollments.data ?? [], history.data ?? []);
+  return completedJourneyRecords(enrollments.data ?? [], (history.data ?? []).map(row => ({ ...row, artifact_snapshot: { completion: row.completion } })));
 }
 
 const GENERIC_KEYS = [CIRCLE_RESPONSE_KEY, PERSONAL_IMPACT_RESPONSE_KEY, START_SOMETHING_RESPONSE_KEY, ...Object.keys(NATIVE_ASSESSMENT_RESULTS)];

@@ -3,8 +3,7 @@ import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { ensurePlatformProfile, getPlatformUser } from "@/lib/platform/auth";
 import { resolveDashboardCapabilities } from "@/lib/platform/authorization";
 import { normalizeCourseConfiguration } from "@/lib/experiences/builder/course-configuration";
-import { resolveCourseCoverUrl } from "@/lib/experiences/builder/course-cover";
-import { resolveResourceIds } from "@/lib/experiences/builder/resource-assets";
+import { courseCardImageIds, courseCardImageUrl, resolveCardImages } from "@/lib/experiences/builder/card-images";
 import { resolveCourseCard } from "@/lib/platform/course-card";
 
 import { completedJourneyRecords } from "./journey-policy";
@@ -19,8 +18,7 @@ export async function getWayfinderDashboard() {
 
   const db = createAdminSupabaseClient();
   const participant = context.participant;
-  const capabilities = await resolveDashboardCapabilities(user.id, user.email);
-  const lmu = await db.from("lmu_assessments").select("id,status,current_module,started_at,completed_at,updated_at").eq("participant_id", participant.id).order("updated_at", { ascending: false });
+  const [capabilities, lmu] = await Promise.all([resolveDashboardCapabilities(user.id, user.email), db.from("lmu_assessments").select("id,status,current_module,started_at,completed_at,updated_at").eq("participant_id", participant.id).order("updated_at", { ascending: false })]);
   const assessmentIds = (lmu.data ?? []).map((assessment) => assessment.id);
   const [sectionProgress, enrollments, progress, organizations, hubs, cohorts, tags, roles, preferences] = await Promise.all([
     assessmentIds.length ? db.from("lmu_section_progress").select("assessment_id,section_key,status,updated_at").in("assessment_id", assessmentIds).order("updated_at", { ascending: false }) : Promise.resolve({ data: [] }),
@@ -35,10 +33,10 @@ export async function getWayfinderDashboard() {
   ]);
 
   if (lmu.error || enrollments.error || progress.error) return { user, error: "Unable to load your Experiences. Please refresh and try again." } as const;
-  const history = await db.from("experience_enrollment_version_history").select("id,enrollment_id,experience_id,experience_version_id,artifact_snapshot").eq("participant_id", participant.id);
+  const history = await db.from("experience_enrollment_version_history").select("id,enrollment_id,experience_id,experience_version_id,completion:artifact_snapshot->completion").eq("participant_id", participant.id);
   if (history.error) return { user, error: "Unable to load your Journey history. Please refresh and try again." } as const;
   const enrollmentRows = enrollments.data ?? [];
-  const completionRecords = completedJourneyRecords(enrollmentRows, history.data ?? []);
+  const completionRecords = completedJourneyRecords(enrollmentRows, (history.data ?? []).map(row => ({ ...row, artifact_snapshot: { completion: row.completion } })));
   const cardEnrollments = [...enrollmentRows, ...completionRecords.map((record) => ({ id: record.id, experience_id: record.experienceId, experience_version_id: record.versionId }))];
   const experienceIds = [...new Set(cardEnrollments.map((row) => row.experience_id))];
   const versionIds = [...new Set(cardEnrollments.map((row) => row.experience_version_id).filter((id): id is string => Boolean(id)))];
@@ -78,23 +76,28 @@ export async function getWayfinderDashboard() {
   const themeCatalog = themeIds.length ? await db.from("experience_themes").select("id,configuration").in("id", themeIds) : { data: [], error: null };
   if (themeCatalog.error) throw new Error("Unable to load Course Card themes.");
   const themeById = new Map((themeCatalog.data ?? []).map((theme) => [theme.id, theme.configuration]));
-  const configurations = [...versionRows.map((version) => normalizeCourseConfiguration(version.course_configuration)), ...experienceRows.map((experience) => normalizeCourseConfiguration(experience.card_configuration)), ...(lmuExperience ? [normalizeCourseConfiguration(lmuExperience.card_configuration)] : [])];
-  const cardImages = await resolveResourceIds(db, configurations.flatMap((configuration) => configuration.card.image_resource_id ? [configuration.card.image_resource_id] : []));
-  const trainingCards = Object.fromEntries(await Promise.all(cardEnrollments.map(async (enrollment) => {
+  const imageFor = (configuration: unknown, themeId: string | null | undefined) => courseCardImageIds(configuration, themeId ? themeById.get(themeId) : null);
+  const imageIds = cardEnrollments.map((enrollment) => {
+    const experience = experienceById.get(enrollment.experience_id);
+    const version = enrollment.experience_version_id ? versionById.get(enrollment.experience_version_id) : undefined;
+    return imageFor(version?.course_configuration ?? experience?.card_configuration, version?.theme_id ?? experience?.default_theme_id);
+  });
+  const lmuImageId = lmuExperience ? imageFor(lmuExperience.card_configuration, lmuExperience.default_theme_id) : [];
+  const archivedCardIds = [...versionRows.map(version => version.course_configuration), ...experienceRows.map(experience => experience.card_configuration), lmuExperience?.card_configuration]
+    .flatMap(source => { const id = normalizeCourseConfiguration(source).card.image_resource_id; return id ? [id] : []; });
+  const cardImages = await resolveCardImages(db, [...imageIds.flat(), ...lmuImageId], user.id, archivedCardIds);
+  const trainingCards = Object.fromEntries(cardEnrollments.map((enrollment, index) => {
     const experience = experienceById.get(enrollment.experience_id);
     const version = enrollment.experience_version_id ? versionById.get(enrollment.experience_version_id) : undefined;
     if (!experience) return [enrollment.id, null] as const;
     const configurationSource = version?.course_configuration ?? experience.card_configuration;
     const configuration = normalizeCourseConfiguration(configurationSource);
-    const themeId = version?.theme_id ?? experience.default_theme_id;
-    const coverImageUrl = await resolveCourseCoverUrl(configurationSource, themeId ? themeById.get(themeId) : null, db);
-    const cardImageUrl = configuration.card.image_resource_id ? cardImages.get(configuration.card.image_resource_id)?.url : null;
-    return [enrollment.id, resolveCourseCard({ configuration, courseTitle: version?.title || experience.name, courseDescription: experience.description, experienceType: experience.experience_type, cardImageUrl, coverImageUrl })] as const;
-  })));
+    const cardImageUrl = courseCardImageUrl(cardImages, imageIds[index]);
+    return [enrollment.id, resolveCourseCard({ configuration, courseTitle: version?.title || experience.name, courseDescription: experience.description, experienceType: experience.experience_type, cardImageUrl })] as const;
+  }));
   const lmuConfiguration = normalizeCourseConfiguration(lmuExperience?.card_configuration);
-  const lmuCoverUrl = lmuExperience ? await resolveCourseCoverUrl(lmuExperience.card_configuration, lmuExperience.default_theme_id ? themeById.get(lmuExperience.default_theme_id) : null, db) : null;
-  const lmuCardImageUrl = lmuConfiguration.card.image_resource_id ? cardImages.get(lmuConfiguration.card.image_resource_id)?.url : null;
-  const lmuCard = lmuExperience ? resolveCourseCard({ configuration: lmuConfiguration, courseTitle: lmuExperience.name, courseDescription: lmuExperience.description, experienceType: lmuExperience.experience_type, cardImageUrl: lmuCardImageUrl, coverImageUrl: lmuCoverUrl }) : null;
+  const lmuCardImageUrl = courseCardImageUrl(cardImages, lmuImageId);
+  const lmuCard = lmuExperience ? resolveCourseCard({ configuration: lmuConfiguration, courseTitle: lmuExperience.name, courseDescription: lmuExperience.description, experienceType: lmuExperience.experience_type, cardImageUrl: lmuCardImageUrl,  }) : null;
 
   return {
     user,

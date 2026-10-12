@@ -2,9 +2,8 @@ import "server-only";
 
 import { listCompletedAssessmentResults } from "@/lib/assessment-results";
 import { connection } from "next/server";
-import { resolveCourseCoverUrl } from "@/lib/experiences/builder/course-cover";
+import { courseCardImageIds, courseCardImageUrl, resolveCardImages } from "@/lib/experiences/builder/card-images";
 import { normalizeCourseConfiguration } from "@/lib/experiences/builder/course-configuration";
-import { resolveResourceIds } from "@/lib/experiences/builder/resource-assets";
 import { resolveExperienceRuntime } from "@/lib/experiences/builder/runtime";
 import type { ExperienceDeliveryMode } from "@/lib/experiences/builder/types";
 import { getPlatformUser } from "@/lib/platform/auth";
@@ -76,16 +75,24 @@ export async function getTrainingCatalog(): Promise<{ items: TrainingCatalogItem
   if (membershipResult.error || cohortResult.error || offeringResult.error) throw new Error("Unable to resolve participant Course contexts.");
   const themeById = new Map((themes.data ?? []).map((theme) => [theme.id, theme.configuration]));
   const enrollmentByExperience = new Map(enrollmentRows.map((enrollment) => [enrollment.experience_id, enrollment]));
-  const configurations = eligibleRows.map(({ item }) => normalizeCourseConfiguration(publishedByExperience.get(item.id)?.course_configuration ?? item.card_configuration));
-  const cardImages = await resolveResourceIds(db, configurations.flatMap((configuration) => configuration.card.image_resource_id ? [configuration.card.image_resource_id] : []));
-  const results = participant.data ? await listCompletedAssessmentResults(participant.data.id) : [];
-  const items = await Promise.all(eligibleRows.map(async ({ item, href }) => {
+  const imageIds = eligibleRows.map(({ item }) => {
     const version = publishedByExperience.get(item.id);
     const themeId = version?.theme_id ?? item.default_theme_id;
+    return courseCardImageIds(version?.course_configuration ?? item.card_configuration, themeId ? themeById.get(themeId) : null);
+  });
+  const archivedCardIds = eligibleRows.flatMap(({ item }) => {
+    const id = normalizeCourseConfiguration(publishedByExperience.get(item.id)?.course_configuration ?? item.card_configuration).card.image_resource_id;
+    return id ? [id] : [];
+  });
+  const [cardImages, results] = await Promise.all([
+    resolveCardImages(db, imageIds.flat(), user?.id ?? "public-catalog", archivedCardIds),
+    participant.data ? listCompletedAssessmentResults(participant.data.id) : Promise.resolve([]),
+  ]);
+  const items = eligibleRows.map(({ item, href }, index) => {
+    const version = publishedByExperience.get(item.id);
     const configurationSource = version?.course_configuration ?? item.card_configuration;
     const configuration = normalizeCourseConfiguration(configurationSource);
-    const coverUrl = await resolveCourseCoverUrl(configurationSource, themeId ? themeById.get(themeId) : null, db);
-    const cardImageUrl = configuration.card.image_resource_id ? cardImages.get(configuration.card.image_resource_id)?.url : null;
+    const cardImageUrl = courseCardImageUrl(cardImages, imageIds[index]);
     const enrollment = enrollmentByExperience.get(item.id);
     const entries = enrollment ? resolveParticipantCourseEntries({ enrollment, experience: item, memberships: membershipResult.data ?? [], cohorts: cohortResult.data ?? [], offerings: offeringResult.data ?? [] }) : [];
     return {
@@ -97,10 +104,10 @@ export async function getTrainingCatalog(): Promise<{ items: TrainingCatalogItem
       experienceType: item.experience_type,
       admissionPolicy: item.admission_policy,
       passwordProtected: passwordProtectedIds.has(item.id),
-      card: resolveCourseCard({ configuration, courseTitle: version?.title || item.name, courseDescription: item.description, experienceType: item.experience_type, cardImageUrl, coverImageUrl: coverUrl }),
+      card: resolveCourseCard({ configuration, courseTitle: version?.title || item.name, courseDescription: item.description, experienceType: item.experience_type, cardImageUrl }),
       enrollmentStatus: enrollment?.status ?? null,
       href: catalogParticipantCourseHref(href, entries),
     };
-  }));
+  });
   return { items, signedIn: Boolean(user) };
 }

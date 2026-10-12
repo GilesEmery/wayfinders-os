@@ -4,12 +4,14 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { createAccountRefresh } from "@/lib/platform/account-refresh";
 import type { PlatformAccount } from "@/lib/platform/auth";
 
 type AuthMode = "signin" | "signup";
 type AuthContextValue = {
   account: PlatformAccount | null;
   authenticated: boolean;
+  ready: boolean;
   openAuth: (destination?: string, mode?: AuthMode) => void;
   requireAuth: (destination: string) => void;
   setAccount: (account: PlatformAccount | null) => void;
@@ -27,6 +29,7 @@ export function WayfindersAuthProvider({ children, initialAccount }: { children:
   const pathname = usePathname();
   const [account, setAccount] = useState(initialAccount);
   const authenticated = Boolean(account);
+  const [ready, setReady] = useState(Boolean(initialAccount));
   const [open, setOpen] = useState(false);
   const [required, setRequired] = useState(false);
   const [mode, setMode] = useState<AuthMode>("signin");
@@ -42,17 +45,16 @@ export function WayfindersAuthProvider({ children, initialAccount }: { children:
 
   useEffect(() => {
     let supabase;
-    try { supabase = createBrowserSupabaseClient(); } catch { return; }
+    try { supabase = createBrowserSupabaseClient(); } catch { void Promise.resolve().then(() => setReady(true)); return; }
+    const refresh = createAccountRefresh<PlatformAccount>(async (signal) => {
+      const response = await fetch("/api/account", { credentials: "same-origin", cache: "no-store", signal });
+      return response.ok ? response.json() as Promise<PlatformAccount> : null;
+    }, value => { setAccount(value); setReady(true); });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session?.user) {
-        setAccount(null);
-        return;
-      }
-      void fetch("/api/account", { credentials: "same-origin", cache: "no-store" })
-        .then((response) => response.ok ? response.json() as Promise<PlatformAccount> : null)
-        .then((nextAccount) => { if (nextAccount) setAccount(nextAccount); });
+      if (!session?.user) { refresh.clear(); return; }
+      void refresh.refresh(session.user.id);
     });
-    return () => subscription.unsubscribe();
+    return () => { refresh.dispose(); subscription.unsubscribe(); };
   }, []);
 
   const openAuth = useCallback((requestedDestination?: string, requestedMode: AuthMode = "signin") => {
@@ -126,7 +128,7 @@ export function WayfindersAuthProvider({ children, initialAccount }: { children:
     }
   }
 
-  return <AuthContext.Provider value={{ account, authenticated, openAuth, requireAuth, setAccount }}>
+  return <AuthContext.Provider value={{ account, authenticated, ready, openAuth, requireAuth, setAccount }}>
     {children}
     {open && <div className="wayfinders-auth-backdrop" onMouseDown={(event) => {
       if (!required && event.target === event.currentTarget) setOpen(false);

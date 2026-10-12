@@ -6,9 +6,9 @@ import { useWayfindersAuth } from "./WayfindersAuthProvider";
 
 export function PlatformAuthGate() {
   const pathname = usePathname();
-  const { authenticated, requireAuth } = useWayfindersAuth();
+  const { authenticated, ready, requireAuth } = useWayfindersAuth();
   useEffect(() => {
-    if (!authenticated) requireAuth(pathname);
-  }, [authenticated, pathname, requireAuth]);
+    if (ready && !authenticated) requireAuth(pathname);
+  }, [authenticated, ready, pathname, requireAuth]);
   return null;
 }

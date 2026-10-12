@@ -15,7 +15,7 @@ const KEY = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 async function authorizeTarget(slug: string, moduleKey: string, lessonKey: string, sectionKey: string, cohortId?: string | null): Promise<AuthorizedTarget | null> {
   if (![slug, moduleKey, lessonKey, sectionKey].every((value) => value.length <= 120 && KEY.test(value))) return null;
-  const resolution = await resolveParticipantCourseForMutation(slug, cohortId ?? null);
+  const resolution = await resolveParticipantCourseForMutation(slug, cohortId ?? null, { moduleKey, lessonKey, sectionKey });
   return authorizedTargetFromCourse(resolution, moduleKey, lessonKey, sectionKey);
 }
 

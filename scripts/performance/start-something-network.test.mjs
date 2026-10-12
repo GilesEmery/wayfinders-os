@@ -11,10 +11,10 @@ for (const count of [0, 1, 3, 5]) test(`${count} selected settings create exactl
   };
   const jsx = (type, props) => ({ type, props });
   const data = load('lib/experiences/builder/start-something.ts', {});
-  const assessment = load('components/experiences/builder/StartSomethingExperience.tsx', { react, 'react/jsx-runtime': { jsx, jsxs: jsx }, 'next/link': {}, 'lucide-react': {}, '@/lib/experiences/builder/start-something': data, '@/lib/experiences/builder/start-something-actions': {} });
+  const assessment = load('components/experiences/builder/StartSomethingExperience.tsx', { '@/lib/experiences/builder/assessment-return': { returnFromAssessment() { throw Error('Unexpected navigation'); } }, 'react-dom': { flushSync: work => work() }, './StartSomethingPrintResponse': {}, './StartSomethingIntroduction': {}, react, 'react/jsx-runtime': { jsx, jsxs: jsx }, 'next/link': {}, 'lucide-react': {}, '@/lib/experiences/builder/start-something': data, '@/lib/experiences/builder/start-something-actions': {} });
   const render = () => { index = 0; return assessment.StartSomethingExperience({ initialData: {}, route: {}, preview: true }); };
   const button = (tree, label) => nodes(tree).find(node => node.type === 'button' && text(node).includes(label));
-  let tree = render(); button(tree, data.START_SOMETHING_STAGES[4]).props.onClick(); tree = render();
+  let tree = render(); nodes(tree).find(node => typeof node.props?.onBegin === 'function').props.onBegin(); tree = render(); button(tree, data.START_SOMETHING_STAGES[4]).props.onClick(); tree = render();
   const places = data.START_SOMETHING_NETWORK_PLACES.slice(0, count);
   for (const place of places) { nodes(tree).find(node => node.props?.role === 'checkbox' && text(node) === place).props.onClick(); tree = render(); }
   button(tree, 'Next step').props.onClick(); tree = render();
