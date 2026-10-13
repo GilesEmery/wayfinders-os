@@ -85,3 +85,55 @@ Text advanced options now use light-grey panel chrome and white sections. Remove
 Layout & Appearance now provides one, two or three text-flow columns plus a 0–120px gap. Settings are opt-in and validated in existing block settings JSON; existing content receives no changes. Desktop authoring and the shared participant renderer use the same definitions, with one column below 700px. Semantic headings span columns and explicit text formatting remains intact. These controls flow a text area across columns; existing lesson section/column controls continue to arrange independent blocks side by side.
 
 Eleven presentation tests, TypeScript, lint and the local browser's three-column/32px-gap/mobile-fallback checks passed. No database, participant data or deployment changes.
+
+## Video editor amendment — October 13
+
+Video cards now show Header and Video Link inputs above the rendered preview. Edit contains rich header/supporting text and stacked/video-left/video-right layout controls, with shared spacing and mobile stacking. The advanced presentation fields belong to the canvas form so video source and layout save together through the existing authorized update action. Source metadata and legacy caption/description are preserved, and advanced text formatting is retained. Existing course data is not rewritten by opening the editor. Header changes update the local preview; provider URLs still use the existing validation and media renderer. The isolated rehearsal uses an inert action and remote-media placeholder.
+
+Twenty-four focused offline tests, TypeScript, lint, the guarded production build and three local browser checks passed (basic fields/live header, left/right controls/form ownership, mobile stacking). Compatibility tests now compare the retained legacy interface to its fixed ce649fb baseline rather than moving HEAD; the repository's current HEAD is c6242f2. No push, deployment or live write was performed.
+
+## Paragraph-sized fields and image editor
+
+Main text fields now have a 200px minimum writing area across canvas and advanced editors. Image cards use the same simple header/preview pattern as video, with their supporting text and image-left/image-right arrangement in the grey-and-white advanced panel. Existing image selection/upload, alternative text, caption, fit, behavior and source controls remain available. Image source fields and advanced presentation share one canvas-owned save form; absent metadata is preserved. No course content was automatically changed.
+
+Local image browser verification covered the 200px field, grey chrome, retained upload/alt controls and side-by-side preview. TypeScript, lint, 24 focused tests and the guarded production build passed. No push or live writes.
+
+Image resource selection and upload now appear directly on the main image card above its preview, without opening Edit. Existing resources can be selected/replaced, new images uploaded with a resource title, and attachments removed. These use the original authorized asset actions and accepted image formats. An unattached image shows a helpful choose/upload message rather than Resource Source Unavailable. Local browser verification, TypeScript, lint and guarded production build passed. No live file upload or resource change was attempted; rehearsal actions remain simulated.
+
+## PDF resources, layouts and primary-color actions
+
+PDF cards now expose existing-resource selection/upload/replacement/removal directly on the main card, with Header and preview rather than the generic text/subtitle/caption editors. Advanced options retain reader/download/new-tab capabilities and reader/slides style, plus supporting text and stacked/PDF-left/PDF-right layouts. PDF capability fields belong to the same canvas form, and previews react to embedded-reader changes. Before opening Edit, existing capability defaults are preserved during save. File validation and authorized asset actions are unchanged.
+
+Reader-off PDF action cards and prebuilt assessment cards use the current course primary color. Card text uses the course's computed contrasting ink; white action buttons use dark text. Embedded-reader rendering and assessment enrollment/completion logic are unchanged. The offline PDF fixture renders the same reader-off action structure, without loading participant data or performing an upload.
+
+Local browser checks passed for main library/upload controls, absence of main paragraph editors, shared PDF form ownership, primary-color action card, preserved links and mobile side-by-side stacking. Twenty-four focused tests, TypeScript, lint and guarded production build passed. Review saves remain simulated; no push/deployment or live writes performed.
+
+## Prebuilt assessment selector and course-card preview
+
+The main assessment card now contains the assessment dropdown, Save Changes and the shared learner AssessmentLaunchCard preview, including not-started status and an inactive Start Assessment button. Registered assessment metadata is fetched once per server request using React cache. Selecting an assessment clears old wording overrides and uses its canonical name/description; blank stored copy continues to resolve canonical metadata at runtime. Existing deliberate wording overrides are preserved on initial load.
+
+Advanced options expose course-card name/description overrides and Use Assessment Defaults; edits immediately update the preview and save through the existing block update action. They do not edit the canonical assessment or its responses/scoring. Existing unavailable selections are identified rather than silently replaced, and saving requires an available selection. Existing source/layout controls remain available.
+
+Two local browser checks covered metadata selection, hidden override values, course-card preview, custom wording, reset and the inactive start button. Twenty-two focused tests, TypeScript, lint and guarded production build passed. One pre-existing source assertion was updated to accept the repository's already-existing unconditional autoStart attribute as well as its conditional form; no native assessment launch behavior was changed. No live writes, push or deployment occurred.
+
+Assessment selection is now available in both the main card and advanced options, synchronized without extra library queries. Advanced name/description fields display the currently effective wording, including canonical defaults when there is no override. Edits update the preview immediately; Use Assessment Defaults clears stored overrides and restores the selected assessment's canonical name/description in both the fields and preview. Changing selection in either location resets old overrides. Local browser checks covered populated fields, custom wording/reset and synchronized advanced selection. Twenty-two focused tests, TypeScript and lint passed; no live changes or push.
+
+## Short-response main editor and preview
+
+Short-response blocks now use Question or Prompt, Supporting Text / Instructions, Placeholder and the existing Character Limit on the regular card instead of generic Optional Header / Main Text / Subtitle / Caption editors. The same response-specific fields remain in advanced options and synchronize in both directions. Advanced controls mirror draft values without duplicate named form fields; one main authoring form submits through the original updateBlockAction, keeping response definition IDs, response keys, validation, behavior and permissions intact.
+
+The actual participant response component renders below the main form with current prompt, instructions, placeholder and character limit, with response data explicitly null and preview mode enabled. Its answer field is disabled and there are no response-submission controls. Existing layout/source controls remain advanced. No participant information was loaded or saved.
+
+Verification: two local browser checks proved the required main fields, absence of generic text editors, preview placement and disabled state, immediate preview updates, advanced synchronization, a single prompt value in FormData, max-length updates and mobile fit. The browser recorded no external requests, runtime errors or console errors. Forty-two focused offline tests, TypeScript, lint, diff checks and guarded production build passed. Live authoring persistence remains outside the simulated review; no push or deployment performed.
+
+### Short-response requirement selector — October 13, 2026
+
+The main short-response card now provides Required, Optional, and Recommended. Its selection stays synchronized with advanced options and uses the existing requirement_level save contract. Character limit is visible only in advanced options; the main form retains its current value without exposing the field. Local browser checks verified both directions of requirement synchronization, hidden character-limit preservation, preview behavior, mobile fit, and no external requests. TypeScript, focused ESLint, and 11 integration tests passed. Saves in the review application remain simulated; no production push or database changes were performed.
+
+### PDF resource-card design — October 13, 2026
+
+Non-embedded PDFs now use a shared PdfResourceCard in the participant renderer and offline builder fixture. The card displays a PDF document icon, the configured/resource title, optional description, white text on the course primary background, and white buttons with primary lettering plus open-new-tab/download icons. Resource-only caption visibility overrides the old presentation rule that hid the name; caption/actions backgrounds are transparent to remove the blank white interior. Embedded-reader controls and existing URL/download permissions are preserved. Targeted desktop/mobile browser checks, TypeScript, focused ESLint, and diff checks passed. Browser checks verified visible title, colors, icons, actions and side-column presentation. No live services or participant records accessed, no production push; review saves remain simulated.
+
+### Requirement radio buttons — October 13, 2026
+
+Short-response requirement dropdowns are now native radio groups for Required, Optional, and Recommended, on both the main card and advanced panel. Group names are separated between forms; synchronized state preserves one requirement_level value in the main save payload. Browser checks verified selection synchronization and submitted value, and TypeScript/ESLint/diff checks passed. No production push or database changes.

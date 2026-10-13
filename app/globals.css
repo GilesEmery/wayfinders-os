@@ -3330,3 +3330,60 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
 [data-text-columns] :is(.tiptap,.participant-rich-text-block) :is(h1,h2,h3,h4,h5,h6){column-span:all}
 [data-text-columns] :is(.tiptap,.participant-rich-text-block) :is(img,table,blockquote){break-inside:avoid;max-width:100%}
 @media(max-width:700px){[data-text-columns] .tiptap,[data-text-columns] .participant-rich-text-block{column-count:1}}
+
+.video-canvas-editor>form{display:grid;gap:14px;margin-bottom:24px}.video-canvas-editor label{display:grid;gap:6px;font:600 12px/1.5 var(--font-sans),sans-serif}.video-canvas-editor input{width:100%;padding:10px;border:1px solid var(--builder-line,#d8dce1);border-radius:5px;font:400 14px/1.5 var(--font-sans),sans-serif}.video-canvas-editor button{justify-self:start;padding:9px 14px;border:1px solid var(--builder-line,#d8dce1);border-radius:5px;background:#fff;font:600 12px/1.5 var(--font-sans),sans-serif}
+.video-text-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--block-text-gap,24px);align-items:start}.video-text-layout>*{min-width:0}.video-text-layout.is-video-right>.course-item-content{grid-column:2;grid-row:1}.video-text-layout.is-video-right>.video-supporting-text{grid-column:1;grid-row:1}
+.course-item-presentation[data-media-side] .participant-media-block>strong,.course-item-presentation[data-media-side] .participant-media-block>p{display:none}
+@media(max-width:700px){.video-text-layout{grid-template-columns:1fr}.video-text-layout.is-video-right>.course-item-content,.video-text-layout.is-video-right>.video-supporting-text{grid-column:auto;grid-row:auto}}
+
+/* Paragraph fields get a generous writing surface across text, video and image editors. */
+.modern-builder-controls [data-text-field="presentation_body"] .tiptap,.modern-course-builder [data-text-field="presentation_body"] .tiptap{min-height:200px;padding:12px;line-height:1.6}
+.modern-builder-controls [data-text-field="presentation_body"] .inline-text-surface{background:#fff;border:1px solid #d8dce1;border-radius:6px}
+.modern-builder-controls .builder-block-asset,.modern-builder-controls .builder-block-asset>div,.modern-builder-controls .builder-inspector-form{background:#fff!important;border-left:0!important;box-shadow:none!important}
+.modern-builder-controls .builder-block-asset{border:1px solid #d8dce1!important;border-radius:8px;padding:16px!important}
+.modern-builder-controls .builder-inspector-form{display:grid;gap:12px;padding:0!important}
+
+.image-card-resources{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:20px 0;padding:16px;background:#f5f7f9;border:1px solid #d8dce1;border-radius:8px}
+.image-card-resources>form{display:grid;gap:12px;min-width:0;align-content:start}.image-card-resources select{max-width:100%;width:100%;padding:10px;border:1px solid #d8dce1;border-radius:5px;background:#fff;font:400 14px/1.5 var(--font-sans),sans-serif}
+.image-card-resources p,.image-empty-source{font:400 13px/1.6 var(--font-sans),sans-serif;color:#68716a}.image-empty-source{padding:32px;text-align:center;border:1px dashed #d8dce1;border-radius:6px;background:#f5f7f9}
+@media(max-width:700px){.image-card-resources{grid-template-columns:1fr}}
+
+/* Primary-color cards identify course actions consistently. */
+.participant-pdf-reader.is-resource-only,.modern-course-builder .builder-assessment-preview,.participant-course .assessment-launch-card{background:var(--experience-accent,var(--builder-accent,#0054a1));border:1px solid var(--experience-accent,var(--builder-accent,#0054a1));color:var(--course-header-ink,#fff);border-radius:6px;padding:24px}
+.participant-pdf-reader.is-resource-only figcaption,.participant-pdf-reader.is-resource-only figcaption :is(strong,span),.modern-course-builder .builder-assessment-preview :is(strong,p),.participant-course .assessment-launch-card :is(h2,p,span){color:var(--course-header-ink,#fff)}
+.participant-pdf-reader.is-resource-only .participant-pdf-actions a{background:#fff;border:1px solid #fff;border-radius:5px;color:var(--experience-accent,#0054a1);font-weight:700;min-height:44px;padding:12px 16px;text-decoration:none}
+.participant-pdf-reader.is-resource-only .participant-pdf-actions a:focus-visible{outline:2px solid var(--course-header-ink,#fff);outline-offset:3px}
+.participant-course .assessment-launch-card.is-completed{background:var(--experience-accent,#0054a1)}
+
+.participant-pdf-reader.is-resource-only .participant-pdf-actions a,.participant-course .assessment-launch-card button{color:#252a29}
+
+.assessment-canvas-editor>form{display:grid;gap:14px;margin-bottom:24px}.assessment-canvas-editor label{display:grid;gap:6px;font:600 12px/1.5 var(--font-sans),sans-serif}.assessment-canvas-editor select{width:100%;padding:10px;border:1px solid #d8dce1;border-radius:5px;background:#fff;font:400 14px/1.5 var(--font-sans),sans-serif}.assessment-canvas-editor>form>button{justify-self:start;padding:9px 14px;border:1px solid #d8dce1;border-radius:5px;background:#fff;font-weight:600}
+.modern-course-builder .assessment-canvas-editor .assessment-launch-card{background:var(--builder-accent);color:var(--course-header-ink,#fff);margin:16px 0;border-color:var(--builder-accent)}
+.modern-course-builder .assessment-canvas-editor .assessment-launch-card :is(h2,p,span){color:var(--course-header-ink,#fff)}
+.modern-course-builder .assessment-canvas-editor .assessment-launch-card button{background:#fff;color:#252a29;cursor:default}
+.assessment-preview-note{color:#68716a;font-size:11px}.assessment-custom-wording{display:grid;gap:12px}
+
+.modern-course-builder .assessment-canvas-editor .assessment-launch-status{color:var(--course-header-ink,#fff);border-color:var(--course-header-ink,#fff)}
+
+.short-response-fields{display:grid;gap:18px}.short-response-fields label{display:grid;gap:7px;font:600 12px/1.5 var(--font-sans),sans-serif}.short-response-fields :is(input,textarea){width:100%;min-width:0;border:1px solid #d8dce1;border-radius:6px;padding:12px;background:#fff;font:400 15px/1.5 var(--font-sans),sans-serif}.short-response-fields textarea{min-height:140px;resize:vertical}.short-response-canvas-editor>form>button{margin-top:16px;padding:10px 16px;border:1px solid #d8dce1;border-radius:5px;background:#fff;font-weight:600}.short-response-learner-preview{margin-top:24px;border-top:1px solid #d8dce1;padding-top:20px}.short-response-learner-preview>small{font-size:11px;color:#68716a}
+
+/* Non-embedded PDF: one resource card with visible metadata and clear actions. */
+.participant-pdf-reader.is-resource-only{color:#fff;gap:24px;padding:28px;border-radius:6px}
+.participant-pdf-reader.is-resource-only>figcaption{display:flex;background:transparent;color:#fff;align-items:center;gap:18px;padding:0;min-width:0}
+.participant-pdf-reader.is-resource-only>figcaption div{display:grid;gap:8px;min-width:0}
+.participant-pdf-reader.is-resource-only>figcaption :is(strong,span){color:#fff;overflow-wrap:anywhere}
+.participant-pdf-reader.is-resource-only>figcaption strong{font-size:22px;line-height:1.3}
+.participant-pdf-reader.is-resource-only .pdf-resource-icon{width:40px;height:48px;flex:none}
+.participant-pdf-reader.is-resource-only .participant-pdf-actions{background:transparent;border:0;padding:0;flex-wrap:wrap;gap:12px}
+.participant-pdf-reader.is-resource-only .participant-pdf-actions a{display:inline-flex;align-items:center;justify-content:center;gap:9px;color:var(--experience-accent,var(--builder-accent,#0054a1));font-size:12px;line-height:1.4}
+.participant-pdf-reader.is-resource-only .participant-pdf-actions a svg{width:18px;height:18px;flex:none}
+.participant-pdf-reader.is-resource-only .participant-pdf-actions a:hover{background:#f5f7f9;color:var(--experience-accent,var(--builder-accent,#0054a1))}
+@media(max-width:480px){.participant-pdf-reader.is-resource-only{padding:20px}.participant-pdf-reader.is-resource-only .participant-pdf-actions a{flex:1 1 150px}}
+
+.short-response-requirement{border:0;margin:0;padding:0;min-width:0}
+.short-response-requirement legend{font-size:12px;font-weight:700;margin-bottom:10px;padding:0}
+.short-response-requirement>div{display:flex;flex-wrap:wrap;gap:12px 24px}
+.short-response-requirement>div>label{display:inline-flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
+.short-response-fields .short-response-requirement input[type="radio"],.short-response-requirement input[type="radio"]{appearance:auto;width:16px;height:16px;min-height:0;margin:0;padding:0;accent-color:var(--experience-accent,var(--builder-accent,#0054a1))}
+
+.short-response-canvas-editor>form>.short-response-fields+.short-response-fields{margin-top:18px}

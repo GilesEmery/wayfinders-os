@@ -1,5 +1,6 @@
 "use client";
 
+import { PdfResourceCard } from "./PdfResourceCard";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from "pdfjs-dist";
@@ -141,7 +142,7 @@ function PdfReaderInstance({ config, asset }: { config: Record<string, unknown>;
     {showReader && !popoutOpen && <button className="participant-pdf-open" type="button" onClick={(event) => openPopout(event.currentTarget)} disabled={readerStatus !== "ready"} aria-label={`Open ${title} PDF`}>Open PDF</button>}
   </div>;
 
-  if (!showReader) return <figure className="participant-pdf-reader is-resource-only"><figcaption>{title && <strong>{title}</strong>}{description && <span>{description}</span>}</figcaption>{actions}</figure>;
+  if (!showReader) return <PdfResourceCard title={title} description={description} url={asset.url} downloadUrl={asset.downloadUrl} allowDownload={allowDownload} allowOpenInNewTab={allowOpenInNewTab}/>;
 
   const reader = <figure className={`participant-pdf-reader is-${mode}${popoutOpen ? " is-popout" : ""}`} onKeyDown={(event) => {
     if (mode !== "slides") return;

@@ -13,13 +13,13 @@ const sizes=load('lib/experiences/builder/course-text-size.ts',{'@tiptap/core':{
 const native=value=>JSON.parse(JSON.stringify(value));
 const markdown=new MarkdownManager({extensions:[StarterKit,font.CourseFontOverride,sizes.CourseTextSize]});
 test('legacy fallback preserves the exact original workspace and content-card code',()=>{
- const head=path=>execFileSync('git',['show','HEAD:'+path],{encoding:'utf8'});
+ const head=path=>execFileSync('git',['show','ce649fb03dd5f1d919431e5824a748cec6b21360:'+path],{encoding:'utf8'});
  assert.equal(readFileSync('components/admin/LegacyBuilderBlocks.tsx','utf8'),head('components/admin/BuilderBlocks.tsx'));
  assert.equal(readFileSync('components/admin/LegacyCourseBuilderWorkspace.tsx','utf8').replaceAll('LegacyBuilderBlocks','BuilderBlocks').replaceAll('LegacyCourseBuilderWorkspace','CourseBuilderWorkspace'),head('components/admin/CourseBuilderWorkspace.tsx'));
 });
 test('existing authoring mutation, publication, authorization, response and enrollment contracts remain unchanged',()=>{
- for(const path of ['app/admin/trainings/[experienceId]/versions/[versionId]/actions.ts','app/admin/trainings/[experienceId]/versions/[versionId]/release-actions.ts','lib/experiences/admin/version-release.ts','lib/platform/response-library.ts','lib/platform/response-library-policy.ts'])assert.equal(readFileSync(path,'utf8'),execFileSync('git',['show','HEAD:'+path],{encoding:'utf8'}));
- const block=readFileSync('lib/experiences/admin/block-mutations.ts','utf8'),original=execFileSync('git',['show','HEAD:lib/experiences/admin/block-mutations.ts'],{encoding:'utf8'});assert.equal(block.replaceAll(', "h5", "h6"',''),original);
+ for(const path of ['app/admin/trainings/[experienceId]/versions/[versionId]/actions.ts','app/admin/trainings/[experienceId]/versions/[versionId]/release-actions.ts','lib/experiences/admin/version-release.ts','lib/platform/response-library.ts','lib/platform/response-library-policy.ts'])assert.equal(readFileSync(path,'utf8'),execFileSync('git',['show','ce649fb03dd5f1d919431e5824a748cec6b21360:'+path],{encoding:'utf8'}));
+ const block=readFileSync('lib/experiences/admin/block-mutations.ts','utf8'),original=execFileSync('git',['show','ce649fb03dd5f1d919431e5824a748cec6b21360:lib/experiences/admin/block-mutations.ts'],{encoding:'utf8'});assert.equal(block.replaceAll(', "h5", "h6"',''),original);
 });
 test('no course-level typography defaults are emitted or applied unless explicitly configured',()=>{
  assert.deepEqual(native(typography.courseTypographyVariables({})),{});assert.equal(typography.courseTypographyAttribute({}),undefined);

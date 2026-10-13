@@ -1,12 +1,13 @@
 export type TextSize = "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
-export type BlockPresentation = { header: string; body: string; headerSize: TextSize; bodySize: TextSize; placement: "above" | "between" | "below"; subtitle?: string; caption?: string; appearance?: { alignment?: "left" | "center" | "right"; padding?: number; width?: number; background?: string; border?: boolean; fit?: "contain" | "cover"; columns?:1|2|3; columnGap?:number; fontSize?:number; lineHeight?:number; letterSpacing?:number; color?:string; family?:"sans"|"editorial"|"mono" } };
+export type BlockPresentation = { header: string; body: string; headerSize: TextSize; bodySize: TextSize; placement: "above" | "between" | "below"; mediaSide?: "stacked" | "left" | "right"; subtitle?: string; caption?: string; appearance?: { alignment?: "left" | "center" | "right"; padding?: number; width?: number; background?: string; border?: boolean; fit?: "contain" | "cover"; columns?:1|2|3; columnGap?:number; fontSize?:number; lineHeight?:number; letterSpacing?:number; color?:string; family?:"sans"|"editorial"|"mono" } };
 export function readBlockPresentation(settings: unknown): BlockPresentation | null {
   if (!settings || typeof settings !== "object") return null;
   const value = (settings as Record<string, unknown>).textPresentation;
   if (!value || typeof value !== "object") return null;
   const p = value as Record<string, unknown>;
   const size = (value: unknown, fallback: TextSize): TextSize => ["h1", "h2", "h3", "h4", "h5", "h6"].includes(String(value)) ? value as TextSize : fallback;
-  const additional: Pick<BlockPresentation,"subtitle"|"caption"|"appearance"> = {};
+  const additional: Pick<BlockPresentation,"subtitle"|"caption"|"appearance"|"mediaSide"> = {};
+  if(["stacked","left","right"].includes(String(p.mediaSide)))additional.mediaSide=p.mediaSide as "stacked"|"left"|"right";
   for(const key of ["subtitle","caption"] as const)if(typeof p[key]==="string")additional[key]=p[key] as string;
   if(p.appearance && typeof p.appearance==="object") {
     const raw=p.appearance as Record<string,unknown>,a:NonNullable<BlockPresentation["appearance"]>={};
@@ -34,13 +35,15 @@ export function presentationSettings(current: unknown, form: FormData):Record<st
   }
   // The legacy question controls and rich text fields share one visible prompt.
   // If the rich text was untouched, use the question edits rather than its seed.
-  const header = form.has("prompt") && form.get("presentation_header") === form.get("presentation_header_initial")
+  const editedHeader = form.has("prompt") && form.get("presentation_header") === form.get("presentation_header_initial")
     ? String(form.get("prompt") ?? "") : String(form.get("presentation_header") ?? "");
+  const header=form.get("video_canvas")==="yes"&&editedHeader===form.get("presentation_header_initial")?String(form.get("title")??""):editedHeader;
   const body = form.has("instructions") && form.get("presentation_body") === form.get("presentation_body_initial")
     ? String(form.get("instructions") ?? "") : String(form.get("presentation_body") ?? "");
   if (header.length > 12000 || body.length > 12000) throw new Error("Each text area must be at most 12,000 characters.");
   const previous=readBlockPresentation(settings);
   const extras:Record<string,unknown>={...previous};
+  if(form.has("presentation_media_side")){const side=String(form.get("presentation_media_side"));if(!["stacked","left","right"].includes(side))throw new Error("Choose stacked, video left or video right.");extras.mediaSide=side;}
   for(const [key,field] of [["subtitle","presentation_subtitle"],["caption","presentation_caption"]])if(form.has(field)){const text=String(form.get(field)??"");if(text.length>12000)throw new Error("Additional text must be at most 12,000 characters.");extras[key]=text;}
   if(form.has("presentation_appearance")){
     const appearance:Record<string,unknown>={};
@@ -51,7 +54,7 @@ export function presentationSettings(current: unknown, form: FormData):Record<st
     if(String(form.get("presentation_columnGap")??"").trim()){const gap=Number(form.get("presentation_columnGap"));if(!Number.isFinite(gap)||gap<0||gap>120)throw new Error("Column gap must be between 0 and 120px.");appearance.columnGap=gap;}
     appearance.border=form.get("presentation_border")==="yes";extras.appearance=appearance;
   }
-  const textPresentation = readBlockPresentation({ textPresentation: { ...extras, header, body, headerSize: form.get("presentation_header_size"), bodySize: form.get("presentation_body_size"), placement: form.get("presentation_placement") } });
+  const textPresentation = readBlockPresentation({ textPresentation: { ...extras, header, body, headerSize: form.get("presentation_header_size")??previous?.headerSize, bodySize: form.get("presentation_body_size")??previous?.bodySize, placement: form.get("presentation_placement")??previous?.placement } });
   return { ...settings, textPresentation };
 }
 
