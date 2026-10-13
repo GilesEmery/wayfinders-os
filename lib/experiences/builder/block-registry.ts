@@ -1,3 +1,4 @@
+import { CALLOUT_STYLES } from "./callout-styles.ts";
 import type { Json } from "@/lib/supabase/database.types";
 import type { BlockCompletionRule, ValidationResult } from "./types";
 import { validateResponseOptions, type DatabaseResponseType, type ResponseKind } from "./response-registry.ts";
@@ -83,12 +84,16 @@ function richText(input: unknown): ValidationResult<BlockConfiguration> {
 }
 
 function callout(input: unknown): ValidationResult<BlockConfiguration> {
-  const parsed = strict(input, ["title", "body", "treatment"]);
+  const parsed = strict(input, ["title", "body", "treatment", "calloutStyle", "showIcon", "showTitle", "borderStyle"]);
   if (!parsed.value) return { ok: false, errors: parsed.errors };
   const title = text(parsed.value.title ?? "", "Callout title", 180);
   const body = text(parsed.value.body, "Callout body", 4000, true);
   const treatment = oneOf(parsed.value.treatment, ["info", "emphasis", "warning", "success"] as const, "Callout treatment");
-  return result({ title: title.value || undefined, body: body.value, treatment: treatment.value }, [...parsed.errors, title.error, body.error, treatment.error]);
+  const style=parsed.value.calloutStyle===undefined?undefined:oneOf(parsed.value.calloutStyle,CALLOUT_STYLES.map(s=>s.id),"Callout style");
+  const border=parsed.value.borderStyle===undefined?undefined:oneOf(parsed.value.borderStyle,["left","outline","none"] as const,"Callout border");
+  const errors=[...parsed.errors,title.error,body.error,treatment.error,style?.error,border?.error];
+  for(const key of ["showIcon","showTitle"])if(parsed.value[key]!==undefined&&typeof parsed.value[key]!=="boolean")errors.push(`Invalid ${key}.`);
+  return result({title:title.value||undefined,body:body.value,treatment:treatment.value,...(style?{calloutStyle:style.value}:{}),...(border?{borderStyle:border.value}:{}),...(parsed.value.showIcon!==undefined?{showIcon:boolean(parsed.value.showIcon,true)}:{}),...(parsed.value.showTitle!==undefined?{showTitle:boolean(parsed.value.showTitle,true)}:{})},errors);
 }
 
 function response(input: unknown): ValidationResult<BlockConfiguration> {
@@ -191,7 +196,7 @@ const definitions = [
   },
   {
     blockType: "callout", label: "Callout", description: "Emphasize a short message with an approved treatment.", category: "content", iconKey: "callout", editorKey: "callout", previewKey: "callout", participantRendererKey: "callout.v1", defaultCompletionRule: "none",
-    defaultConfiguration: () => ({ body: "Add a helpful callout.", treatment: "info" }), validateConfiguration: callout,
+    defaultConfiguration: () => ({ title:"Key Insight",body: "Add a helpful callout.", treatment: "info",calloutStyle:"insight",showIcon:true,showTitle:true,borderStyle:"left" }), validateConfiguration: callout,
     supportsResponse: false, supportsCompletion: false, supportsResources: false, duplicable: true, availability: "available",
   },
   {

@@ -102,7 +102,7 @@ export async function signedAssetUrl(db: Db, resource: Pick<CourseAsset, "storag
 
 export async function listCourseAssets(db: Db, type?: "image" | "document" | "pdf") {
   let query = db.from("resources").select("*").eq("status", "active").not("storage_path", "is", null).order("created_at", { ascending: false }).limit(100);
-  query = type === "image" ? query.eq("resource_type", "image") : type === "pdf" ? query.eq("resource_type", "pdf").eq("mime_type", "application/pdf") : type === "document" ? query.in("resource_type", ["pdf", "download", "worksheet", "guide"]) : query;
+  query = type === "image" ? query.eq("resource_type", "image") : type === "pdf" ? query.eq("resource_type", "pdf").eq("mime_type", "application/pdf") : type === "document" ? query.in("resource_type", ["pdf", "download", "worksheet", "guide", "image"]) : query;
   const result = await query;
   if (result.error) throw new Error(`Unable to load uploaded assets: ${result.error.message}`);
   return result.data ?? [];

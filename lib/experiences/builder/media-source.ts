@@ -59,3 +59,9 @@ export function videoSource(urlValue: string): { kind: "embed" | "direct" | "lin
   if (/\.(?:mp4|webm|ogg)$/i.test(url.pathname)) return { kind: "direct", url: safe, provider: "Hosted video" };
   return { kind: "link", url: safe, provider: host };
 }
+
+// Native attachment links are authoritative when only text/settings are saved.
+export function shouldRelinkExternalResource(kind:string,previous:unknown,next:unknown){
+ const url=(input:unknown)=>input&&typeof input==='object'&&'url' in input?String((input as {url?:unknown}).url??''):'';
+ return !['image','document','download'].includes(kind)||url(previous)!==url(next);
+}

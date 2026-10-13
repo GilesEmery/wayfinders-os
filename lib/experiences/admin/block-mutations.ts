@@ -1,3 +1,4 @@
+import {shouldRelinkExternalResource} from "../builder/media-source";
 import "server-only";
 import { presentationSettings } from "../builder/block-presentation";
 
@@ -68,7 +69,7 @@ function optionConfiguration(form: FormData, multi: boolean) {
 function formConfiguration(blockType: string, form: FormData): unknown {
   if (blockType === "heading") return { text: form.get("text"), level: form.get("level"), eyebrow: form.get("eyebrow") ?? "", alignment: form.get("alignment") };
   if (blockType === "rich_text") return { title: form.get("title") ?? "", text: form.get("text"), titleLevel: form.get("title_level") ?? "h3" };
-  if (blockType === "callout") return { title: form.get("title") ?? "", body: form.get("body"), treatment: form.get("treatment") };
+  if (blockType === "callout") return { title: form.get("title") ?? "", body: form.get("body"), treatment: form.get("treatment"), ...(form.has("callout_style")?{calloutStyle:form.get("callout_style"),showIcon:form.has("show_icon"),showTitle:form.has("show_title"),borderStyle:form.get("border_style")}: {}) };
   if (blockType === "structured_response" || blockType === "reflection") return { placeholder: form.get("placeholder") ?? "", maxLength: Number(form.get("max_length")) };
   if (blockType === "card_selection") return optionConfiguration(form, false);
   if (blockType === "checklist") return optionConfiguration(form, true);
@@ -280,7 +281,7 @@ export async function updateBlock(experienceId: string, versionId: string, secti
   }
   const result = await db.from("content_blocks").update({ content: parsed.value as Json, settings: presentationSettings(block.settings, form) as Json, requirement_level: requirement, visibility, completion_rule: definition.defaultCompletionRule }).eq("id", blockId).eq("section_id", sectionId).eq("column_id", block.column_id!);
   if (result.error) throw new Error(`Unable to update Block: ${result.error.message}`);
-  if (MEDIA_TYPES.has(block.block_type)) {
+  if (MEDIA_TYPES.has(block.block_type) && shouldRelinkExternalResource(block.block_type,block.content,parsed.value)) {
     try { await linkExternalResource(db, blockId, block.block_type, parsed.value, admin.id); }
     catch (error) {
       await db.from("content_blocks").update({ content: block.content, settings: block.settings, requirement_level: block.requirement_level, visibility: block.visibility, completion_rule: block.completion_rule }).eq("id", blockId);
@@ -349,7 +350,7 @@ export async function setBlockAsset(experienceId: string, versionId: string, sec
   if (!resourceBelongsToCourse(resource.data.storage_path, experienceId)) throw new Error("This uploaded asset belongs to a different course.");
   if (block.block_type === "image" && resource.data.resource_type !== "image") throw new Error("Image Blocks require an uploaded image.");
   if (block.block_type === "pdf_reader" && (resource.data.resource_type !== "pdf" || resource.data.mime_type !== "application/pdf")) throw new Error("PDF Reader Blocks require an uploaded PDF.");
-  if (!["image", "pdf_reader"].includes(block.block_type) && !["pdf", "download", "worksheet", "guide"].includes(resource.data.resource_type)) throw new Error("Choose a PDF or document asset.");
+  if (!["image", "pdf_reader"].includes(block.block_type) && !["pdf", "download", "worksheet", "guide", "image"].includes(resource.data.resource_type)) throw new Error("Choose an image, PDF or document asset.");
   const existing = await db.from("content_block_resources").select("resource_id").eq("content_block_id", blockId);
   if (existing.error) throw new Error(`Unable to inspect current asset links: ${existing.error.message}`);
   if (!(existing.data ?? []).some((link) => link.resource_id === resourceId)) {

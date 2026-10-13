@@ -1,3 +1,5 @@
+import {ExternalResourceCard} from "./ExternalResourceCard";
+import {PdfResourceCard} from "./PdfResourceCard";
 import Image from "next/image";
 import { safeExternalUrl, videoSource, type MediaKind } from "@/lib/experiences/builder/media-source";
 import type { ResolvedAsset } from "@/lib/experiences/builder/resource-assets";
@@ -23,9 +25,10 @@ export function ParticipantMediaBlock({ kind, config, asset }: { kind: MediaKind
   const title = value(config, "title") || asset?.title || "";
   const description = value(config, "description") || asset?.description || "";
   const caption = value(config, "caption");
+  if(kind==="external_link")return <ExternalResourceCard title={title} url={url} subtext={description} label={value(config,"linkLabel")||"Open"}/>;
   const label = value(config, "linkLabel") || "Visit resource";
   const external = <a href={url} target="_blank" rel="noopener noreferrer">{label}<span className="sr-only"> (opens in a new tab)</span></a>;
-  const storedFile = (kind === "document" || kind === "download") && asset?.originalFilename;
+  if(kind==="document"||kind==="download")return <PdfResourceCard icon="folder" title={title||asset?.originalFilename||"Course file"} description={description} metadata={asset?[asset.originalFilename,fileType(asset),fileSize(asset.sizeBytes)].filter(Boolean).join(" · "):undefined} url={url} downloadUrl={asset?.downloadUrl} allowOpenInNewTab allowDownload={Boolean(asset?.downloadUrl)}/>;
   return <figure className="participant-media-block">
     {title && <strong>{title}</strong>}{description && <p>{description}</p>}
     {kind === "video" && (() => {
@@ -35,7 +38,6 @@ export function ParticipantMediaBlock({ kind, config, asset }: { kind: MediaKind
       return external;
     })()}
     {kind === "image" && <Image src={url} alt={value(config, "alt")} width={1200} height={800} unoptimized sizes="(max-width: 768px) 100vw, 70vw"/>}
-    {(kind === "document" || kind === "download" || kind === "external_link") && (storedFile ? <div className="participant-resource-card"><span className="participant-resource-filename">{asset.originalFilename}</span><small>{[fileType(asset), fileSize(asset.sizeBytes)].filter(Boolean).join(" · ")}</small><div className="participant-resource-actions"><a href={asset.url} target="_blank" rel="noopener noreferrer">Open<span className="sr-only"> {asset.originalFilename} in a new tab</span></a><a href={asset.downloadUrl}>Download<span className="sr-only"> {asset.originalFilename}</span></a></div></div> : <div className="participant-resource-action">{external}</div>)}
     {caption && <figcaption>{caption}</figcaption>}
   </figure>;
 }

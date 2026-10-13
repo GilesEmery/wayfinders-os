@@ -1,3 +1,4 @@
+import {CalloutBlock} from "./CalloutBlock";
 import { responsePresentationSettings } from "@/lib/experiences/builder/block-presentation";
 import { BlockPresentation } from "./BlockPresentation";
 import { CircleOfInfluenceAssessment } from "./CircleOfInfluenceAssessment";
@@ -80,8 +81,7 @@ function ParticipantBlockContent({ block, response, asset, route, preview = fals
   if (definition.previewKey === "rich_text") return <ParticipantRichText linkContext={{ slug: route.slug, cohortId: route.cohortId, previewBase: route.previewBase }} titleLevel={value(configuration, "titleLevel")} title={value(configuration, "title")} text={value(configuration, "text")}/>;
   if (definition.previewKey === "pdf_reader") return <ParticipantPdfReader config={configuration} asset={asset}/>;
   if (definition.previewKey === "media") return <ParticipantMediaBlock kind={block.block_type as "video" | "image" | "document" | "download" | "external_link"} config={configuration} asset={asset}/>;
-  const title = value(configuration, "title");
-  return <aside className={`participant-callout-block is-${value(configuration, "treatment") || "info"}`}>{title && <strong>{title}</strong>}<p>{value(configuration, "body")}</p></aside>;
+  return <CalloutBlock config={configuration}/>;
 }
 
 export function ParticipantBlockRenderer(props: Parameters<typeof ParticipantBlockContent>[0]) {
