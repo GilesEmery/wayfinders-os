@@ -106,12 +106,21 @@ function response(input: unknown): ValidationResult<BlockConfiguration> {
 }
 
 function selection(input: unknown, multi: boolean): ValidationResult<BlockConfiguration> {
-  const fields = multi ? ["options", "minSelections", "maxSelections"] : ["options"];
+  const fields = multi ? ["options", "minSelections", "maxSelections"] : ["options","displayStyle","cardColumns","questionPurpose","correctAnswerKey","points","feedback"];
   const parsed = strict(input, fields);
   if (!parsed.value) return { ok: false, errors: parsed.errors };
-  const options = validateResponseOptions(parsed.value.options);
+  const options = validateResponseOptions(parsed.value.options,multi?50:Infinity);
   if (!options.ok) return { ok: false, errors: [...parsed.errors, ...options.errors] };
-  if (!multi) return result({ options: options.value }, parsed.errors);
+  if (!multi) {
+    const extra:Record<string,Json|undefined>={};const errors=[...parsed.errors];
+    if(parsed.value.displayStyle!==undefined){const style=oneOf(parsed.value.displayStyle,["cards","list","dropdown"] as const,"Display style");extra.displayStyle=style.value;if(style.error)errors.push(style.error);}
+    if(parsed.value.cardColumns!==undefined){if(![1,2].includes(Number(parsed.value.cardColumns)))errors.push("Cards require one or two columns.");extra.cardColumns=Number(parsed.value.cardColumns);}
+    if(parsed.value.questionPurpose!==undefined){const purpose=oneOf(parsed.value.questionPurpose,["reflection","knowledge"] as const,"Question purpose");extra.questionPurpose=purpose.value;if(purpose.error)errors.push(purpose.error);}
+    if(parsed.value.correctAnswerKey!==undefined){const key=String(parsed.value.correctAnswerKey||'');if(key&&!options.value.some(o=>o.key===key))errors.push("Correct answer must reference an available option.");extra.correctAnswerKey=key;}
+    if(parsed.value.points!==undefined){const points=Number(parsed.value.points);if(!Number.isInteger(points)||points<0||points>1000000)errors.push("Points must be a whole number from 0 to 1000000.");extra.points=points;}
+    if(parsed.value.feedback!==undefined){const feedback=text(parsed.value.feedback,"Feedback",3000);extra.feedback=feedback.value;if(feedback.error)errors.push(feedback.error);}
+    return result({options:options.value,...extra},errors);
+  }
   const minSelections = Number(parsed.value.minSelections);
   const maxSelections = Number(parsed.value.maxSelections);
   const selectionErrors = [
@@ -211,7 +220,7 @@ const definitions = [
   },
   {
     blockType: "card_selection", label: "Single Select", description: "Choose one option from an ordered set.", category: "interaction", iconKey: "single-select", editorKey: "response", previewKey: "response", participantRendererKey: "single-select-response.v1", defaultCompletionRule: "response_submitted",
-    defaultConfiguration: () => ({ options: [{ key: "option-one", label: "Option one", sortOrder: 0 }, { key: "option-two", label: "Option two", sortOrder: 1 }] }), validateConfiguration: (input) => selection(input, false),
+    defaultConfiguration: () => ({ options: [{ key: "option-one", label: "Option one", sortOrder: 0 }, { key: "option-two", label: "Option two", sortOrder: 1 }],displayStyle:"cards",cardColumns:2,questionPurpose:"reflection" }), validateConfiguration: (input) => selection(input, false),
     supportsResponse: true, supportsCompletion: true, supportsResources: false, duplicable: true, availability: "available", response: { responseKind: "single_select", responseType: "choice", completionSignal: "response_submitted" },
   },
   {
@@ -309,4 +318,12 @@ export function getParticipantBlockDefinition(blockType: string, rendererKey: st
 export function parseBlockConfiguration(blockType: string, input: unknown): ValidationResult<BlockConfiguration> {
   const definition = getBlockDefinition(blockType);
   return definition ? definition.validateConfiguration(input) : { ok: false, errors: [`Unavailable Block type: ${blockType}.`] };
+}
+
+// Older authoring interfaces submit only options; preserve deliberate newer settings.
+export function retainSingleSelectSettings(previous:unknown,changes:unknown){
+ const current=previous&&typeof previous==='object'&&!Array.isArray(previous)?previous as Record<string,unknown>:{};
+ const next=changes&&typeof changes==='object'&&!Array.isArray(changes)?changes as Record<string,unknown>:{};
+ const retained=Object.fromEntries(['displayStyle','cardColumns','questionPurpose','correctAnswerKey','points','feedback'].filter(key=>current[key]!==undefined).map(key=>[key,current[key]]));
+ return {...retained,...next};
 }

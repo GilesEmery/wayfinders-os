@@ -1,3 +1,4 @@
+import {readCourseTypography} from "./course-typography";
 import type {CourseTypography} from "./course-typography";
 export const GROUP_LABELS = ["module", "week", "section", "unit", "stage", "session", "chapter", "phase"] as const;
 export type GroupLabel = typeof GROUP_LABELS[number];
@@ -39,7 +40,7 @@ export function normalizeCourseConfiguration(value: unknown): CourseConfiguratio
   const colors = Object.fromEntries(COURSE_COLOR_FIELDS.map(([key]) => [key, typeof inputColors[key] === "string" && /^#[0-9a-f]{6}$/i.test(inputColors[key] as string) ? inputColors[key] as string : null])) as CourseConfiguration["appearance"]["colors"];
   const companion_mode = root.companion_mode === "group" ? "group" : "individual";
   const image_resource_id = typeof card.image_resource_id === "string" && /^[0-9a-f-]{36}$/i.test(card.image_resource_id) ? card.image_resource_id : null;
-  return { terminology: { group_label }, companion_mode, card: { image_resource_id, headline: optionalText(card.headline, 200), supporting_text: optionalText(card.supporting_text, 600), eyebrow: optionalText(card.eyebrow, 80) }, appearance: { header_treatment, reading_width, accent_color, cover_resource_id, logo_resource_id, header_logo_mode, header_logo_resource_id, colors } };
+  return { ...(Object.hasOwn(root,"typography")?{typography:readCourseTypography(root.typography)}:{}), terminology: { group_label }, companion_mode, card: { image_resource_id, headline: optionalText(card.headline, 200), supporting_text: optionalText(card.supporting_text, 600), eyebrow: optionalText(card.eyebrow, 80) }, appearance: { header_treatment, reading_width, accent_color, cover_resource_id, logo_resource_id, header_logo_mode, header_logo_resource_id, colors } };
 }
 
 export function contrastRatio(foreground: string, background: string) {

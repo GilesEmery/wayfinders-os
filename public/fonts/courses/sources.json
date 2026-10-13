@@ -1,0 +1,80 @@
+[
+  {
+    "family": "Lato",
+    "cssSource": "https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0,700;1,400;1,700&display=swap",
+    "licenseSource": "https://raw.githubusercontent.com/google/fonts/main/ofl/lato/OFL.txt",
+    "faces": 4
+  },
+  {
+    "family": "Roboto",
+    "cssSource": "https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,700;1,400;1,700&display=swap",
+    "licenseSource": "https://raw.githubusercontent.com/google/fonts/main/ofl/roboto/OFL.txt",
+    "faces": 4
+  },
+  {
+    "family": "Open Sans",
+    "cssSource": "https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,700;1,400;1,700&display=swap",
+    "licenseSource": "https://raw.githubusercontent.com/google/fonts/main/ofl/opensans/OFL.txt",
+    "faces": 4
+  },
+  {
+    "family": "Inter",
+    "cssSource": "https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,700;1,400;1,700&display=swap",
+    "licenseSource": "https://raw.githubusercontent.com/google/fonts/main/ofl/inter/OFL.txt",
+    "faces": 4
+  },
+  {
+    "family": "Montserrat",
+    "cssSource": "https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;1,400;1,700&display=swap",
+    "licenseSource": "https://raw.githubusercontent.com/google/fonts/main/ofl/montserrat/OFL.txt",
+    "faces": 4
+  },
+  {
+    "family": "Poppins",
+    "cssSource": "https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,400;0,700;1,400;1,700&display=swap",
+    "licenseSource": "https://raw.githubusercontent.com/google/fonts/main/ofl/poppins/OFL.txt",
+    "faces": 4
+  },
+  {
+    "family": "Merriweather",
+    "cssSource": "https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,400;0,700;1,400;1,700&display=swap",
+    "licenseSource": "https://raw.githubusercontent.com/google/fonts/main/ofl/merriweather/OFL.txt",
+    "faces": 4
+  },
+  {
+    "family": "Playfair Display",
+    "cssSource": "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&display=swap",
+    "licenseSource": "https://raw.githubusercontent.com/google/fonts/main/ofl/playfairdisplay/OFL.txt",
+    "faces": 4
+  },
+  {
+    "family": "Nunito",
+    "cssSource": "https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,700;1,400;1,700&display=swap",
+    "licenseSource": "https://raw.githubusercontent.com/google/fonts/main/ofl/nunito/OFL.txt",
+    "faces": 4
+  },
+  {
+    "family": "Raleway",
+    "cssSource": "https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,400;0,700;1,400;1,700&display=swap",
+    "licenseSource": "https://raw.githubusercontent.com/google/fonts/main/ofl/raleway/OFL.txt",
+    "faces": 4
+  },
+  {
+    "family": "Libre Baskerville",
+    "cssSource": "https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400;1,700&display=swap",
+    "licenseSource": "https://raw.githubusercontent.com/google/fonts/main/ofl/librebaskerville/OFL.txt",
+    "faces": 4
+  },
+  {
+    "family": "Source Sans 3",
+    "cssSource": "https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,400;0,700;1,400;1,700&display=swap",
+    "licenseSource": "https://raw.githubusercontent.com/google/fonts/main/ofl/sourcesans3/OFL.txt",
+    "faces": 4
+  },
+  {
+    "family": "Roboto Mono",
+    "cssSource": "https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap",
+    "licenseSource": "https://raw.githubusercontent.com/google/fonts/main/ofl/robotomono/OFL.txt",
+    "faces": 4
+  }
+]

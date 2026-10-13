@@ -67,3 +67,12 @@ export async function dragBlockAction(experienceId: string, versionId: string, s
   }, "Content order saved.", blockId);
 }
 export async function moveBlockAction(experienceId: string, versionId: string, sectionId: string, blockId: string, form: FormData) { await runBlock(experienceId, versionId, sectionId, () => moveBlock(experienceId, versionId, sectionId, blockId, String(form.get("target_column_id") ?? "")), "Content moved."); }
+
+export async function saveVideoBlockAction(experienceId:string,versionId:string,sectionId:string,blockId:string,form:FormData):Promise<import('@/lib/experiences/builder/video-editor').VideoSaveResult>{
+ try{
+  const {saveVideoBlockDraft}=await import('@/lib/experiences/admin/block-mutations');
+  const result=await saveVideoBlockDraft(experienceId,versionId,sectionId,blockId,form);
+  if(result.ok&&!result.unchanged)revalidatePath(`/admin/trainings/${experienceId}/versions/${versionId}`);
+  return result;
+ }catch(error){return {ok:false,error:error instanceof Error?error.message:'Video save could not be confirmed. Your edits are retained.'};}
+}

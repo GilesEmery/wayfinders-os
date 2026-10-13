@@ -1,3 +1,4 @@
+import {videoMediaConfiguration} from "@/lib/experiences/builder/video-editor";
 import {CalloutBlock} from "./CalloutBlock";
 import { responsePresentationSettings } from "@/lib/experiences/builder/block-presentation";
 import { BlockPresentation } from "./BlockPresentation";
@@ -80,7 +81,7 @@ function ParticipantBlockContent({ block, response, asset, route, preview = fals
   }
   if (definition.previewKey === "rich_text") return <ParticipantRichText linkContext={{ slug: route.slug, cohortId: route.cohortId, previewBase: route.previewBase }} titleLevel={value(configuration, "titleLevel")} title={value(configuration, "title")} text={value(configuration, "text")}/>;
   if (definition.previewKey === "pdf_reader") return <ParticipantPdfReader config={configuration} asset={asset}/>;
-  if (definition.previewKey === "media") return <ParticipantMediaBlock kind={block.block_type as "video" | "image" | "document" | "download" | "external_link"} config={configuration} asset={asset}/>;
+  if (definition.previewKey === "media") return <ParticipantMediaBlock kind={block.block_type as "video" | "image" | "document" | "download" | "external_link"} config={block.block_type==="video"?videoMediaConfiguration(configuration,block.settings):configuration} asset={asset}/>;
   return <CalloutBlock config={configuration}/>;
 }
 

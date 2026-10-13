@@ -1,12 +1,13 @@
-export type TextSize = "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
-export type BlockPresentation = { header: string; body: string; headerSize: TextSize; bodySize: TextSize; placement: "above" | "between" | "below"; mediaSide?: "stacked" | "left" | "right"; subtitle?: string; caption?: string; appearance?: { alignment?: "left" | "center" | "right"; padding?: number; width?: number; background?: string; border?: boolean; fit?: "contain" | "cover"; columns?:1|2|3; columnGap?:number; fontSize?:number; lineHeight?:number; letterSpacing?:number; color?:string; family?:"sans"|"editorial"|"mono" } };
+export type TextSize = "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "body" | "small";
+export type BlockPresentation = { header: string; body: string; headerSize: TextSize; bodySize: TextSize; placement: "above" | "between" | "below"; mediaSide?: "stacked" | "left" | "right"; subtitle?: string; caption?: string; subtitleSize?:TextSize; captionSize?:TextSize; appearance?: { alignment?: "left" | "center" | "right"; padding?: number; width?: number; background?: string; border?: boolean; fit?: "contain" | "cover"; columns?:1|2|3; columnGap?:number; fontSize?:number; lineHeight?:number; letterSpacing?:number; color?:string; family?:"sans"|"editorial"|"mono" } };
 export function readBlockPresentation(settings: unknown): BlockPresentation | null {
   if (!settings || typeof settings !== "object") return null;
   const value = (settings as Record<string, unknown>).textPresentation;
   if (!value || typeof value !== "object") return null;
   const p = value as Record<string, unknown>;
-  const size = (value: unknown, fallback: TextSize): TextSize => ["h1", "h2", "h3", "h4", "h5", "h6"].includes(String(value)) ? value as TextSize : fallback;
-  const additional: Pick<BlockPresentation,"subtitle"|"caption"|"appearance"|"mediaSide"> = {};
+  const size = (value: unknown, fallback: TextSize): TextSize => ["h1", "h2", "h3", "h4", "h5", "h6", "body", "small"].includes(String(value)) ? value as TextSize : fallback;
+  const additional: Pick<BlockPresentation,"subtitle"|"caption"|"subtitleSize"|"captionSize"|"appearance"|"mediaSide"> = {};
+  for(const key of ["subtitleSize","captionSize"] as const)if(p[key]!==undefined)additional[key]=size(p[key],key==="subtitleSize"?"h3":"small");
   if(["stacked","left","right"].includes(String(p.mediaSide)))additional.mediaSide=p.mediaSide as "stacked"|"left"|"right";
   for(const key of ["subtitle","caption"] as const)if(typeof p[key]==="string")additional[key]=p[key] as string;
   if(p.appearance && typeof p.appearance==="object") {

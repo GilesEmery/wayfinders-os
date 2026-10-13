@@ -1,16 +1,10 @@
+import {readRichText} from "@/lib/experiences/builder/rich-text-document";
 import type { ReactNode } from "react";
 import type { JSONContent } from "@tiptap/core";
-import { CourseFontOverride, courseFontStyle } from "@/lib/experiences/builder/course-font-override";
-import { CourseTextSize } from "@/lib/experiences/builder/course-text-size";
-import { CourseIndent } from "@/lib/experiences/builder/course-indent";
-import StarterKit from "@tiptap/starter-kit";
-import { MarkdownManager } from "@tiptap/markdown";
+import { courseFontStyle } from "@/lib/experiences/builder/course-font-override";
 import Link from "next/link";
 import { safeRichTextLink, safeCourseLink, contextualCourseLink, type CourseLinkContext } from "@/lib/experiences/builder/course-links";
 
-const markdown = new MarkdownManager({
-  extensions: [StarterKit.configure({ code: false, codeBlock: false, horizontalRule: false, strike: false }), CourseIndent, CourseTextSize, CourseFontOverride],
-});
 
 function markedContent(node: JSONContent, content: ReactNode, context?: CourseLinkContext) {
   return (node.marks ?? []).reduce<ReactNode>((rendered, mark, index) => {
@@ -32,6 +26,7 @@ function renderNode(node: JSONContent, key: number | string, context?: CourseLin
   if (node.type === "text") return <span key={key}>{markedContent(node, node.text ?? "", context)}</span>;
   if (node.type === "hardBreak") return <br key={key}/>;
   const children = (node.content ?? []).map((child, index) => renderNode(child, index, context));
+  if (node.type === "courseAlignment") return <div key={key} style={{textAlign:["left","center","right"].includes(String(node.attrs?.alignment))?node.attrs?.alignment:"left"}}>{children}</div>;
   if (node.type === "courseIndent") return <div key={key} className="course-text-indent">{children}</div>;
   if (node.type === "doc") return <>{children}</>;
   if (node.type === "paragraph") return <p key={key}>{children.length ? children : <br/>}</p>;
@@ -52,6 +47,8 @@ function renderNode(node: JSONContent, key: number | string, context?: CourseLin
 }
 
 export function ParticipantRichText({ title, text, linkContext, titleLevel = "h3" }: { titleLevel?: string; title: string; text: string; linkContext?: CourseLinkContext }) {
-  const document = markdown.parse(text);
+  const document = readRichText(text);
   return <div className="participant-rich-text-block">{title && (titleLevel === "h1" ? <h1>{title}</h1> : titleLevel === "h2" ? <h2>{title}</h2> : titleLevel === "h4" ? <h4>{title}</h4> : titleLevel === "h5" ? <h5>{title}</h5> : titleLevel === "h6" ? <h6>{title}</h6> : <h3>{title}</h3>)}{renderNode(document, "document", linkContext)}</div>;
 }
+
+export function ParticipantRichTitle({text}:{text:string}){function inline(node:JSONContent,key:string):ReactNode{if(node.type==='text')return <span key={key}>{markedContent(node,node.text??'')}</span>;if(node.type==='hardBreak')return <br key={key}/>;const children=(node.content??[]).map((child,index)=>inline(child,`${key}-${index}`));if(node.type==='paragraph'||node.type==='heading')return <span key={key} style={{display:'block'}}>{children}</span>;if(node.type==='courseAlignment')return <span key={key} style={{display:'block',textAlign:['left','center','right'].includes(String(node.attrs?.alignment))?node.attrs?.alignment:'left'}}>{children}</span>;return <span key={key}>{children}</span>;}return <>{inline(readRichText(text),'title')}</>;}

@@ -22,8 +22,8 @@ function fileSize(bytes: number | null) {
 export function ParticipantMediaBlock({ kind, config, asset }: { kind: MediaKind; config: Record<string, unknown>; asset?: ResolvedAsset }) {
   const url = asset?.url ?? safeExternalUrl(value(config, "url"));
   if (!url) return <div className="participant-block-unavailable" role="status">Resource source unavailable</div>;
-  const title = value(config, "title") || asset?.title || "";
-  const description = value(config, "description") || asset?.description || "";
+  const title = value(config, "title") || (config.suppressAssetText ? "" : asset?.title) || "";
+  const description = value(config, "description") || (config.suppressAssetText ? "" : asset?.description) || "";
   const caption = value(config, "caption");
   if(kind==="external_link")return <ExternalResourceCard title={title} url={url} subtext={description} label={value(config,"linkLabel")||"Open"}/>;
   const label = value(config, "linkLabel") || "Visit resource";

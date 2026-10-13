@@ -1,3 +1,4 @@
+import {LessonHeadingView} from "./LessonHeadingView";
 import {courseTypographyVariables,courseTypographyAttribute} from "@/lib/experiences/builder/course-typography";
 import { MobileCoursePanels } from "./MobileCoursePanels";
 import Link from "next/link";
@@ -84,8 +85,7 @@ export async function ParticipantCourseRuntime({ structure, courseTemplate, them
     <header className="participant-course-header">{configuration.appearance.header_treatment === "image" && coverUrl && <Image className="participant-course-cover" src={coverUrl} alt="" fill unoptimized sizes="100vw"/>}{preview ? <Link href={`/admin/trainings/${preview.experienceId}/versions/${preview.versionId}?section=${current.section.id}`}>Back to Builder ↗</Link> : <Link href="/dashboard">My Learning ↗</Link>}</header>
     <MobileCoursePanels key={current.section.id} templateKey={courseTemplate.key} hasCompanion={courseTemplate.shell.includes("group_companion") && companion.modules.length > 0}><main>
       <SectionVisitRecorder enabled={progressEnabled} slug={structure.experience.slug} moduleKey={current.moduleKey} lessonKey={current.lessonKey} sectionKey={current.section.section_key} cohortId={cohortId}/>
-      <header className="participant-section-header"><p>{current.moduleTitle} / {current.lessonTitle}</p><h1>{current.section.title}</h1>{current.section.description && <span>{current.section.description}</span>}</header>
-      {assets.heroes[current.section.id] && <figure className="participant-lesson-hero"><Image src={assets.heroes[current.section.id].url} alt="" width={1400} height={700} unoptimized sizes="(max-width: 760px) 100vw, 70vw"/></figure>}
+      <LessonHeadingView title={current.section.title} introduction={current.section.description} chapter={current.moduleTitle} group={current.lessonTitle} settings={current.section.settings} hero={assets.heroes[current.section.id]}/>
       <SectionRuntime section={current.section} responses={responses} assets={assets.blocks} route={{ slug: structure.experience.slug, moduleKey: current.moduleKey, lessonKey: current.lessonKey, sectionKey: current.section.section_key, cohortId, previewBase: preview ? `/admin/trainings/${preview.experienceId}/versions/${preview.versionId}/preview` : undefined }} preview={Boolean(preview)} requirementsBypassed={requirementsBypassed} assessmentCards={assessmentCards}/>
       <SectionCompletionControl enabled={progressEnabled} slug={structure.experience.slug} moduleKey={current.moduleKey} lessonKey={current.lessonKey} sectionKey={current.section.section_key} cohortId={cohortId} completionRule={current.section.completion_rule} status={progress.sections[current.section.id] ?? "not_started"}/>
       {navigationError && <p className="participant-navigation-error" role="alert">{navigationError}</p>}

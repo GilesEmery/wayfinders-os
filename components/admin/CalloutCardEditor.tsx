@@ -1,4 +1,6 @@
 "use client";
+import {BuilderSaveButton} from "./BuilderSaveButton";
+
 import {useState} from 'react';
 import {CALLOUT_STYLES,calloutStyle} from '@/lib/experiences/builder/callout-styles';
 import {CalloutBlock,CalloutIcon} from '@/components/experiences/builder/CalloutBlock';
@@ -12,6 +14,6 @@ export function CalloutCardEditor({blockId,config,settings,requirement,visibilit
  <label>Title<input name="title" value={title} onChange={e=>setTitle(e.target.value)} maxLength={180}/></label><label>Content<textarea name="body" value={body} onChange={e=>setBody(e.target.value)} required rows={5} maxLength={4000}/></label>
  <div className="callout-toggles"><label><input name="show_icon" type="checkbox" checked={showIcon} onChange={e=>setIcon(e.target.checked)}/>Show icon</label><label><input name="show_title" type="checkbox" checked={showTitle} onChange={e=>setShowTitle(e.target.checked)}/>Show title</label></div>
  <fieldset className="callout-border-picker"><legend>Border style</legend>{[['left','Left accent'],['outline','Outline'],['none','None']].map(([id,label])=><label key={id}><input type="radio" name="border_style" value={id} checked={border===id} onChange={()=>setBorder(id)}/>{label}</label>)}</fieldset>
- <input type="hidden" name="treatment" value={String(config.treatment||'info')}/><input type="hidden" name="requirement_level" value={requirement}/><input type="hidden" name="visibility" value={visibility}/><button type="submit">Save changes</button></form>
+ <input type="hidden" name="treatment" value={String(config.treatment||'info')}/><input type="hidden" name="requirement_level" value={requirement}/><input type="hidden" name="visibility" value={visibility}/><BuilderSaveButton/></form>
  <div className="callout-live-preview"><small>Live preview</small><LiveAppearanceFrame blockId={blockId} settings={settings}><CalloutBlock config={{...config,calloutStyle:style,title,body,showIcon,showTitle,borderStyle:border}}/></LiveAppearanceFrame></div></div>;
 }

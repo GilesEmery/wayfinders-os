@@ -7,7 +7,7 @@ import { canBuildExperienceById, getAuthorizationContext } from "@/lib/platform/
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { mergeInlineTextContent, type InlineDraft, type InlineSaveResult } from "./inline-draft";
 import type { Json, TablesInsert } from "@/lib/supabase/database.types";
-import { getBlockDefinition, parseBlockConfiguration } from "../builder/block-registry";
+import { getBlockDefinition, parseBlockConfiguration, retainSingleSelectSettings } from "../builder/block-registry";
 import { assertVersionEditable, validateBuilderBlockPlacement } from "../builder/validation";
 import { inspectBlockResourceLinks, resourceBelongsToCourse } from "./resource-copy";
 import { uploadCourseAsset } from "../builder/resource-assets";
@@ -57,7 +57,7 @@ function optionConfiguration(form: FormData, multi: boolean) {
   const options = indices.filter((index) => form.get(`option_enabled_${index}`) === "on").map((index, position) => {
     const label = String(form.get(`option_label_${index}`) ?? "").trim();
     const requested = String(form.get(`option_key_${index}`) ?? "").trim();
-    const base = slug(requested || label || `option-${position + 1}`);
+    const base = requested || slug(label || `option-${position + 1}`);
     let key = base;
     if (!requested) for (let suffix = 2; used.has(key); suffix += 1) key = `${base}-${suffix}`;
     used.add(key);
@@ -71,7 +71,7 @@ function formConfiguration(blockType: string, form: FormData): unknown {
   if (blockType === "rich_text") return { title: form.get("title") ?? "", text: form.get("text"), titleLevel: form.get("title_level") ?? "h3" };
   if (blockType === "callout") return { title: form.get("title") ?? "", body: form.get("body"), treatment: form.get("treatment"), ...(form.has("callout_style")?{calloutStyle:form.get("callout_style"),showIcon:form.has("show_icon"),showTitle:form.has("show_title"),borderStyle:form.get("border_style")}: {}) };
   if (blockType === "structured_response" || blockType === "reflection") return { placeholder: form.get("placeholder") ?? "", maxLength: Number(form.get("max_length")) };
-  if (blockType === "card_selection") return optionConfiguration(form, false);
+  if (blockType === "card_selection") return {...optionConfiguration(form,false),...(form.has("display_style")?{displayStyle:form.get("display_style"),cardColumns:Number(form.get("card_columns")),questionPurpose:form.get("question_purpose"),correctAnswerKey:form.get("correct_answer_key")||"",points:Number(form.get("points")||0),feedback:form.get("feedback")||""}:{})};
   if (blockType === "checklist") return optionConfiguration(form, true);
   if (blockType === "check_in") return { affirmativeLabel: form.get("affirmative_label") };
   if (blockType === "prebuilt_assessment") return { assessmentExperienceId: form.get("assessment_experience_id"), title: form.get("title") ?? "", description: form.get("description") ?? "" };
@@ -261,7 +261,7 @@ export async function updateBlock(experienceId: string, versionId: string, secti
   if (!columns.some((column) => column.id === block.column_id)) throw new Error("The Block Column does not belong to this Section layout.");
   const definition = getBlockDefinition(block.block_type);
   if (!definition) throw new Error("This unavailable Block type is preserved but cannot be edited.");
-  const parsed = parseBlockConfiguration(block.block_type, formConfiguration(block.block_type, form));
+  const parsed = parseBlockConfiguration(block.block_type, block.block_type === "card_selection" ? retainSingleSelectSettings(block.content,formConfiguration(block.block_type, form)) : formConfiguration(block.block_type, form));
   if (!parsed.ok) throw new Error(parsed.errors.join(" "));
   const requirement = String(form.get("requirement_level") ?? "optional");
   const visibility = String(form.get("visibility") ?? "visible");
@@ -482,4 +482,26 @@ export async function moveBlock(experienceId: string, versionId: string, section
   await applyOrder(db, sourceColumnId, (await columnBlocks(db, sourceColumnId)).map((item) => item.id));
   await applyOrder(db, targetColumnId, (await columnBlocks(db, targetColumnId)).map((item) => item.id));
   await audit(admin, "section.block.moved", "content_block", blockId, { experienceId, versionId, sectionId, sourceColumnId, targetColumnId });
+}
+
+// Video uses the same hierarchy/author checks and block table, with a changed-only CAS save.
+export async function saveVideoBlockDraft(experienceId:string,versionId:string,sectionId:string,blockId:string,form:FormData):Promise<import('../builder/video-editor').VideoSaveResult>{
+ const {admin,db,columns}=await context(experienceId,versionId,sectionId);const block=await blockInContext(db,blockId,sectionId);
+ if(block.block_type!=='video'||!columns.some(column=>column.id===block.column_id))throw Error('This Video block is unavailable in the selected lesson.');
+ const expected=String(form.get('expected_revision')??'');if(expected!==block.updated_at)return {ok:false,conflict:true,error:'This video changed elsewhere. Your edits are retained; reload before saving.'};
+ const raw=String(form.get('video_editor_patch')??'');if(raw.length>200000)throw Error('Video edits are too large.');
+ const {applyVideoEditorPatch}=await import('../builder/video-editor');const next=applyVideoEditorPatch(block.content,block.settings,JSON.parse(raw),block.requirement_level,block.visibility);
+ if(!next.changed)return {ok:true,unchanged:true,revision:block.updated_at};
+ const committed=new Date().toISOString();const result=await db.from('content_blocks').update({content:next.content as Json,settings:next.settings as Json,requirement_level:next.requirement,visibility:next.visibility,updated_at:committed}).eq('id',blockId).eq('section_id',sectionId).eq('column_id',block.column_id!).eq('updated_at',expected).select('updated_at').maybeSingle();
+ if(result.error)throw Error('Video save could not be confirmed. Keep your edits and try again.');
+ if(!result.data)return {ok:false,conflict:true,error:'This video changed while saving. Your edits are retained; reload before saving.'};
+ if(next.content.url!==(block.content as Record<string,unknown>)?.url){
+  try{if(next.content.url)await linkExternalResource(db,blockId,'video',next.content,admin.id);else {const removed=await db.from('content_block_resources').delete().eq('content_block_id',blockId);if(removed.error)throw Error('Unable to remove the video source link.');}}catch{
+   // Never roll back over another creator's later successful save.
+   await db.from('content_blocks').update({content:block.content,settings:block.settings,requirement_level:block.requirement_level,visibility:block.visibility,updated_at:new Date().toISOString()}).eq('id',blockId).eq('updated_at',result.data.updated_at);
+   return {ok:false,error:'Video source access could not be confirmed. Keep your edits and reload to verify before retrying.'};
+  }
+ }
+ await audit(admin,'section.block.video.updated','content_block',blockId,{experienceId,versionId,sectionId,expectedRevision:expected,committedRevision:result.data.updated_at});
+ return {ok:true,revision:result.data.updated_at};
 }

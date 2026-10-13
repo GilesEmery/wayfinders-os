@@ -27,7 +27,7 @@ export function ParticipantResponseForm({ route, children }: { route: Route; chi
       setStatus({ pending: false, message: "Save could not be confirmed. Keep your text and try again.", failed: true });
     } finally { busy.current = false; }
   }
-  return <form onSubmit={submit} onChange={() => { if (!busy.current) setStatus({ pending: false, message: "Unsaved changes", failed: false }); }}>
+  return <form onSubmit={submit} onInput={() => { if (!busy.current) setStatus({ pending: false, message: "Unsaved changes", failed: false }); }} onChange={() => { if (!busy.current) setStatus({ pending: false, message: "Unsaved changes", failed: false }); }}>
     <fieldset disabled={status.pending}>{children}</fieldset>
     {status.message && <p role={status.failed ? "alert" : "status"}>{status.message}</p>}
   </form>;

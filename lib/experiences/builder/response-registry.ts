@@ -23,9 +23,9 @@ function record(input: unknown): Record<string, unknown> | null {
   return input && typeof input === "object" && !Array.isArray(input) ? input as Record<string, unknown> : null;
 }
 
-export function validateResponseOptions(input: unknown): ValidationResult<ResponseOption[]> {
+export function validateResponseOptions(input: unknown,maximum=50): ValidationResult<ResponseOption[]> {
   if (!Array.isArray(input)) return { ok: false, errors: ["Options must be a list."] };
-  if (input.length < 1 || input.length > 50) return { ok: false, errors: ["Provide between 1 and 50 options."] };
+  if (input.length < 1 || input.length > maximum) return { ok: false, errors: [Number.isFinite(maximum)?`Provide between 1 and ${maximum} options.`:"Provide at least one option."] };
   const errors: string[] = [];
   const options = input.map((item, index): ResponseOption => {
     const option = record(item);
@@ -64,7 +64,7 @@ export function validateResponseData(responseKind: string, input: unknown, requi
     if (required && value.value !== true) errors.push("This checkbox must be selected before submission.");
     return errors.length ? { ok: false, errors } : { ok: true, value: { value: value.value as boolean } };
   }
-  const options = validateResponseOptions(config.options);
+  const options = validateResponseOptions(config.options,responseKind==="single_select"?Infinity:50);
   if (!options.ok) return options;
   const allowed = new Set(options.value.map((option) => option.key));
   if (responseKind === "single_select") {

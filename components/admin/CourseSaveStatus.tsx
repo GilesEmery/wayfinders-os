@@ -9,7 +9,7 @@ function editableForm(target: EventTarget | null) {
   if (!(target instanceof Element)) return null;
   const form = target.closest("form");
   if (!(form instanceof HTMLFormElement) || !form.closest(".course-builder-workspace")) return null;
-  if (form.closest(".course-builder-publish")) return null;
+  if (form.closest(".course-builder-publish") || form.dataset.managedSave === "true") return null;
   return form;
 }
 

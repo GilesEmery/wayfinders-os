@@ -1,34 +1,13 @@
 "use client";
-import { useRef, useState } from "react";
-import { EditorContent, useEditor } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import { Markdown } from "@tiptap/markdown";
-import { safeRichTextLink } from "@/lib/experiences/builder/course-links";
-import { CourseFontOverride } from "@/lib/experiences/builder/course-font-override";
-import { CourseTextSize } from "@/lib/experiences/builder/course-text-size";
-import { CourseIndent } from "@/lib/experiences/builder/course-indent";
-import { presentationSettings, readBlockAppearance, readBlockPresentation } from "@/lib/experiences/builder/block-presentation";
-
-function TextField({ name, label, initial, size, formId }: { name: string; label: string; initial: string; size: string; formId?:string }) {
-  const [text, setText] = useState(initial);
-  const [textSize, setTextSize] = useState(size);
-  const selection = useRef<{ from: number; to: number } | null>(null);
-  const editor = useEditor({ immediatelyRender: false, extensions: [StarterKit.configure({ heading: { levels: [1, 2, 3, 4, 5, 6] }, code: false, codeBlock: false, horizontalRule: false, link: { openOnClick: false, autolink: false, isAllowedUri: url => Boolean(safeRichTextLink(url)) } }), CourseIndent, CourseTextSize, CourseFontOverride, Markdown], content: initial, contentType: "markdown", editorProps: { attributes: { "aria-label": label, role: "textbox", "aria-multiline": "true" } }, onSelectionUpdate: ({ editor }) => { if (editor.isFocused) selection.current = { from: editor.state.selection.from, to: editor.state.selection.to }; setTextSize(editor.getAttributes("courseTextSize").size ?? size); }, onUpdate: ({ editor }) => { setText(editor.getMarkdown()); setTimeout(()=>{const form=(formId?document.getElementById(formId):editor.view.dom.closest('form')) as HTMLFormElement|null,blockId=editor.view.dom.closest('[data-presentation-block-id]')?.getAttribute('data-presentation-block-id');if(form&&blockId){try{window.dispatchEvent(new CustomEvent('purposeos:builder-presentation-preview',{detail:{blockId,settings:presentationSettings({},new FormData(form))}}));}catch{/* Validation happens on save. */}}},0); } });
-  const captureSelection = () => {
-    if (editor) selection.current = { from: editor.state.selection.from, to: editor.state.selection.to };
-  };
-  return <fieldset data-text-field={name} className={`course-item-text-field is-${size}`}><legend>{label}</legend><input type="hidden" form={formId} name={name} value={text}/><input type="hidden" form={formId} name={`${name}_initial`} value={initial}/><input type="hidden" form={formId} name={`${name}_size`} value={size}/><label>Selected text size<select aria-label={`${label} selected text size`} onPointerDown={captureSelection} onFocus={captureSelection} value={textSize} onChange={event => { const next = event.target.value; const savedSelection = selection.current; const chain = editor?.chain(); if (!chain) return; if (savedSelection) chain.setTextSelection(savedSelection); chain.focus().setMark("courseTextSize", { size: next }).run(); setTextSize(next); }}>{["h1", "h2", "h3", "h4", "h5", "h6", "body", "small"].map(level => <option key={level} value={level}>{level.toUpperCase()}{level === "h4" ? " · Normal text" : ""}</option>)}</select></label><label>Selected text font size (px)<input aria-label={`${label} font size`} type="number" min="1" max="256" onFocus={captureSelection} onPointerDown={captureSelection} defaultValue="" onChange={event=>{const size=Number(event.target.value);if(!editor||size<1||size>256)return;const chain=editor.chain();if(selection.current)chain.setTextSelection(selection.current);chain.setMark("courseFontOverride",{size}).run();}}/></label>{editor && <><div className="inline-text-toolbar" role="toolbar" aria-label={`${label} formatting`}>{[
-    { label: "Bold", run: () => editor.chain().focus().toggleBold().run() },
-    { label: "Link", run: () => { const url = window.prompt("Link URL (leave blank to remove)", String(editor.getAttributes("link").href ?? "")); if (url === null) return; if (!url.trim()) { editor.chain().focus().unsetLink().run(); return; } const safe = safeRichTextLink(url); if (safe) editor.chain().focus().setLink({ href: safe }).run(); } },
-    { label: "Underline", run:()=>editor.chain().focus().toggleUnderline().run() },
-    { label: "Italic", run: () => editor.chain().focus().toggleItalic().run() },
-    { label: "Bullets", run: () => editor.chain().focus().toggleBulletList().run() },
-    { label: "Numbers", run: () => editor.chain().focus().toggleOrderedList().run() },
-    { label: "Indent", run: () => editor.isActive("listItem") ? editor.chain().focus().sinkListItem("listItem").run() : editor.chain().focus().wrapIn("courseIndent").run() },
-    { label: "Outdent", run: () => editor.isActive("listItem") ? editor.chain().focus().liftListItem("listItem").run() : editor.chain().focus().lift("courseIndent").run() },
-    { label: "Undo", run: () => editor.chain().focus().undo().run() },
-    { label: "Redo", run: () => editor.chain().focus().redo().run() },
-  ].map(button => <button type="button" key={button.label} onMouseDown={event => event.preventDefault()} onClick={button.run}>{button.label}</button>)}</div><div className="inline-text-surface"><EditorContent editor={editor}/></div></>}</fieldset>;
+import {useRef,useState} from "react";
+import {UniversalFormattingSession,UniversalTextFields} from "./UniversalTextFields";
+import type {VideoTextStyle} from "@/lib/experiences/builder/video-editor";
+import {presentationSettings,readBlockAppearance,readBlockPresentation} from "@/lib/experiences/builder/block-presentation";
+function TextField({name,label,initial,size,formId}:{name:string;label:string;initial:string;size:string;formId?:string}){
+ const [text,setText]=useState(initial),[textSize,setTextSize]=useState(size as VideoTextStyle);const root=useRef<HTMLDivElement>(null);
+ function preview(){setTimeout(()=>{const form=(formId?document.getElementById(formId):root.current?.closest('form')) as HTMLFormElement|null,blockId=root.current?.closest('[data-presentation-block-id]')?.getAttribute('data-presentation-block-id');if(form&&blockId){try{window.dispatchEvent(new CustomEvent('purposeos:builder-presentation-preview',{detail:{blockId,settings:presentationSettings({},new FormData(form))}}));}catch{/* Validation remains on save. */}}},0);}
+ const fields=[{key:name,label,value:text,style:textSize,large:name==='presentation_body'}];
+ return <div ref={root} data-text-field={name} className="course-item-text-field"><input type="hidden" form={formId} name={name} value={text}/><input type="hidden" form={formId} name={`${name}_initial`} value={initial}/><input type="hidden" form={formId} name={`${name}_size`} value={textSize}/><UniversalFormattingSession fields={fields} onStyle={(_,style)=>{setTextSize(style);preview();}}><UniversalTextFields fields={fields} onChange={(_,value)=>{setText(value);preview();}}/></UniversalFormattingSession></div>;
 }
 export function BlockPresentationFields({ settings, header, body, blockType, mode="all", formId }: { settings: unknown; header: string; body: string; blockType?: string; mode?:"all"|"inline"|"advanced"; formId?:string }) {
   const p = readBlockPresentation(settings);
