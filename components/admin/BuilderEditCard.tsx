@@ -1,0 +1,13 @@
+"use client";
+import {useEffect,useId,useRef,useState,type ReactNode} from 'react';
+import {SidePanel} from '@/components/course-builder-prototype/SidePanel';
+import {presentationSettings} from "@/lib/experiences/builder/block-presentation";
+import styles from '@/components/course-builder-prototype/Prototype.module.css';
+// Presentation only: children contain the existing authorized server-action forms.
+export function BuilderEditCard({label,preview,controls,editable,initialOpen=false,inspectable=false,blockId}:{label:string;preview:ReactNode;controls:ReactNode;editable:boolean;initialOpen?:boolean;inspectable?:boolean;blockId?:string}) {
+ const id=useId(),card=useRef<HTMLElement>(null);
+ const [open,setOpen]=useState(initialOpen),[mounted,setMounted]=useState(initialOpen);
+ useEffect(()=>{card.current?.setAttribute("data-editor-ready","true");function opened(event:Event){if((event as CustomEvent).detail!==id)setOpen(false);}window.addEventListener("purposeos:builder-editor-open",opened);return()=>window.removeEventListener("purposeos:builder-editor-open",opened);},[id]);
+ function show(){window.dispatchEvent(new CustomEvent("purposeos:builder-editor-open",{detail:id}));setMounted(true);setOpen(true);}
+ return <article ref={card} className={`${styles.contentCard} modern-builder-card`}><header className={styles.contentHeader}><span className={styles.contentType}>{label}</span>{(editable||inspectable)&&<div><button type="button" className={styles.editButton} aria-label={`Edit ${label}`} aria-expanded={open} onClick={show}>{editable?"Edit":"View"}</button></div>}</header><div className={styles.contentBody}>{preview}</div>{mounted&&(editable||inspectable)&&<SidePanel visible={open} title={`Edit · ${label}`} onClose={()=>setOpen(false)}><div className="modern-builder-controls" data-presentation-block-id={blockId} onChange={event=>{if(!blockId)return;const target=event.target as HTMLElement&{form?:HTMLFormElement};const form=target.form??target.closest('form');if(!form)return;setTimeout(()=>{try{const settings=presentationSettings({},new FormData(form));window.dispatchEvent(new CustomEvent('purposeos:builder-presentation-preview',{detail:{blockId,settings}}));}catch{/* Keep invalid draft input local until corrected. */}},0);}}>{controls}</div></SidePanel>}</article>;
+}

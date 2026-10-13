@@ -1,0 +1,21 @@
+{
+  "checks": 13,
+  "passed": [
+    "actual integrated interface uses course colors, tabs and right-side cards",
+    "canvas text is editable before Edit; sidebar contains advanced controls without a second editor",
+    "outline has no Edit controls and portaled panel close button stays visible after scrolling",
+    "typing updates the canvas preview and sends a bounded recovery/CAS form to the inert action",
+    "H6, underline and explicit font size render immediately and round-trip through editing",
+    "closing and reopening retains unsaved settings and mounted text recovery state",
+    "advanced appearance updates the canvas immediately",
+    "Customization retains branding/themes and previews typography tokens without rewriting overrides",
+    "Course Settings retains layout, cover and version controls; returning to Builder keeps content",
+    "previous interface can be selected and the presentation preference survives subsequent navigation",
+    "media text edits directly and advanced controls share its single canvas form",
+    "published versions expose inspection but no editing/publishing forms",
+    "mobile authoring remains within the viewport"
+  ],
+  "externalRequests": 0,
+  "runtimeExceptions": [],
+  "consoleErrors": 0
+}

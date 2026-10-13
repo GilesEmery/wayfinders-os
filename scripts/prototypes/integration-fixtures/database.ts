@@ -1,0 +1,18 @@
+import 'server-only';
+import {readFileSync} from 'node:fs';
+import {join} from 'node:path';
+const root=join(process.cwd(),'.local/course-review');
+const source=JSON.parse(readFileSync(join(root,'hub-leader-published.json'),'utf8'));
+const resources=JSON.parse(readFileSync(join(root,'hub-leader-resources.json'),'utf8'));
+const manifest=JSON.parse(readFileSync(join(root,'asset-manifest.json'),'utf8'));
+const assessments=JSON.parse(readFileSync(join(root,'hub-leader-assessments.json'),'utf8'));
+const tables:Record<string,Record<string,unknown>[]>= {experiences:[source.experience,...assessments.map((a:Record<string,unknown>)=>({...a,experience_type:'assessment',status:'active'}))],experience_versions:[{...source.version,status:'draft'}],experience_modules:source.modules,experience_lessons:source.lessons,experience_sections:source.sections,section_layouts:source.layouts,section_columns:source.columns,content_blocks:source.blocks,response_definitions:source.definitions,resources:resources.resources,content_block_resources:resources.block_resources,companion_modules:source.companion,companion_module_resources:resources.companion_resources,experience_themes:source.theme?[{...source.theme,status:'active'}]:[],prebuilt_assessments:assessments.map((a:Record<string,unknown>)=>({experience_id:a.id,status:'active'}))};
+class Query {
+ rows:Record<string,unknown>[];single=false;
+ constructor(table:string){if(!(table in tables))throw Error('Offline rehearsal prohibits this data table');this.rows=[...tables[table]];}
+ select(){return this;}eq(key:string,value:unknown){this.rows=this.rows.filter(row=>row[key]===value);return this;}in(key:string,values:unknown[]){this.rows=this.rows.filter(row=>values.includes(row[key]));return this;}is(key:string,value:unknown){return this.eq(key,value);}not(key:string,_operator:string,value:unknown){this.rows=this.rows.filter(row=>row[key]!==value);return this;}order(key:string,options?:{ascending?:boolean}){this.rows.sort((a,b)=>String(a[key]).localeCompare(String(b[key]),undefined,{numeric:true})*(options?.ascending===false?-1:1));return this;}limit(count:number){this.rows=this.rows.slice(0,count);return this;}maybeSingle(){this.single=true;return this;}then(resolve:(value:unknown)=>unknown){return Promise.resolve({data:this.single?this.rows[0]??null:this.rows,error:null}).then(resolve);}
+ insert(){throw Error('Database writes are disabled in offline rehearsal');}update(){throw Error('Database writes are disabled in offline rehearsal');}delete(){throw Error('Database writes are disabled in offline rehearsal');}
+}
+function url(path:string){const resource=resources.resources.find((r:Record<string,unknown>)=>r.storage_path===path);return manifest.assets.find((a:Record<string,unknown>)=>a.id===resource?.id)?.path??'';}
+export function createAdminSupabaseClient(){return {from:(table:string)=>new Query(table),storage:{from:()=>({createSignedUrl:async(path:string)=>({data:{signedUrl:url(path)},error:null}),createSignedUrls:async(paths:string[])=>({data:paths.map(path=>({path,signedUrl:url(path)})),error:null})})}};}
+export function fixtureStructure(){return {...source,experience:source.experience,version:{...source.version,status:'draft'},modules:source.modules.map((module:Record<string,unknown>)=>({...module,lessons:source.lessons.filter((lesson:Record<string,unknown>)=>lesson.module_id===module.id).map((lesson:Record<string,unknown>)=>({...lesson,sections:source.sections.filter((section:Record<string,unknown>)=>section.lesson_id===lesson.id)}))}))};}

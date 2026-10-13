@@ -1,0 +1,33 @@
+{
+  "checks": 24,
+  "passed": [
+    "four course weeks plus fifth showcase chapter, fictional banner and selected lesson only",
+    "chapter, lesson and content drag handles reorder and restore their original order",
+    "standard H4 and visual H4 paragraphs match across blocks",
+    "course H4 token updates both samples; explicit 21px text is preserved",
+    "theme family changes preserve course overrides and inline font families",
+    "H6, Bold, Italic, Underline retain size and visual style keeps paragraph semantics",
+    "explicit font override survives a course token change and can reset",
+    "safe links work and executable links are rejected",
+    "lesson rename, local save receipt and reload preserve edited content",
+    "chapter and lesson headings use the same right-side Edit button",
+    "add lesson and content without a loading loop",
+    "list formatting works in the new lesson editor",
+    "advanced/hybrid layout and no-op Advanced Editor preserve source",
+    "participant preview has a separate Companion and custom interaction",
+    "Companion visibility is controlled exclusively by Customization",
+    "cross-tab conflict blocks silent overwrite until explicit owner choice",
+    "storage failure retains draft and retry produces a confirmed local receipt",
+    "fifth chapter demonstrates all 17 content types with side panels and rendered advanced text",
+    "chapter add, rename, duplicate and reorder; lesson copy/reorder preserve hierarchy",
+    "32-week navigation hydrates one lesson, not all 64 bodies",
+    "mobile preview uses mobile heading tokens and keeps Companion accessible",
+    "actual narrow viewport does not overflow horizontally",
+    "Advanced opens as a usable mobile drawer",
+    "reset dialog has keyboard escape and returns to editing"
+  ],
+  "externalRequests": 0,
+  "runtimeExceptions": [],
+  "consoleErrors": 0,
+  "localRequests": 19
+}

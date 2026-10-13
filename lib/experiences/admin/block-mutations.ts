@@ -214,7 +214,7 @@ export async function createBlock(experienceId: string, versionId: string, secti
 function inlineDraftFromBlock(block: Awaited<ReturnType<typeof blockInContext>>): InlineDraft {
   const content = block.content && typeof block.content === "object" && !Array.isArray(block.content) ? block.content as Record<string, unknown> : {};
   const storedLevel = block.block_type === "rich_text" ? content.titleLevel ?? "h3" : content.level;
-  const level = ["h1", "h2", "h3", "h4"].includes(String(storedLevel)) ? String(storedLevel) as InlineDraft["level"] : "h2";
+  const level = ["h1", "h2", "h3", "h4", "h5", "h6"].includes(String(storedLevel)) ? String(storedLevel) as InlineDraft["level"] : "h2";
   return { text: String(content.text ?? ""), title: block.block_type === "rich_text" ? String(content.title ?? "") : "", level };
 }
 

@@ -1,6 +1,8 @@
+import type {CourseTypography} from "./course-typography";
 export const GROUP_LABELS = ["module", "week", "section", "unit", "stage", "session", "chapter", "phase"] as const;
 export type GroupLabel = typeof GROUP_LABELS[number];
 export type CourseConfiguration = Readonly<{
+  typography?:CourseTypography;
   terminology: Readonly<{ group_label: GroupLabel }>;
   /** @deprecated Module-level availability_context is the runtime authority. */
   companion_mode: "individual" | "group";

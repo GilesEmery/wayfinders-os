@@ -52,3 +52,22 @@ test("existing generic display headers recover the saved question and instructio
   const blank = { textPresentation: { header: "", body: "" } };
   assert.deepEqual(responsePresentationSettings(blank, "Saved question"), blank);
 });
+
+
+test("advanced presentation saves additional text and bounded appearance while preserving unrelated settings",()=>{
+ const form=new FormData();form.set("presentation_header","Title");form.set("presentation_body","**Supporting text**");form.set("presentation_subtitle","Subtitle");form.set("presentation_caption","Caption");form.set("presentation_appearance","yes");form.set("presentation_padding","24");form.set("presentation_width","75");form.set("presentation_alignment","center");form.set("presentation_background","#123456");form.set("presentation_border","yes");
+ const settings=presentationSettings({opaque:{keep:true}},form);assert.deepEqual(settings.opaque,{keep:true});const p=readBlockPresentation(settings)!;assert.equal(p.subtitle,"Subtitle");assert.equal(p.caption,"Caption");assert.deepEqual(p.appearance,{padding:24,width:75,alignment:"center",background:"#123456",border:true});
+ form.set("presentation_width","101");assert.throws(()=>presentationSettings({},form),/Invalid presentation dimensions/);
+});
+test("advanced presentation rejects unsafe CSS and legacy saves preserve additional text",()=>{
+ const settings={textPresentation:{header:"Title",body:"Text",subtitle:"Keep",caption:"Also keep",appearance:{background:"url(https://evil.test)",padding:-1,width:1000,alignment:"absolute"}}};
+ assert.equal(readBlockPresentation(settings)?.appearance,undefined);const form=new FormData();form.set("presentation_header","Updated");form.set("presentation_body","Body");assert.equal(readBlockPresentation(presentationSettings(settings,form))?.subtitle,"Keep");
+});
+
+test("image fit accepts only contain/cover and preserves unspecified legacy sizing",()=>{const read=(fit:unknown)=>readBlockPresentation({textPresentation:{header:"",body:"",appearance:{fit}}});assert.equal(read("cover")?.appearance?.fit,"cover");assert.equal(read("contain")?.appearance?.fit,"contain");assert.equal(read("url(evil)")?.appearance,undefined);});
+
+test("appearance-only edits never create an overriding text presentation",()=>{const form=new FormData();form.set("presentation_appearance","yes");form.set("presentation_padding","18");const original={opaque:{keep:true},blockAppearance:{width:80}};const next=presentationSettings(original,form);assert.equal(readBlockPresentation(next),null);assert.deepEqual(next.opaque,original.opaque);assert.equal((next.blockAppearance as {padding:number}).padding,18);});
+
+test("typography overrides validate bounds and preserve source text",()=>{const form=new FormData();form.set("presentation_appearance","yes");form.set("presentation_fontSize","24");form.set("presentation_lineHeight","1.6");form.set("presentation_letterSpacing","0.5");form.set("presentation_color","#123456");form.set("presentation_family","editorial");const saved=presentationSettings({keep:true},form);assert.equal(readBlockPresentation(saved),null);assert.equal(saved.keep,true);assert.deepEqual(saved.blockAppearance,{fontSize:24,lineHeight:1.6,letterSpacing:0.5,color:"#123456",family:"editorial",border:false});form.set("presentation_fontSize","999");assert.throws(()=>presentationSettings({},form),/Invalid typography/);});
+
+test("text columns are opt-in, bounded and preserve existing source settings",()=>{const form=new FormData();form.set("presentation_appearance","yes");form.set("presentation_columns","3");form.set("presentation_columnGap","32");const next=presentationSettings({keep:true},form);assert.deepEqual(next.blockAppearance,{columns:3,columnGap:32,border:false});assert.equal(next.keep,true);assert.equal(readBlockPresentation(next),null);form.set("presentation_columns","4");assert.throws(()=>presentationSettings({},form),/text columns/);form.set("presentation_columns","2");form.set("presentation_columnGap","-1");assert.throws(()=>presentationSettings({},form),/Column gap/);});

@@ -1,0 +1,14 @@
+"use client";
+import { useState } from "react";
+import { companionModuleAvailable, moduleApplies, type CompanionModuleRecord } from "@/lib/experiences/builder/companion";
+import type { BuilderLesson } from "@/lib/experiences/builder/types";
+import styles from "./Prototype.module.css";
+import typography from "./Typography.module.css";
+function CompanionItem({module}:{module:CompanionModuleRecord}) {
+ const [note,setNote]=useState(""),[message,setMessage]=useState(""),[messages,setMessages]=useState<string[]>([]);
+ const body=module.module_type==="personal_notes"?<><label>Private demo notes<textarea value={note} onChange={event=>setNote(event.target.value)} rows={4} placeholder="Try a note…"/></label><small>Only this preview session. Notes are never exported or saved to the course.</small></>:module.module_type==="chat"?<><p className={styles.chatMessage}>Demo Facilitator: Welcome! What are you noticing this week?</p>{messages.map((text,n)=><p className={styles.chatMessage} key={n}>You (demo): {text}</p>)}<form onSubmit={event=>{event.preventDefault();if(message.trim()){setMessages([...messages,message]);setMessage("");}}}><label>Demo chat message<input value={message} onChange={event=>setMessage(event.target.value)} placeholder="Try a message…"/></label><button type="submit">Send locally</button></form><small>Fictional chat. No network or cohort write.</small></>:module.module_type==="action_steps"?<label className={styles.checkLabel}><input type="checkbox"/>Invite one person into a conversation.</label>:module.module_type==="resources"||module.module_type==="shared_resources"?<p>Listening worksheet · local placeholder</p>:module.module_type==="next_gathering"?<p>Demo gathering · Thursday, 7:00 PM<br/>Fictional schedule for preview.</p>:module.module_type==="group_members"?<p>Demo Facilitator<br/>Demo Member A<br/>Demo Member B</p>:module.module_type==="video_call"?<p>Meeting integration preserved. No call is started by this prototype.</p>:<p>{module.module_type.replaceAll("_"," ")} · preserved module type with fictional placeholder content.</p>;
+ return <details className={styles.companionItem} open={module.module_type==="personal_notes"}><summary>{module.display_title}</summary><div>{body}</div></details>;
+}
+export function CompanionPreview({modules,lesson}:{modules:CompanionModuleRecord[];lesson:BuilderLesson}) {
+ return <aside className={`${styles.companion} ${typography.root}`} aria-label="Participant Companion"><p className={styles.eyebrow}>Your Companion</p><h2>Alongside your journey</h2>{modules.filter(module=>module.visibility==="visible"&&companionModuleAvailable(module,true,"member")&&moduleApplies(module,{moduleId:lesson.module_id,lessonId:lesson.id,sectionId:lesson.sections[0]?.id??""})).map(module=><CompanionItem key={module.id} module={module}/>)}</aside>;
+}

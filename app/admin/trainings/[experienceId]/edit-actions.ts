@@ -1,5 +1,6 @@
 "use server";
 
+import { validateCourseTypography } from "@/lib/experiences/builder/course-typography";
 import { revalidatePath } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { audit, requireAdmin } from "@/lib/admin/auth";
@@ -248,4 +249,18 @@ export async function applyCourseThemeAction(experienceId: string, versionId: st
   const current = normalizeCourseConfiguration(version.data.course_configuration); const themeColors = parsed.value.colors ?? {}; const colors = Object.fromEntries(COURSE_COLOR_FIELDS.map(([key]) => [key, themeColors[key] ?? null]));
   const updated = await db.from("experience_versions").update({ theme_id: themeId, course_configuration: { ...current, appearance: { ...current.appearance, colors } } }).eq("id", versionId).eq("status", "draft").select("id").maybeSingle(); if (updated.error || !updated.data) throw new Error("Theme could not be applied.");
   await audit(admin, "course.theme.applied", "experience_version", versionId, { experienceId, themeId }); revalidatePath(`/admin/trainings/${experienceId}/versions/${versionId}`); redirect(`/admin/trainings/${experienceId}/versions/${versionId}?saved=${encodeURIComponent("Theme applied.")}`);
+}
+
+export async function updateCourseTypographyAction(experienceId:string,versionId:string,form:FormData){
+ const admin=await requireAdmin(),authorization=await getAuthorizationContext(admin.id,admin.email);
+ if(!await canBuildExperienceById(authorization,experienceId))throw new Error("You are not authorized to change this Course.");
+ const raw=String(form.get("typography_json")??"{}");if(raw.length>12000)throw new Error("Typography configuration is too large.");
+ const typography=validateCourseTypography(JSON.parse(raw));const db=createAdminSupabaseClient();
+ const current=await db.from("experience_versions").select("id,status,course_configuration,updated_at").eq("id",versionId).eq("experience_id",experienceId).maybeSingle();
+ if(current.error||!current.data||current.data.status!=="draft")throw new Error("Only a Draft Course can be configured.");
+ const original=current.data.course_configuration&&typeof current.data.course_configuration==="object"&&!Array.isArray(current.data.course_configuration)?current.data.course_configuration:{};
+ const result=await db.from("experience_versions").update({course_configuration:{...original,typography} as Json}).eq("id",versionId).eq("experience_id",experienceId).eq("status","draft").eq("updated_at",current.data.updated_at).select("id").maybeSingle();
+ if(result.error||!result.data)throw new Error("Typography could not be saved; reload the latest draft and try again.");
+ await audit(admin,"course.typography.updated","experience_version",versionId,{experienceId});revalidatePath(`/admin/trainings/${experienceId}/versions/${versionId}`);
+ redirect(`/admin/trainings/${experienceId}/versions/${versionId}?saved=${encodeURIComponent("Course typography saved for this Draft.")}`);
 }

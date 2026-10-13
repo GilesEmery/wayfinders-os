@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local authoring snapshots and media for owner-only course review
+/.local/course-review/
