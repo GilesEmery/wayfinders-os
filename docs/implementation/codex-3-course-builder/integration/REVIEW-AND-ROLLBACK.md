@@ -137,3 +137,11 @@ Non-embedded PDFs now use a shared PdfResourceCard in the participant renderer a
 ### Requirement radio buttons — October 13, 2026
 
 Short-response requirement dropdowns are now native radio groups for Required, Optional, and Recommended, on both the main card and advanced panel. Group names are separated between forms; synchronized state preserves one requirement_level value in the main save payload. Browser checks verified selection synchronization and submitted value, and TypeScript/ESLint/diff checks passed. No production push or database changes.
+
+### Inline text-formatting selection — October 13, 2026
+
+The inline editor now refreshes toolbar state on editor transactions; both style dropdowns reflect the selected text instead of retaining an initial value. Paragraph-style changes remove standard visual-size marks that would otherwise mask the chosen heading/body size, while deliberate advanced font overrides remain intact. Formatting buttons restore the current selected range, and a non-persisted ProseMirror decoration keeps the range visible while focus enters formatting controls. Local browser checks verified heading/visual-size round trips, current labels, retained selection through Bold/Italic/Underline, and return to Body. TypeScript, ESLint, 11 text-size/save-safety tests and diff checks passed. No content conversion, live saves or deployment performed.
+
+### Lesson-navigation state isolation — October 13, 2026
+
+The lesson canvas is now keyed by version and selected section ID. Moving to a different lesson remounts its local title, introduction, content editors, and advanced panels rather than reusing the previous lesson's uncontrolled input state. The outline and course-wide controls remain mounted. Content cards expose their original block IDs for local verification. Browser navigation between Prepare & Overview and The Posture of a Shepherd, including return navigation, verified correct visible/input titles, introductions, current-section block identities and closed advanced panels. TypeScript, focused ESLint, 11 integration tests and diff checks passed. Existing unsaved-navigation/recovery safeguards are unchanged. No course/participant data writes or deployment performed.

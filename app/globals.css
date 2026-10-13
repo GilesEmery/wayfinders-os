@@ -3387,3 +3387,5 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
 .short-response-fields .short-response-requirement input[type="radio"],.short-response-requirement input[type="radio"]{appearance:auto;width:16px;height:16px;min-height:0;margin:0;padding:0;accent-color:var(--experience-accent,var(--builder-accent,#0054a1))}
 
 .short-response-canvas-editor>form>.short-response-fields+.short-response-fields{margin-top:18px}
+
+.inline-text-surface .inline-formatting-selection{background:color-mix(in srgb,var(--experience-accent,var(--builder-accent,#0054a1)) 22%,transparent)}
