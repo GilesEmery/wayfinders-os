@@ -63,8 +63,16 @@ export function presentationSettings(current: unknown, form: FormData):Record<st
 // Recover prompts hidden by an earlier save of the generic presentation seed.
 export function responsePresentationSettings(settings: unknown, label?: string, instructions?: string | null) {
   const p = readBlockPresentation(settings);
-  if (!p || !label || !["Short Response", "Long Response"].includes(p.header.trim()) || label === p.header.trim()) return settings;
-  return { ...(settings as Record<string, unknown>), textPresentation: { ...p, header: label, body: p.body || instructions || "" } };
+  if (!label) return settings;
+  const appearance = readBlockAppearance(settings);
+  // Appearance-only settings still wrap the native response and hide its
+  // internal header. Supply the canonical question to that wrapper as well.
+  if (!p && !appearance) return settings;
+  if (p && p.header.trim() && !["Short Response", "Long Response"].includes(p.header.trim())) return settings;
+  if (p?.header.trim() === label) return settings;
+  const raw = settings && typeof settings === "object" ? settings as Record<string, unknown> : {};
+  const stored = raw.textPresentation && typeof raw.textPresentation === "object" ? raw.textPresentation as Record<string, unknown> : {};
+  return { ...raw, textPresentation: { ...(p ?? {headerSize:"h3",bodySize:"h4",placement:"below",appearance}), header: label, body: p && ["Short Response", "Long Response"].includes(p.header.trim()) ? p.body || instructions || "" : Object.hasOwn(stored,"body") ? p?.body ?? "" : instructions ?? "" } };
 }
 
 export function readBlockAppearance(settings:unknown){if(!settings||typeof settings!=="object")return undefined;return readBlockPresentation({textPresentation:{header:"",body:"",appearance:(settings as Record<string,unknown>).blockAppearance}})?.appearance;}

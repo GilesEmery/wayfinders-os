@@ -50,7 +50,10 @@ test("existing generic display headers recover the saved question and instructio
   assert.equal(recovered?.header, "Saved question");
   assert.equal(recovered?.body, "Saved instructions");
   const blank = { textPresentation: { header: "", body: "" } };
-  assert.deepEqual(responsePresentationSettings(blank, "Saved question"), blank);
+  const visibleQuestion = readBlockPresentation(responsePresentationSettings(blank, "Saved question"));
+  assert.equal(visibleQuestion?.header, "Saved question");
+  assert.equal(visibleQuestion?.body, "");
+  assert.deepEqual(blank, { textPresentation: { header: "", body: "" } });
 });
 
 
