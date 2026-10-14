@@ -3906,7 +3906,9 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 /* Advanced writing surfaces use a comfortable editing size; previews retain stored typography. */
-.modern-builder-controls .tiptap,.modern-builder-controls .tiptap :is(p,h1,h2,h3,h4,h5,h6,span,li,a,strong,em,u,blockquote){font-size:16px!important;line-height:1.5!important}
+/* Editing surfaces stay neutral; stored typography is rendered by the preview. */
+:is(.modern-course-builder,.modern-builder-controls) .tiptap,
+:is(.modern-course-builder,.modern-builder-controls) .tiptap :is(p,h1,h2,h3,h4,h5,h6,span,li,a,strong,em,u,blockquote){font-size:16px!important;line-height:1.5!important}
 .modern-builder-controls .inline-rich-title{font-size:16px!important;line-height:1.5!important}
 
 /* Native blocks share the same advanced editor and participant presentation. */
@@ -4014,3 +4016,6 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
 :is(.modern-course-builder,.modern-builder-controls) :is(.single-select-appearance,.response-requirement-options,.short-response-requirement>div)>label:focus-within{outline:2px solid var(--builder-accent,#0054a1);outline-offset:2px}
 :is(.modern-course-builder,.modern-builder-controls) :is(.single-select-appearance,.response-requirement-options,.short-response-requirement)>label input,:is(.modern-course-builder,.modern-builder-controls) .short-response-requirement>div input{width:14px;height:14px;min-height:0;flex:none;margin:0;accent-color:var(--builder-accent,#0054a1)}
 @media(max-width:600px){.single-select-option-actions{flex-wrap:wrap;max-width:none}.single-select-author-option{grid-template-columns:20px minmax(0,1fr)}}
+
+/* Plain authored text fields use the same editing size as rich-text fields. */
+:is(.course-builder-canvas,.modern-builder-controls) :is(input:not([type]),input[type=text],input[type=url],textarea){font-size:16px!important;line-height:1.5}
