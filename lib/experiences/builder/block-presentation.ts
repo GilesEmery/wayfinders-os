@@ -1,5 +1,6 @@
+import {COURSE_FONT_FAMILIES,type CourseFontFamily} from "./course-font-style.ts";
 export type TextSize = "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "body" | "small";
-export type BlockPresentation = { header: string; body: string; headerSize: TextSize; bodySize: TextSize; placement: "above" | "between" | "below"; mediaSide?: "stacked" | "left" | "right"; subtitle?: string; caption?: string; subtitleSize?:TextSize; captionSize?:TextSize; appearance?: { alignment?: "left" | "center" | "right"; padding?: number; width?: number; background?: string; border?: boolean; fit?: "contain" | "cover"; columns?:1|2|3; columnGap?:number; fontSize?:number; lineHeight?:number; letterSpacing?:number; color?:string; family?:"sans"|"editorial"|"mono" } };
+export type BlockPresentation = { header: string; body: string; headerSize: TextSize; bodySize: TextSize; placement: "above" | "between" | "below"; mediaSide?: "stacked" | "left" | "right"; subtitle?: string; caption?: string; subtitleSize?:TextSize; captionSize?:TextSize; appearance?: { alignment?: "left" | "center" | "right"; padding?: number; width?: number; background?: string; border?: boolean; fit?: "contain" | "cover"; columns?:1|2|3; columnGap?:number; fontSize?:number; lineHeight?:number; letterSpacing?:number; color?:string; family?:CourseFontFamily } };
 export function readBlockPresentation(settings: unknown): BlockPresentation | null {
   if (!settings || typeof settings !== "object") return null;
   const value = (settings as Record<string, unknown>).textPresentation;
@@ -18,7 +19,7 @@ export function readBlockPresentation(settings: unknown): BlockPresentation | nu
     if(["contain","cover"].includes(String(raw.fit)))a.fit=raw.fit as "contain"|"cover";
     for(const [key,min,max] of [["fontSize",1,256],["lineHeight",1,3],["letterSpacing",-2,20]] as const)if(typeof raw[key]==="number"&&Number.isFinite(raw[key])&&raw[key]>=min&&raw[key]<=max)a[key]=raw[key];
     if(typeof raw.color==="string"&&/^#[0-9a-f]{6}$/i.test(raw.color))a.color=raw.color;
-    if(["sans","editorial","mono"].includes(String(raw.family)))a.family=raw.family as "sans"|"editorial"|"mono";
+    if(Object.hasOwn(COURSE_FONT_FAMILIES,String(raw.family)))a.family=raw.family as CourseFontFamily;
     if([1,2,3].includes(Number(raw.columns))&&typeof raw.columns==="number")a.columns=raw.columns as 1|2|3;
     if(typeof raw.columnGap==="number"&&Number.isFinite(raw.columnGap)&&raw.columnGap>=0&&raw.columnGap<=120)a.columnGap=raw.columnGap;
     if(typeof raw.border==="boolean")a.border=raw.border;

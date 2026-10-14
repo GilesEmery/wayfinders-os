@@ -1,3 +1,5 @@
+import {UniversalContentView} from "./UniversalContentView";
+import {object,UNIVERSAL_BLOCK_TYPES} from "@/lib/experiences/builder/universal-block-editor";
 import {videoMediaConfiguration} from "@/lib/experiences/builder/video-editor";
 import {CalloutBlock} from "./CalloutBlock";
 import { responsePresentationSettings } from "@/lib/experiences/builder/block-presentation";
@@ -70,7 +72,7 @@ function ParticipantBlockContent({ block, response, asset, route, preview = fals
 
   if (definition.previewKey === "response") {
     if (!response || response.definition.response_type !== definition.response?.responseType) return <Unavailable block={block}/>;
-    return <ParticipantResponseBlock context={response} route={{ ...route, blockKey: block.block_key }} configuration={configuration} responseKind={definition.response.responseKind} preview={preview} allowFinalizedEditing={requirementsBypassed}/>;
+    return <ParticipantResponseBlock context={response} route={{ ...route, blockKey: block.block_key }} configuration={configuration} responseKind={definition.response.responseKind} preview={preview} interactivePreview={preview&&["multi_select","boolean"].includes(definition.response.responseKind)} allowFinalizedEditing={requirementsBypassed}/>;
   }
 
   if (definition.previewKey === "heading") {
@@ -87,5 +89,6 @@ function ParticipantBlockContent({ block, response, asset, route, preview = fals
 
 export function ParticipantBlockRenderer(props: Parameters<typeof ParticipantBlockContent>[0]) {
   if (props.block.status !== "active" || props.block.visibility !== "visible") return null;
+  if(object(object(props.block.settings).universalEdit).version===1&&UNIVERSAL_BLOCK_TYPES.includes(props.block.block_type as typeof UNIVERSAL_BLOCK_TYPES[number]))return <UniversalContentView {...props} block={{...props.block,content:props.block.configuration,updated_at:""}}/>;
   return <BlockPresentation settings={responsePresentationSettings(props.block.settings, props.response?.definition.label, props.response?.definition.instructions)} linkContext={{ slug: props.route.slug, cohortId: props.route.cohortId, previewBase: props.route.previewBase }}><ParticipantBlockContent {...props}/></BlockPresentation>;
 }

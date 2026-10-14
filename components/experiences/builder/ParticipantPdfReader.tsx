@@ -39,8 +39,9 @@ function PdfReaderInstance({ config, asset }: { config: Record<string, unknown>;
   const showReader = enabled(config, "showReader");
   const allowDownload = enabled(config, "allowDownload");
   const allowOpenInNewTab = enabled(config, "allowOpenInNewTab");
-  const title = text(config, "title") || asset?.title || asset?.originalFilename || "PDF Reader";
-  const description = text(config, "description") || asset?.description;
+  const title = text(config, "title") || (config.suppressAssetText ? "" : asset?.title || asset?.originalFilename || "PDF Reader");
+  const accessibilityTitle = text(config,"accessibilityTitle") || title || asset?.originalFilename || asset?.title || "Course PDF";
+  const description = text(config, "description") || (config.suppressAssetText ? "" : asset?.description);
 
   useEffect(() => {
     const element = viewportRef.current;
@@ -139,23 +140,23 @@ function PdfReaderInstance({ config, asset }: { config: Record<string, unknown>;
   const actions = (allowOpenInNewTab || allowDownload || showReader && !popoutOpen) && <div className="participant-pdf-actions">
     {allowOpenInNewTab && <a href={asset.url} target="_blank" rel="noopener noreferrer">Open in new tab<span className="sr-only">: {asset.originalFilename || title}</span></a>}
     {allowDownload && <a href={asset.downloadUrl}>Download<span className="sr-only"> {asset.originalFilename || title}</span></a>}
-    {showReader && !popoutOpen && <button className="participant-pdf-open" type="button" onClick={(event) => openPopout(event.currentTarget)} disabled={readerStatus !== "ready"} aria-label={`Open ${title} PDF`}>Open PDF</button>}
+    {showReader && !popoutOpen && <button className="participant-pdf-open" type="button" onClick={(event) => openPopout(event.currentTarget)} disabled={readerStatus !== "ready"} aria-label={`Open ${accessibilityTitle} PDF`}>Open PDF</button>}
   </div>;
 
-  if (!showReader) return <PdfResourceCard title={title} description={description} url={asset.url} downloadUrl={asset.downloadUrl} allowDownload={allowDownload} allowOpenInNewTab={allowOpenInNewTab}/>;
+  if (!showReader) return <PdfResourceCard title={config.suppressAssetText ? asset.originalFilename || asset.title : title} description={description} url={asset.url} downloadUrl={asset.downloadUrl} allowDownload={allowDownload} allowOpenInNewTab={allowOpenInNewTab}/>;
 
   const reader = <figure className={`participant-pdf-reader is-${mode}${popoutOpen ? " is-popout" : ""}`} onKeyDown={(event) => {
     if (mode !== "slides") return;
     if (event.key === "ArrowLeft") { event.preventDefault(); move(pageNumber - 1); }
     if (event.key === "ArrowRight") { event.preventDefault(); move(pageNumber + 1); }
-  }} tabIndex={mode === "slides" ? 0 : undefined} aria-label={`${title} PDF reader`}>
+  }} tabIndex={mode === "slides" ? 0 : undefined} aria-label={`${accessibilityTitle} PDF reader`}>
     <figcaption>{title && <strong>{title}</strong>}{description && <span>{description}</span>}</figcaption>
     <div className="participant-pdf-toolbar" aria-label="PDF controls">
       {popoutOpen && <button type="button" onClick={() => move(pageNumber - 1)} disabled={readerStatus !== "ready" || pageNumber <= 1} aria-label="Previous PDF page">← <span>Previous</span></button>}
       <output aria-live="polite">{pageCount ? `Page ${pageNumber} of ${pageCount}` : "Loading pages…"}</output>
       {popoutOpen
         ? <button type="button" onClick={() => move(pageNumber + 1)} disabled={readerStatus !== "ready" || pageNumber >= pageCount} aria-label="Next PDF page"><span>Next</span> →</button>
-        : <button className="participant-pdf-open" type="button" onClick={(event) => openPopout(event.currentTarget)} disabled={readerStatus !== "ready"} aria-label={`Open ${title} PDF`}>Open PDF</button>}
+        : <button className="participant-pdf-open" type="button" onClick={(event) => openPopout(event.currentTarget)} disabled={readerStatus !== "ready"} aria-label={`Open ${accessibilityTitle} PDF`}>Open PDF</button>}
     </div>
     <div className="participant-pdf-viewport" ref={viewportRef}>
       {readerStatus === "loading" && <div className="participant-pdf-state" role="status">Loading PDF…</div>}
@@ -166,10 +167,10 @@ function PdfReaderInstance({ config, asset }: { config: Record<string, unknown>;
   </figure>;
 
   if (!popoutOpen) return reader;
-  return <div className="participant-pdf-popout" role="dialog" aria-modal="true" aria-label={`${title} document viewer`} onMouseDown={(event) => {
+  return <div className="participant-pdf-popout" role="dialog" aria-modal="true" aria-label={`${accessibilityTitle} document viewer`} onMouseDown={(event) => {
     if (event.target === event.currentTarget) setPopoutOpen(false);
   }}>
-    <button ref={closeButtonRef} className="participant-pdf-popout-close" type="button" onClick={() => setPopoutOpen(false)} aria-label={`Close ${title} document viewer`}>×</button>
+    <button ref={closeButtonRef} className="participant-pdf-popout-close" type="button" onClick={() => setPopoutOpen(false)} aria-label={`Close ${accessibilityTitle} document viewer`}>×</button>
     {reader}
   </div>;
 }

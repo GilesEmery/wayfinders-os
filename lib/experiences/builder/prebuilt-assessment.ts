@@ -21,7 +21,7 @@ export function parsePrebuiltAssessmentConfiguration(input: unknown): { ok: true
     ...unknown.map((key) => `Unknown configuration field: ${key}.`),
     UUID.test(assessmentExperienceId) && assessmentExperienceId !== "00000000-0000-4000-8000-000000000000" ? "" : "Select a prebuilt Assessment.",
     title.length <= 200 ? "" : "Assessment title must be 200 characters or fewer.",
-    description.length <= 1000 ? "" : "Assessment description must be 1000 characters or fewer.",
+    description.length <= 12000 ? "" : "Assessment description must be 12000 characters or fewer.",
   ].filter(Boolean);
   return errors.length ? { ok: false, errors } : { ok: true, value: { assessmentExperienceId, title, description } };
 }

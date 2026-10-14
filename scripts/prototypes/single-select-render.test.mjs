@@ -1,13 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as React from 'react';
-import * as jsx from 'react/jsx-runtime';
 import {renderToStaticMarkup} from 'react-dom/server';
-import {load} from '../performance/offline-module.mjs';
-import {validateResponseOptions,validateResponseData} from '../../lib/experiences/builder/response-registry.ts';
-const choices=load('components/experiences/builder/SingleSelectChoices.tsx',{'react':React,'react/jsx-runtime':jsx});
-const form=load('components/experiences/builder/ParticipantResponseForm.tsx',{'react':React,'react/jsx-runtime':jsx,'@/lib/experiences/builder/response-actions':{persistResponseAction(){throw Error('No persistence during render');}}});
-const block=load('components/experiences/builder/ParticipantResponseBlock.tsx',{'react/jsx-runtime':jsx,'./SingleSelectChoices':choices,'./ParticipantResponseForm':form,'@/lib/platform/response-sharing-policy':{responsePrivacyDisclosure:()=> 'Private response'},'@/lib/experiences/builder/response-registry':{validateResponseOptions,validateResponseData}});
+import {responseBlock as block} from './choice-render-fixture.mjs';
 const configuration={options:[{key:'first',label:'First answer',sortOrder:0},{key:'second',label:'Second answer',description:'Supporting description',sortOrder:1}],questionPurpose:'knowledge',correctAnswerKey:'second',points:3,feedback:'Reflect on your next step.'};
 function render(displayStyle='cards',status='draft',required=true){return renderToStaticMarkup(React.createElement(block.ParticipantResponseBlock,{context:{definition:{id:'definition',label:'Choose one answer',is_required:required,configuration},response:{status,response_data:{value:'second'},updated_at:'revision'}},route:{},configuration:{...configuration,displayStyle},responseKind:'single_select'}));}
 test('all displays submit the same stable response key and preserve revisions, accessible labels and required behavior',()=>{

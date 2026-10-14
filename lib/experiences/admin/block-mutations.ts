@@ -505,3 +505,28 @@ export async function saveVideoBlockDraft(experienceId:string,versionId:string,s
  await audit(admin,'section.block.video.updated','content_block',blockId,{experienceId,versionId,sectionId,expectedRevision:expected,committedRevision:result.data.updated_at});
  return {ok:true,revision:result.data.updated_at};
 }
+
+// Universal edit preserves the native block/definition rows and existing author/draft guards.
+export async function saveUniversalBlockDraft(experienceId:string,versionId:string,sectionId:string,blockId:string,form:FormData):Promise<import('../builder/universal-block-editor').UniversalReceipt>{
+ const {admin,db,columns}=await context(experienceId,versionId,sectionId),block=await blockInContext(db,blockId,sectionId);
+ if(!columns.some(column=>column.id===block.column_id))throw Error('This content is unavailable in the selected lesson.');
+ const expected=String(form.get('expected_revision')??'');if(expected!==block.updated_at)return {ok:false,error:'This item changed elsewhere. Your edits are retained; reload before saving.'};
+ const definition=getBlockDefinition(block.block_type);const linked=definition?.supportsResponse?await db.from('response_definitions').select('*').eq('block_id',blockId).eq('experience_version_id',versionId).maybeSingle():{data:null,error:null};
+ if(linked.error||definition?.supportsResponse&&!linked.data)throw Error('The native response definition is unavailable.');
+ const response=linked.data??undefined;if(response&&String(form.get('expected_definition_revision')??'')!==response.updated_at)return {ok:false,error:'This question changed elsewhere. Reload before saving.'};
+ const raw=String(form.get('universal_model')??'');if(raw.length>200000)throw Error('Content edits are too large.');
+ const {applyUniversalModel,object}=await import('../builder/universal-block-editor');const next=applyUniversalModel(block,response,JSON.parse(raw));
+ if(!next.changed)return {ok:true,unchanged:true,revision:block.updated_at,definitionRevision:response?.updated_at};
+ if(response&&['card_selection','checklist'].includes(block.block_type)){
+  const keys=(v:unknown)=>Array.isArray(v)?v.map(v=>String(object(v).key)).sort().join('|'):'';
+  if(keys(object(block.content).options)!==keys(object(next.content).options)){const history=await db.from('participant_responses').select('id',{count:'exact',head:true}).eq('response_definition_id',response.id);if(history.error||history.count===null)throw Error('Unable to confirm response history.');if(history.count)throw Error('Choices with participant response history cannot be added or removed. Their stable identifiers must be preserved.');}
+ }
+ const committed=new Date().toISOString();const result=await db.from('content_blocks').update({content:next.content as Json,settings:next.settings as Json,requirement_level:next.requirement,visibility:next.visibility,updated_at:committed}).eq('id',blockId).eq('section_id',sectionId).eq('column_id',block.column_id!).eq('updated_at',expected).select('updated_at').maybeSingle();
+ if(result.error)throw Error('Content save could not be confirmed. Your edits are retained.');if(!result.data)return {ok:false,error:'This item changed while saving. Reload before saving.'};
+ const blockRevision=result.data.updated_at;
+ async function rollback(){await db.from('content_blocks').update({content:block.content,settings:block.settings,requirement_level:block.requirement_level,visibility:block.visibility,updated_at:new Date().toISOString()}).eq('id',blockId).eq('section_id',sectionId).eq('updated_at',blockRevision);}
+ let definitionRevision=response?.updated_at;
+ if(response&&next.response){const update=await db.from('response_definitions').update({...next.response,configuration:next.response.configuration as Json,updated_at:committed}).eq('id',response.id).eq('block_id',blockId).eq('experience_version_id',versionId).eq('updated_at',response.updated_at).select('updated_at').maybeSingle();if(update.error||!update.data){await rollback();return {ok:false,error:'Question save could not be confirmed. Your edits are retained; reload to verify before retrying.'};}definitionRevision=update.data.updated_at;}
+ if(['video','image','document','download','external_link'].includes(block.block_type)&&object(next.content).url!==object(block.content).url){try{const config=object(next.content);if(config.url)await linkExternalResource(db,blockId,block.block_type,config,admin.id);else{const removed=await db.from('content_block_resources').delete().eq('content_block_id',blockId);if(removed.error)throw Error('Resource unlink failed');}}catch{await rollback();return {ok:false,error:'Source access could not be confirmed. Keep your edits and reload to verify.'};}}
+ await audit(admin,'section.block.universal.updated','content_block',blockId,{experienceId,versionId,sectionId,expectedRevision:expected,committedRevision:blockRevision});return {ok:true,revision:blockRevision,definitionRevision};
+}

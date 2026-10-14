@@ -40,7 +40,7 @@ export async function validatePublishRuntime(experienceId: string, versionId: st
   const lessonIds = lessons.map((lesson) => lesson.id);
   if (!lessonIds.length) return; // SQL reports the empty curriculum precisely.
   const [blocksResult, definitionsResult] = await Promise.all([
-    db.from("content_blocks").select("id,lesson_id,section_id,column_id,block_key,block_type,content,custom_renderer_key,requirement_level,status,visibility,completion_rule").in("lesson_id", lessonIds),
+    db.from("content_blocks").select("id,lesson_id,section_id,column_id,block_key,block_type,content,settings,custom_renderer_key,requirement_level,status,visibility,completion_rule").in("lesson_id", lessonIds),
     db.from("response_definitions").select("id,block_id,lesson_id,experience_version_id,response_type,label,configuration,is_required").eq("experience_version_id", versionId),
   ]);
   if (blocksResult.error || definitionsResult.error) throw new Error("Unable to validate the participant Content before publication.");
@@ -62,7 +62,11 @@ export async function validatePublishRuntime(experienceId: string, versionId: st
       if (required) issues.push(`Block “${block.block_key}” is not supported by the participant runtime.`);
       continue; // Existing optional/recommended unavailable fallback.
     }
-    const parsed = definition.validateConfiguration(block.content);
+    const storedSettings = block.settings && typeof block.settings === "object" && !Array.isArray(block.settings) ? block.settings as Record<string,unknown> : {};
+    const universal = storedSettings.universalEdit && typeof storedSettings.universalEdit === "object" ? storedSettings.universalEdit as Record<string,unknown> : {};
+    const options = universal.options && typeof universal.options === "object" ? universal.options as Record<string,unknown> : {};
+    const configuration = universal.version === 1 && block.block_type === "image" && options.decorative === true ? {...block.content as Record<string,unknown>,alt:"Decorative image"} : block.content;
+    const parsed = definition.validateConfiguration(configuration);
     if (!parsed.ok && required) issues.push(`Block “${block.block_key}” has invalid configuration: ${parsed.errors.join(" ")}`);
     const nativeAsset = (linksResult.data ?? []).filter((link) => link.content_block_id === block.id).some((link) => {
       const resource = resources.get(link.resource_id);

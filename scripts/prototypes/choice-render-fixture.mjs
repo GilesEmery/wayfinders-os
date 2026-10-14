@@ -1,0 +1,16 @@
+import * as React from 'react';
+import * as jsx from 'react/jsx-runtime';
+import {load} from '../performance/offline-module.mjs';
+import * as limits from '../../lib/experiences/builder/multi-select.ts';
+import {validateResponseOptions,validateResponseData} from '../../lib/experiences/builder/response-registry.ts';
+const rows=load('components/experiences/builder/ChoiceOptionRows.tsx',{'react/jsx-runtime':jsx});
+export const single=load('components/experiences/builder/SingleSelectChoices.tsx',{'react':React,'react/jsx-runtime':jsx,'./ChoiceOptionRows':rows});
+export const multi=load('components/experiences/builder/MultiSelectChoices.tsx',{'react':React,'react/jsx-runtime':jsx,'./ChoiceOptionRows':rows,'@/lib/experiences/builder/multi-select':limits});
+import {richDocument} from './rich-document-fixture.mjs';
+import * as fonts from '../../lib/experiences/builder/course-font-style.ts';
+import * as links from '../../lib/experiences/builder/course-links.ts';
+const confirmationModel=load('lib/experiences/builder/confirmation.ts',{'./rich-text-document':richDocument});
+const rich=load('components/experiences/builder/ParticipantRichText.tsx',{'react/jsx-runtime':jsx,'@/lib/experiences/builder/rich-text-document':richDocument,'@/lib/experiences/builder/course-font-override':fonts,'next/link':{default:({children,...props})=>React.createElement('a',props,children)},'@/lib/experiences/builder/course-links':links});
+export const confirmation=load('components/experiences/builder/ConfirmationChoice.tsx',{'react':React,'react/jsx-runtime':jsx,'@/lib/experiences/builder/confirmation':confirmationModel,'./ParticipantRichText':rich});
+const form=load('components/experiences/builder/ParticipantResponseForm.tsx',{'react':React,'react/jsx-runtime':jsx,'@/lib/experiences/builder/response-actions':{persistResponseAction(){throw Error('Rendering cannot persist participant responses');}}});
+export const responseBlock=load('components/experiences/builder/ParticipantResponseBlock.tsx',{'react/jsx-runtime':jsx,'./SingleSelectChoices':single,'./MultiSelectChoices':multi,'./ConfirmationChoice':confirmation,'./ParticipantResponseForm':form,'@/lib/platform/response-sharing-policy':{responsePrivacyDisclosure:()=> 'Existing private response policy'},'@/lib/experiences/builder/response-registry':{validateResponseOptions,validateResponseData}});

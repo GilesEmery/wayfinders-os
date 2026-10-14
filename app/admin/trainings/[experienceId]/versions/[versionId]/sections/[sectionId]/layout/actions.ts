@@ -76,3 +76,7 @@ export async function saveVideoBlockAction(experienceId:string,versionId:string,
   return result;
  }catch(error){return {ok:false,error:error instanceof Error?error.message:'Video save could not be confirmed. Your edits are retained.'};}
 }
+
+export async function saveUniversalBlockAction(experienceId:string,versionId:string,sectionId:string,blockId:string,form:FormData):Promise<import('@/lib/experiences/builder/universal-block-editor').UniversalReceipt>{
+ try{const {saveUniversalBlockDraft}=await import('@/lib/experiences/admin/block-mutations');const result=await saveUniversalBlockDraft(experienceId,versionId,sectionId,blockId,form);if(result.ok&&!result.unchanged)revalidatePath(`/admin/trainings/${experienceId}/versions/${versionId}`);return result;}catch(error){return {ok:false,error:error instanceof Error?error.message:'Save could not be confirmed. Your edits are retained.'};}
+}

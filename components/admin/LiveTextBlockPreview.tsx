@@ -6,5 +6,5 @@ export function LiveTextBlockPreview({blockId,revision,kind,children}:{blockId:s
  const [live,setLive]=useState<{revision:string;draft:InlineDraft}|null>(null);
  useEffect(()=>{function changed(event:Event){const detail=(event as CustomEvent).detail;if(detail?.blockId===blockId&&detail.revision===revision&&typeof detail.draft?.text==='string')setLive({revision,draft:detail.draft});}window.addEventListener('purposeos:builder-text-preview',changed);return()=>window.removeEventListener('purposeos:builder-text-preview',changed);},[blockId,revision]);
  if(!live||live.revision!==revision)return children;
- return <div data-live-authoring-preview><ParticipantRichText title={kind==='heading'?live.draft.text:live.draft.title} titleLevel={live.draft.level} text={kind==='heading'?'':live.draft.text}/><small>Editing preview · see course save status</small></div>;
+ return <div data-live-authoring-preview><h3 className="builder-preview-label">Preview</h3><ParticipantRichText title={kind==='heading'?live.draft.text:live.draft.title} titleLevel={live.draft.level} text={kind==='heading'?'':live.draft.text}/><small>Editing preview · see course save status</small></div>;
 }

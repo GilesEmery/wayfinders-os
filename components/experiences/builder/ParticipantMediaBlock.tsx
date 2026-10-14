@@ -33,8 +33,8 @@ export function ParticipantMediaBlock({ kind, config, asset }: { kind: MediaKind
     {title && <strong>{title}</strong>}{description && <p>{description}</p>}
     {kind === "video" && (() => {
       const source = videoSource(url);
-      if (source?.kind === "embed") return <div className="participant-media-frame"><iframe src={source.url} title={title || `${source.provider} video`} loading="lazy" allow="fullscreen; picture-in-picture" allowFullScreen referrerPolicy="strict-origin-when-cross-origin"/></div>;
-      if (source?.kind === "direct") return <video src={source.url} controls preload="metadata" aria-label={title || "Course video"}/>;
+      if (source?.kind === "embed") return <div className="participant-media-frame"><iframe src={source.url} title={value(config,"accessibilityTitle") || title || `${source.provider} video`} loading="lazy" allow="fullscreen; picture-in-picture" allowFullScreen referrerPolicy="strict-origin-when-cross-origin"/></div>;
+      if (source?.kind === "direct") return <video src={source.url} controls preload="metadata" aria-label={value(config,"accessibilityTitle") || title || "Course video"}/>;
       return external;
     })()}
     {kind === "image" && <Image src={url} alt={value(config, "alt")} width={1200} height={800} unoptimized sizes="(max-width: 768px) 100vw, 70vw"/>}

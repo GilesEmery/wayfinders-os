@@ -1,0 +1,5 @@
+import type {ResponseOption} from '@/lib/experiences/builder/response-registry';
+/** The same card/list markup and typography for single and multiple answers. */
+export function ChoiceOptionRows({options,selected,type,onToggle,required=false,maximum=null,describedBy}:{options:readonly ResponseOption[];selected:readonly string[];type:'radio'|'checkbox';onToggle:(key:string)=>void;required?:boolean;maximum?:number|null;describedBy?:string}){
+ return <div className="single-select-option-grid">{options.map(option=>{const checked=selected.includes(option.key),disabled=type==='checkbox'&&!checked&&maximum!==null&&selected.length>=maximum;return <label key={option.key} className={`single-select-option${checked?' is-selected':''}${disabled?' is-limit-disabled':''}`}><input type={type} name="response" value={option.key} checked={checked} disabled={disabled} required={type==='radio'&&required} aria-describedby={describedBy} onChange={()=>onToggle(option.key)}/><span><strong>{option.label}</strong>{option.description&&<small>{option.description}</small>}</span></label>;})}</div>;
+}

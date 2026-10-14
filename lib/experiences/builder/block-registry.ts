@@ -1,3 +1,4 @@
+import {multiSelectLimits} from "./multi-select.ts";
 import { CALLOUT_STYLES } from "./callout-styles.ts";
 import type { Json } from "@/lib/supabase/database.types";
 import type { BlockCompletionRule, ValidationResult } from "./types";
@@ -65,13 +66,14 @@ function result(value: BlockConfiguration, errors: Array<string | undefined>): V
 }
 
 function heading(input: unknown): ValidationResult<BlockConfiguration> {
-  const parsed = strict(input, ["text", "level", "eyebrow", "alignment"]);
+  const parsed = strict(input, ["text", "body", "level", "eyebrow", "alignment"]);
   if (!parsed.value) return { ok: false, errors: parsed.errors };
-  const headingText = text(parsed.value.text, "Heading text", 240, true);
+  const headingText = text(parsed.value.text ?? "", "Heading text", 240, !parsed.value.body);
+  const mainText = text(parsed.value.body ?? "", "Heading main text", 12000);
   const eyebrow = text(parsed.value.eyebrow ?? "", "Eyebrow", 120);
   const level = oneOf(parsed.value.level, ["h1", "h2", "h3", "h4", "h5", "h6"] as const, "Heading level");
   const alignment = oneOf(parsed.value.alignment, ["left", "center"] as const, "Alignment");
-  return result({ text: headingText.value, level: level.value, eyebrow: eyebrow.value || undefined, alignment: alignment.value }, [...parsed.errors, headingText.error, eyebrow.error, level.error, alignment.error]);
+  return result({ text: headingText.value, ...(parsed.value.body !== undefined ? {body:mainText.value} : {}), level: level.value, eyebrow: eyebrow.value || undefined, alignment: alignment.value }, [...parsed.errors, headingText.error, mainText.error, eyebrow.error, level.error, alignment.error]);
 }
 
 function richText(input: unknown): ValidationResult<BlockConfiguration> {
@@ -87,7 +89,7 @@ function callout(input: unknown): ValidationResult<BlockConfiguration> {
   const parsed = strict(input, ["title", "body", "treatment", "calloutStyle", "showIcon", "showTitle", "borderStyle"]);
   if (!parsed.value) return { ok: false, errors: parsed.errors };
   const title = text(parsed.value.title ?? "", "Callout title", 180);
-  const body = text(parsed.value.body, "Callout body", 4000, true);
+  const body = text(parsed.value.body, "Callout body", 12000, true);
   const treatment = oneOf(parsed.value.treatment, ["info", "emphasis", "warning", "success"] as const, "Callout treatment");
   const style=parsed.value.calloutStyle===undefined?undefined:oneOf(parsed.value.calloutStyle,CALLOUT_STYLES.map(s=>s.id),"Callout style");
   const border=parsed.value.borderStyle===undefined?undefined:oneOf(parsed.value.borderStyle,["left","outline","none"] as const,"Callout border");
@@ -106,7 +108,7 @@ function response(input: unknown): ValidationResult<BlockConfiguration> {
 }
 
 function selection(input: unknown, multi: boolean): ValidationResult<BlockConfiguration> {
-  const fields = multi ? ["options", "minSelections", "maxSelections"] : ["options","displayStyle","cardColumns","questionPurpose","correctAnswerKey","points","feedback"];
+  const fields = multi ? ["options", "minSelections", "maxSelections", "displayStyle", "cardColumns"] : ["options","displayStyle","cardColumns","questionPurpose","correctAnswerKey","points","feedback"];
   const parsed = strict(input, fields);
   if (!parsed.value) return { ok: false, errors: parsed.errors };
   const options = validateResponseOptions(parsed.value.options,multi?50:Infinity);
@@ -121,21 +123,22 @@ function selection(input: unknown, multi: boolean): ValidationResult<BlockConfig
     if(parsed.value.feedback!==undefined){const feedback=text(parsed.value.feedback,"Feedback",3000);extra.feedback=feedback.value;if(feedback.error)errors.push(feedback.error);}
     return result({options:options.value,...extra},errors);
   }
-  const minSelections = Number(parsed.value.minSelections);
-  const maxSelections = Number(parsed.value.maxSelections);
-  const selectionErrors = [
-    !Number.isInteger(minSelections) || minSelections < 0 || minSelections > options.value.length ? `Minimum selections must be between 0 and ${options.value.length}.` : undefined,
-    !Number.isInteger(maxSelections) || maxSelections < 1 || maxSelections > options.value.length ? `Maximum selections must be between 1 and ${options.value.length}.` : undefined,
-    Number.isInteger(minSelections) && Number.isInteger(maxSelections) && minSelections > maxSelections ? "Minimum selections cannot exceed maximum selections." : undefined,
-  ];
-  return result({ options: options.value, minSelections, maxSelections }, [...parsed.errors, ...selectionErrors]);
+  const limits=multiSelectLimits(parsed.value,options.value.length);
+  const extras:Record<string,Json|undefined>={};const errors=[...parsed.errors,...limits.errors];
+  if(parsed.value.displayStyle!==undefined){const style=oneOf(parsed.value.displayStyle,["cards","list"] as const,"Display style");extras.displayStyle=style.value;if(style.error)errors.push(style.error);}
+  if(parsed.value.cardColumns!==undefined){if(![1,2].includes(parsed.value.cardColumns as number))errors.push("Cards require one or two columns.");extras.cardColumns=parsed.value.cardColumns as number;}
+  return result({options:options.value,minSelections:limits.minimum,...(parsed.value.maxSelections!==undefined?{maxSelections:limits.maximum}:{}),...extras},errors);
 }
 
 function booleanResponse(input: unknown): ValidationResult<BlockConfiguration> {
-  const parsed = strict(input, ["affirmativeLabel"]);
+  const parsed = strict(input, ["affirmativeLabel", "statementFormatting", "statementDescription", "statementStyle", "descriptionStyle", "displayStyle"]);
   if (!parsed.value) return { ok: false, errors: parsed.errors };
   const affirmativeLabel = text(parsed.value.affirmativeLabel, "Checkbox label", 200, true);
-  return result({ affirmativeLabel: affirmativeLabel.value }, [...parsed.errors, affirmativeLabel.error]);
+  const extras:Record<string,Json|undefined>={},errors=[...parsed.errors,affirmativeLabel.error];
+  for(const key of ["statementFormatting","statementDescription"]){if(parsed.value[key]!==undefined){const field=text(parsed.value[key],key==="statementFormatting"?"Formatted checkbox statement":"Checkbox description",12000);extras[key]=field.value;errors.push(field.error);}}
+  for(const key of ["statementStyle","descriptionStyle"]){if(parsed.value[key]!==undefined){const field=oneOf(parsed.value[key],["h1","h2","h3","h4","h5","h6","body","small"] as const,"Checkbox text style");extras[key]=field.value;errors.push(field.error);}}
+  if(parsed.value.displayStyle!==undefined){const field=oneOf(parsed.value.displayStyle,["cards","list"] as const,"Display style");extras.displayStyle=field.value;errors.push(field.error);}
+  return result({ affirmativeLabel: affirmativeLabel.value,...extras }, errors);
 }
 
 function ethosAssessment(input: unknown): ValidationResult<BlockConfiguration> {
@@ -167,7 +170,7 @@ function pdfReader(input: unknown): ValidationResult<BlockConfiguration> {
   const parsed = strict(input, ["title", "description", "readerMode", "showReader", "allowDownload", "allowOpenInNewTab"]);
   if (!parsed.value) return { ok: false, errors: parsed.errors };
   const title = text(parsed.value.title ?? "", "Title", 200);
-  const description = text(parsed.value.description ?? "", "Description", 3000);
+  const description = text(parsed.value.description ?? "", "Description", 12000);
   const requestedMode = parsed.value.readerMode === "fit_width" ? "reader" : parsed.value.readerMode;
   const readerMode = oneOf(requestedMode, ["reader", "slides"] as const, "Reader style");
   const showReader = boolean(parsed.value.showReader, true);
@@ -225,12 +228,12 @@ const definitions = [
   },
   {
     blockType: "checklist", label: "Multi Select", description: "Choose one or more options from an ordered set.", category: "interaction", iconKey: "multi-select", editorKey: "response", previewKey: "response", participantRendererKey: "multi-select-response.v1", defaultCompletionRule: "response_submitted",
-    defaultConfiguration: () => ({ options: [{ key: "option-one", label: "Option one", sortOrder: 0 }, { key: "option-two", label: "Option two", sortOrder: 1 }], minSelections: 0, maxSelections: 2 }), validateConfiguration: (input) => selection(input, true),
+    defaultConfiguration: () => ({ options: [{ key: "option-one", label: "Option one", sortOrder: 0 }, { key: "option-two", label: "Option two", sortOrder: 1 }], minSelections: 0, displayStyle:"cards", cardColumns:2 }), validateConfiguration: (input) => selection(input, true),
     supportsResponse: true, supportsCompletion: true, supportsResources: false, duplicable: true, availability: "available", response: { responseKind: "multi_select", responseType: "multi_select", completionSignal: "response_submitted" },
   },
   {
-    blockType: "check_in", label: "Checkbox / Yes-No", description: "Confirm a statement with one accessible checkbox.", category: "interaction", iconKey: "checkbox", editorKey: "response", previewKey: "response", participantRendererKey: "boolean-response.v1", defaultCompletionRule: "response_submitted",
-    defaultConfiguration: () => ({ affirmativeLabel: "Yes, I agree" }), validateConfiguration: booleanResponse,
+    blockType: "check_in", label: "Checkbox / Confirmation", description: "Confirm a statement with one accessible checkbox.", category: "interaction", iconKey: "checkbox", editorKey: "response", previewKey: "response", participantRendererKey: "boolean-response.v1", defaultCompletionRule: "response_submitted",
+    defaultConfiguration: () => ({ affirmativeLabel: "I confirm", displayStyle: "cards" }), validateConfiguration: booleanResponse,
     supportsResponse: true, supportsCompletion: true, supportsResources: false, duplicable: true, availability: "available", response: { responseKind: "boolean", responseType: "choice", completionSignal: "response_submitted" },
   },
   {

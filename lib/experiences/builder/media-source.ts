@@ -25,8 +25,8 @@ export function validateMediaConfiguration(input: unknown, kind: MediaKind): Val
   const data = input as Record<string, unknown>;
   const allowed = ["title", "description", "url", "caption", "alt", "linkLabel"];
   const errors = Object.keys(data).filter((key) => !allowed.includes(key)).map((key) => `Unknown configuration field: ${key}.`);
-  const title = field(data.title ?? "", "Title", 200, kind === "document" || kind === "download" || kind === "external_link");
-  const description = field(data.description ?? "", "Description", 3000);
+  const title = field(data.title ?? "", "Title", 200);
+  const description = field(data.description ?? "", "Description", 12000);
   const caption = field(data.caption ?? "", "Caption", 1000);
   const alt = field(data.alt ?? "", "Image alt text", 300, kind === "image");
   const linkLabel = field(data.linkLabel ?? "", "Action label", 120);
