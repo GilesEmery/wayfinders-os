@@ -50,3 +50,9 @@ See [MULTI-SELECT.md](MULTI-SELECT.md) for scope, review instructions, tests and
 ## Checkbox / Confirmation — October 14
 
 See [CONFIRMATION.md](CONFIRMATION.md) for review instructions, preservation details and verification. The universal content editor reuses its four-field rich-text formatting session, response controls, Save/Cancel and preview for `check_in`. `ConfirmationChoice` reuses shared choice card/list CSS and native boolean inputs; `confirmation.ts` resolves the authoritative checkbox statement and matching formatting cache. Registry changes add compatible optional description/style fields and the Checkbox / Confirmation authoring label. Native required validation uses the requested message; unchecked finalized display reads Not confirmed. Confirmation regression/persistence tests and the disposable browser rehearsal cover old native responses without touching real participant data.
+
+## Personal / Cohort field preview — October 14
+
+`getAdminCoursePreview` now exposes a generic Cohort preview for `cohort_pathway` courses even without a cohort offering pinned to the draft. The existing selector and preview URLs retain Personal and configured cohort options. `loadCompanionRuntime` accepts a preview-only cohort-context flag; it exposes configured cohort cards, including the video-call placeholder, while retaining personal/shared cards and existing live authorization behavior. No participant notes, membership details, chat messages or call sessions are loaded for the generic field preview. Invalid context requests and unauthorized preview requests remain rejected.
+
+Four focused regression tests, a browser Personal → Cohort → Personal interaction, TypeScript and lint passed. The isolated review provides `/dev/companion-preview` using captured authoring configuration only; this route is not added to the production app. No course data or deployment changes were made.

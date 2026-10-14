@@ -12,11 +12,11 @@ export type CompanionChatMessage = Tables<"companion_chat_messages"> & { author_
 export type ResolvedCompanionModule = Tables<"companion_modules"> & { effective_configuration: Record<string, Json | undefined>; resources: ResolvedAsset[]; personal_notes: Tables<"participant_personal_notes">[]; delivery_override_id: string | null; call_session: Tables<"companion_call_sessions"> | null; chat_messages: CompanionChatMessage[] };
 export type CompanionRuntimeData = Readonly<{ modules: ResolvedCompanionModule[]; cohortMembers: Array<{ id: string; name: string; role: string }>; hasCohortContext: boolean; contextLabel: string; currentMemberRole: string | null; currentParticipantId: string | null }>;
 
-export async function loadCompanionRuntime({ versionId, offering, participantId, enrollmentId, preview = false, liveLocation, db = createAdminSupabaseClient() }: { versionId: string; offering: Offering | null; participantId?: string | null; enrollmentId?: string | null; preview?: boolean; liveLocation?: { moduleId: string; lessonId: string; sectionId: string }; db?: Db }): Promise<CompanionRuntimeData> {
+export async function loadCompanionRuntime({ versionId, offering, participantId, enrollmentId, preview = false, previewCohort = false, liveLocation, db = createAdminSupabaseClient() }: { versionId: string; offering: Offering | null; participantId?: string | null; enrollmentId?: string | null; preview?: boolean; previewCohort?: boolean; liveLocation?: { moduleId: string; lessonId: string; sectionId: string }; db?: Db }): Promise<CompanionRuntimeData> {
   const moduleResult = await db.from("companion_modules").select("*").eq("experience_version_id", versionId).order("sort_order");
   if (moduleResult.error) throw new Error(`Unable to load Companion modules: ${moduleResult.error.message}`);
   const modules = (moduleResult.data ?? []).filter(module => !liveLocation || (["chat", "video_call"].includes(module.module_type) && moduleApplies(module, liveLocation)));
-  if (!modules.length) return { modules: [], cohortMembers: [], hasCohortContext: Boolean(offering?.cohort_id), contextLabel: offering?.cohort_id ? offering.name : "Personal", currentMemberRole: null, currentParticipantId: participantId ?? null };
+  if (!modules.length) return { modules: [], cohortMembers: [], hasCohortContext: Boolean(offering?.cohort_id || preview && previewCohort), contextLabel: offering?.cohort_id ? offering.name : preview && previewCohort ? "Cohort preview" : "Personal", currentMemberRole: null, currentParticipantId: participantId ?? null };
   const moduleIds = modules.map((module) => module.id);
   const planResult = offering?.cohort_id ? await db.from("cohort_course_plans").select("id").eq("cohort_id", offering.cohort_id).eq("experience_version_id", versionId).eq("status", "active").maybeSingle() : { data: null, error: null };
   if (planResult.error) throw new Error(`Unable to resolve Companion cohort context: ${planResult.error.message}`);
@@ -36,7 +36,7 @@ export async function loadCompanionRuntime({ versionId, offering, participantId,
     if (membership.error) throw new Error(`Unable to resolve Cohort membership: ${membership.error.message}`);
     currentMemberRole = membership.data?.membership_role ?? null;
   }
-  const hasCohortContext = Boolean(offering?.cohort_id && (preview || currentMemberRole));
+  const hasCohortContext = Boolean(preview && previewCohort || offering?.cohort_id && (preview || currentMemberRole));
   if (!liveLocation && !preview && hasCohortContext && offering) {
     const missingChats = modules.filter((module) => module.module_type === "chat" && module.availability_context !== "individual" && !overrides.some((item) => item.companion_module_id === module.id && item.offering_id === offering.id));
     if (missingChats.length) {
@@ -57,7 +57,7 @@ export async function loadCompanionRuntime({ versionId, offering, participantId,
       ? [...defaultLinks, ...overrideLinks.filter((link) => !defaultLinks.some((item) => item.resource_id === link.resource_id))]
       : overrideLinks.length ? overrideLinks : defaultLinks;
     return { module, override, links };
-  }).filter(({ module, override }) => module.visibility === "visible" && override?.visibility !== "hidden" && (!liveLocation || hasCohortContext && module.availability_context !== "individual" && availabilityApplies(module.availability_context, hasCohortContext) && audienceAllowsParticipant(module.audience, currentMemberRole)) && (module.module_type !== "video_call" || override !== null && videoConferenceEnabled({ ...companionObject(module.configuration), ...companionObject(override.configuration) })));
+  }).filter(({ module, override }) => module.visibility === "visible" && override?.visibility !== "hidden" && (!liveLocation || hasCohortContext && module.availability_context !== "individual" && availabilityApplies(module.availability_context, hasCohortContext) && audienceAllowsParticipant(module.audience, currentMemberRole)) && (module.module_type !== "video_call" || preview && previewCohort || override !== null && videoConferenceEnabled({ ...companionObject(module.configuration), ...companionObject(override.configuration) })));
   const resourceIds = effective.flatMap((item) => item.links.map((link) => link.resource_id));
   const resourceMap = await resolveResourceIds(db, resourceIds);
   const overrideIds = hasCohortContext ? effective.flatMap(({ override }) => override ? [override.id] : []) : [];
@@ -98,5 +98,5 @@ export async function loadCompanionRuntime({ versionId, offering, participantId,
     const names = new Map((people.data ?? []).map((person) => [person.id, person.full_name || person.first_name || "Cohort member"]));
     cohortMembers = (memberships.data ?? []).map((membership) => ({ id: membership.participant_id, name: names.get(membership.participant_id) ?? "Cohort member", role: membership.membership_role }));
   }
-  return { modules: resolved, cohortMembers, hasCohortContext, contextLabel: hasCohortContext ? offering?.name || "Cohort" : "Personal", currentMemberRole, currentParticipantId: participantId ?? null };
+  return { modules: resolved, cohortMembers, hasCohortContext, contextLabel: hasCohortContext ? offering?.name || "Cohort preview" : "Personal", currentMemberRole, currentParticipantId: participantId ?? null };
 }
