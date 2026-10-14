@@ -4022,3 +4022,35 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
 
 /* Use one left edge for lesson headings, insertion buttons and content cards. */
 .modern-course-builder .course-builder-canvas>*{width:100%;max-width:900px;margin-inline:0;box-sizing:border-box}
+
+/* Shared compact assessment launch card: course primary color, original hierarchy. */
+.assessment-launch-card.assessment-launch-card{background:var(--experience-accent,var(--builder-accent,#0054a1));border:1px solid var(--experience-accent,var(--builder-accent,#0054a1));border-radius:0;color:#fff;padding:clamp(28px,4vw,56px);gap:18px 30px;box-shadow:0 18px 44px rgba(20,24,23,.16)}
+.assessment-launch-card.assessment-launch-card:before{display:none}
+.assessment-launch-card.assessment-launch-card .assessment-launch-copy>h2{font-family:var(--course-h3-family,var(--font-editorial)),serif;font-size:var(--course-h3-size,20px);font-weight:500;line-height:var(--course-h3-lineHeight,1.4);letter-spacing:normal;margin:0;color:#fff}
+.assessment-launch-card.assessment-launch-card .assessment-launch-copy>p{font-size:var(--course-body-size,16px);line-height:var(--course-body-lineHeight,1.55);margin:4px 0 0;color:#fff;max-width:560px}
+.assessment-launch-card.assessment-launch-card .assessment-launch-copy>span{margin-bottom:14px;color:#fff}
+.assessment-launch-card.assessment-launch-card .assessment-launch-status{color:#fff;border-color:rgba(255,255,255,.72)}
+.assessment-launch-card.assessment-launch-card .assessment-launch-action button{background:#fff;border-color:#fff;color:var(--experience-accent,var(--builder-accent,#0054a1));border-radius:4px;min-height:50px}
+.assessment-launch-card.assessment-launch-card .assessment-launch-action button:disabled{opacity:1}
+.assessment-launch-card.assessment-launch-card .assessment-launch-action button:hover:not(:disabled){background:#edf3f8;color:var(--experience-accent,var(--builder-accent,#0054a1))}
+@media(max-width:680px){.assessment-launch-card.assessment-launch-card{padding:28px 22px}}
+.assessment-launch-card.assessment-launch-card .assessment-launch-copy>p{font-family:var(--course-body-family,var(--font-editorial)),serif;font-weight:400}
+
+/* Square PDF/file action cards; polished shared resource selection and upload. */
+.participant-pdf-reader.is-resource-only{border-radius:0}
+:is(.modern-course-builder,.modern-builder-controls) .universal-assets{border:0;padding:0;margin:24px 0;min-width:0}
+:is(.modern-course-builder,.modern-builder-controls) .universal-assets>legend{font:600 12px/1.5 var(--font-sans),sans-serif;padding:0;margin-bottom:12px;color:#343a3d}
+:is(.modern-course-builder,.modern-builder-controls) .image-card-resources{margin:0;padding:16px;gap:16px;background:#f5f7f9;border:1px solid #d8dce1;border-radius:6px;align-items:start}
+:is(.modern-course-builder,.modern-builder-controls) .image-card-resources>form{background:#fff;border:1px solid #dfe3e6;border-radius:6px;padding:16px;display:grid;gap:14px;min-width:0}
+:is(.modern-course-builder,.modern-builder-controls) .image-card-resources :is(label,.admin-asset-select){display:grid;gap:8px;min-width:0;font:500 12px/1.5 var(--font-sans),sans-serif;letter-spacing:normal;text-transform:none}
+:is(.modern-course-builder,.modern-builder-controls) .image-card-resources .admin-asset-select{gap:14px}
+:is(.modern-course-builder,.modern-builder-controls) .image-card-resources :is(input[type=search],input:not([type]),select){box-sizing:border-box;min-width:0;width:100%;min-height:42px;padding:10px 12px;background:#fff;border:1px solid #cbd1d5;border-radius:5px;font:400 16px/1.5 var(--font-sans),sans-serif;color:#252a29}
+:is(.modern-course-builder,.modern-builder-controls) .image-card-resources input[type=file]{box-sizing:border-box;width:100%;min-width:0;max-width:100%;border:1px dashed #cbd1d5;border-radius:5px;background:#f7f9fb;padding:12px;font:400 12px/1.5 var(--font-sans),sans-serif}
+:is(.modern-course-builder,.modern-builder-controls) .image-card-resources input[type=file]::file-selector-button{border:1px solid #cbd1d5;border-radius:4px;background:#fff;padding:7px 10px;margin-right:10px;font:600 12px/1.4 var(--font-sans),sans-serif;cursor:pointer}
+:is(.modern-course-builder,.modern-builder-controls) .image-card-resources button{display:inline-flex;justify-content:center;align-items:center;width:100%;min-height:42px;padding:10px 14px;background:var(--builder-accent,#0054a1);color:#fff;border:1px solid var(--builder-accent,#0054a1);border-radius:5px;font:600 12px/1.4 var(--font-sans),sans-serif;cursor:pointer}
+:is(.modern-course-builder,.modern-builder-controls) .image-card-resources button:disabled{opacity:.45;cursor:not-allowed}
+:is(.modern-course-builder,.modern-builder-controls) .image-card-resources small{color:#737d82;font:400 11px/1.5 var(--font-sans),sans-serif}
+:is(.modern-course-builder,.modern-builder-controls) .image-card-resources>form:has(input[value=remove]){grid-column:1/-1;border:0;background:transparent;padding:0;justify-items:start}
+:is(.modern-course-builder,.modern-builder-controls) .image-card-resources>form:has(input[value=remove]) button{width:auto;background:#fff;color:#914747;border-color:#d9bbbb;min-height:36px}
+:is(.modern-course-builder,.modern-builder-controls) .image-card-resources :is(button,input,select):focus-visible{outline:2px solid var(--builder-accent,#0054a1);outline-offset:3px}
+@media(max-width:700px){:is(.modern-course-builder,.modern-builder-controls) .image-card-resources{grid-template-columns:1fr;padding:12px}}
