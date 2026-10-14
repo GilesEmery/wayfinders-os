@@ -4019,3 +4019,6 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
 
 /* Plain authored text fields use the same editing size as rich-text fields. */
 :is(.course-builder-canvas,.modern-builder-controls) :is(input:not([type]),input[type=text],input[type=url],textarea){font-size:16px!important;line-height:1.5}
+
+/* Use one left edge for lesson headings, insertion buttons and content cards. */
+.modern-course-builder .course-builder-canvas>*{width:100%;max-width:900px;margin-inline:0;box-sizing:border-box}
