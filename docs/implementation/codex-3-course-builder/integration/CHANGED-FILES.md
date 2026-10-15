@@ -56,3 +56,11 @@ See [CONFIRMATION.md](CONFIRMATION.md) for review instructions, preservation det
 `getAdminCoursePreview` now exposes a generic Cohort preview for `cohort_pathway` courses even without a cohort offering pinned to the draft. The existing selector and preview URLs retain Personal and configured cohort options. `loadCompanionRuntime` accepts a preview-only cohort-context flag; it exposes configured cohort cards, including the video-call placeholder, while retaining personal/shared cards and existing live authorization behavior. No participant notes, membership details, chat messages or call sessions are loaded for the generic field preview. Invalid context requests and unauthorized preview requests remain rejected.
 
 Four focused regression tests, a browser Personal → Cohort → Personal interaction, TypeScript and lint passed. The isolated review provides `/dev/companion-preview` using captured authoring configuration only; this route is not added to the production app. No course data or deployment changes were made.
+
+## Independent course scrolling — October 15
+
+`MobileCoursePanels` measures the viewport below the actual course header. Desktop outline, lesson and Companion columns now have bounded heights and separate overflow containers, overriding the old course-context rule that expanded them with the document. Scroll containment prevents wheel events at a column boundary from moving the document. Existing mobile drawers and tablet/mobile preview layouts keep document scrolling. The builder retains its own measured three-column scroll layout.
+
+The participant course outline omits the exact TutorLMS course 1753 migration note while retaining other descriptions and the original stored version metadata. No course or participant data was edited.
+
+`isolated-scroll-browser.mjs` and the guarded `ScrollColumns` local fixture verify real wheel events over all three participant and builder columns, including boundary containment, plus mobile drawer behavior. The launcher adds only a temporary `/dev/scroll-columns` rehearsal route. TypeScript, lint and whitespace checks passed.

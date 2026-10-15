@@ -4054,3 +4054,17 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
 :is(.modern-course-builder,.modern-builder-controls) .image-card-resources>form:has(input[value=remove]) button{width:auto;background:#fff;color:#914747;border-color:#d9bbbb;min-height:36px}
 :is(.modern-course-builder,.modern-builder-controls) .image-card-resources :is(button,input,select):focus-visible{outline:2px solid var(--builder-accent,#0054a1);outline-offset:3px}
 @media(max-width:700px){:is(.modern-course-builder,.modern-builder-controls) .image-card-resources{grid-template-columns:1fr;padding:12px}}
+
+/* Desktop course lanes own their scroll; page-level layout must not expand them. */
+@media(min-width:1101px){
+ .participant-course .participant-course-layout.mobile-course-panels,
+ .platform-shell.is-course-context .participant-course-layout.mobile-course-panels,
+ .course-preview-frame.is-desktop .participant-course-layout.mobile-course-panels{height:var(--course-viewport-height,calc(100dvh - 90px));min-height:0;flex:none;overflow:hidden;align-items:stretch}
+ .participant-course-layout.mobile-course-panels>:is(main,.participant-course-outline,.participant-group-companion),
+ .platform-shell.is-course-context .participant-course-layout.mobile-course-panels>:is(main,.participant-course-outline,.participant-group-companion){height:100%;min-height:0;min-width:0;max-height:100%;overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;scrollbar-gutter:stable;position:relative;top:auto;align-self:stretch;box-sizing:border-box}
+}
+@media(min-width:1101px){
+ .course-preview-frame:is(.is-mobile,.is-tablet) .participant-course-layout.mobile-course-panels{height:auto;min-height:0;flex:1 1 auto}
+ .course-preview-frame:is(.is-mobile,.is-tablet) .participant-course-layout.mobile-course-panels>:is(main,.participant-course-outline,.participant-group-companion){height:auto;max-height:none}
+ .course-preview-frame:is(.is-mobile,.is-tablet) .participant-course-layout.mobile-course-panels>main{overflow:visible}
+}

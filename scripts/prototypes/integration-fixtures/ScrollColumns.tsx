@@ -1,0 +1,7 @@
+import {MobileCoursePanels} from '@/components/experiences/builder/MobileCoursePanels';
+import {BuilderScrollWorkspace} from '@/components/admin/BuilderScrollWorkspace';
+export default async function ScrollColumns({searchParams}:{searchParams:Promise<{builder?:string}>}){
+ const query=await searchParams;
+ const rows=(label:string)=>Array.from({length:40},(_,i)=><p key={i} style={{padding:16,margin:8,border:'1px solid #d8dce1'}}>{label} {i+1}</p>);
+ return query.builder==='1'?<div className="modern-course-builder"><header style={{height:100}}>Local authoring scroll rehearsal</header><BuilderScrollWorkspace><div className="course-builder-grid has-companion"><aside className="course-builder-outline">{rows('Outline')}</aside><main className="course-builder-canvas">{rows('Content')}</main><aside className="companion-builder">{rows('Companion')}</aside></div></BuilderScrollWorkspace></div>:<div className="platform-shell is-course-context"><div className="participant-course"><header style={{height:100}}>Local participant scroll rehearsal</header><MobileCoursePanels templateKey="enhanced_course" hasCompanion><main>{rows('Lesson')}</main><aside id="mobile-course-outline" className="participant-course-outline"><details open><summary>Outline</summary>{rows('Outline')}</details></aside><aside id="mobile-course-companion" className="participant-group-companion">{rows('Companion')}</aside></MobileCoursePanels></div></div>;
+}
