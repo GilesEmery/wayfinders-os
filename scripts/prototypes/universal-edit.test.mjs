@@ -23,3 +23,23 @@ test('multiselect limits validate against choices and checkbox remains a native 
 test('reset preserves deliberate rich text, selected fonts and future layout fields',()=>{const {block}=fixture('rich_text'),model=helper.universalModel(block);model.header='[[font:14;lato;-]]**Header**[[/font]]';model.body='[[size:h2]]Selected words[[/size]]';model.appearance={family:'lato',padding:24,futureLayout:'retain'};const reset=helper.resetUniversalCustomization(model);assert.equal(reset.header,model.header);assert.equal(reset.body,model.body);assert.equal(reset.appearance.futureLayout,'retain');assert.equal(reset.appearance.padding,undefined);assert.equal(reset.appearance.family,undefined);});
 test('participant routing preserves legacy content and hides inactive or hidden blocks before rendering',async()=>{const React=await import('react'),jsx=await import('react/jsx-runtime');const source=readFileSync('components/experiences/builder/ParticipantBlockRenderer.tsx','utf8');const imports=Object.fromEntries([...source.matchAll(/from ["']([^"']+)["']/g)].map(([,name])=>[name,new Proxy({}, {get:()=>()=>null})]));imports['react/jsx-runtime']=jsx;imports['@/lib/experiences/builder/universal-block-editor']=helper;imports['./UniversalContentView']={UniversalContentView:()=>React.createElement('div',{'data-new':true})};imports['./BlockPresentation']={BlockPresentation:({children})=>children};imports['@/lib/experiences/builder/block-presentation']={responsePresentationSettings:x=>x};const {ParticipantBlockRenderer}=load('components/experiences/builder/ParticipantBlockRenderer.tsx',imports);const {block}=fixture('rich_text');const props={block:{...block,configuration:block.content,status:'active'},route:{slug:'local',moduleKey:'module',lessonKey:'lesson',sectionKey:'section'}};for(const change of [{visibility:'hidden'},{status:'archived'}])assert.equal(ParticipantBlockRenderer({...props,block:{...props.block,...change}}),null);const legacy=ParticipantBlockRenderer(props);assert.equal(legacy.type,imports['./BlockPresentation'].BlockPresentation);const modern=ParticipantBlockRenderer({...props,block:{...props.block,settings:{universalEdit:{version:1}}}});assert.equal(modern.type,imports['./UniversalContentView'].UniversalContentView);});
 test('Multi Select option additions/removals retain response-history protection while same-key edits/reorder remain allowed',async()=>{const f=writer({type:'checklist',history:1}),base=helper.universalModel(f.block,f.response);await assert.rejects(f.save({config:{...base.config,options:[...base.config.options,{key:'new',label:'New',sortOrder:base.config.options.length}]}}),/history/);await assert.rejects(f.save({config:{...base.config,options:base.config.options.slice(0,1)}}),/history/);assert.equal(f.writes.length,0);const ordered=base.config.options.slice().reverse().map((o,sortOrder)=>({...o,label:o.label+' updated',sortOrder}));assert.equal((await f.save({config:{...base.config,options:ordered}})).ok,true);assert.deepEqual(Array.from(f.writes[1][1].configuration.options,o=>o.key),ordered.map(o=>o.key));assert.equal(f.writes[1][1].raw_visibility,undefined);assert.equal(f.writes[1][1].share_mode,undefined);});
+
+test('file card filenames save, reload, reset and clear without changing shared resource data',()=>{
+ for(const type of ['pdf_reader','document','download']){
+  const {block}=fixture(type);block.content.resourceId='original-resource';
+  const base=helper.universalModel(block);
+  assert.equal(base.options.displayFilename,'');
+  assert.equal(helper.applyUniversalModel(block,undefined,base).changed,false);
+  const model={...base,options:{...base.options,displayFilename:'Bridges vs Barriers.pdf'}};
+  const saved=helper.applyUniversalModel(block,undefined,model);
+  assert.equal(JSON.stringify(saved.content),JSON.stringify(block.content));
+  const nextBlock={...block,content:saved.content,settings:saved.settings};
+  const reloaded=helper.universalModel(nextBlock);
+  assert.equal(reloaded.options.displayFilename,'Bridges vs Barriers.pdf');
+  assert.equal(helper.resetUniversalCustomization(reloaded).options.displayFilename,'Bridges vs Barriers.pdf');
+  assert.equal(helper.applyUniversalModel(nextBlock,undefined,reloaded).changed,false);
+  const cleared=helper.applyUniversalModel(nextBlock,undefined,{...reloaded,options:{...reloaded.options,displayFilename:''}});
+  assert.equal(helper.universalModel({...nextBlock,settings:cleared.settings}).options.displayFilename,'');
+  for(const name of ['../file.pdf','folder\\file.pdf','bad\nname.pdf','a'.repeat(301)])assert.throws(()=>helper.applyUniversalModel(block,undefined,{...base,options:{...base.options,displayFilename:name}}));
+ }
+});

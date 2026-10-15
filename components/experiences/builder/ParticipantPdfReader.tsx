@@ -143,7 +143,7 @@ function PdfReaderInstance({ config, asset }: { config: Record<string, unknown>;
     {showReader && !popoutOpen && <button className="participant-pdf-open" type="button" onClick={(event) => openPopout(event.currentTarget)} disabled={readerStatus !== "ready"} aria-label={`Open ${accessibilityTitle} PDF`}>Open PDF</button>}
   </div>;
 
-  if (!showReader) return <PdfResourceCard title={config.suppressAssetText ? asset.originalFilename || asset.title : title} description={description} url={asset.url} downloadUrl={asset.downloadUrl} allowDownload={allowDownload} allowOpenInNewTab={allowOpenInNewTab}/>;
+  if (!showReader) return <PdfResourceCard title={text(config,"displayFilename").trim() || (config.suppressAssetText ? asset.originalFilename || asset.title : title)} description={description} url={asset.url} downloadUrl={asset.downloadUrl} allowDownload={allowDownload} allowOpenInNewTab={allowOpenInNewTab}/>;
 
   const reader = <figure className={`participant-pdf-reader is-${mode}${popoutOpen ? " is-popout" : ""}`} onKeyDown={(event) => {
     if (mode !== "slides") return;
