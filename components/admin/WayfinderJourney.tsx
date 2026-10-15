@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import {AssessmentPdfDownloads} from "./AssessmentPdfDownloads";
 import { SavedResponseLibrary } from "@/components/platform/SavedResponseLibrary";
 import type { ResponseLibraryData } from "@/lib/platform/response-library-policy";
 import type { JourneyRecord, WayfinderJourneyData } from "@/lib/admin/wayfinders/journey-types";
@@ -40,8 +41,8 @@ function JourneyEntry({ record, endpoint }: { record: JourneyRecord; endpoint: s
   const params = new URLSearchParams(record.enrollmentId ? { enrollmentId: record.enrollmentId, ...(record.versionId ? { versionId: record.versionId } : {}) } : { assessmentId: record.id });
   const request = useJourneyRequest<ResponseLibraryData>(`${endpoint}?${params}`);
   return <details className="crm-journey-record" onToggle={event => { if (event.currentTarget.open) void request.load(); }}>
-    <summary><div><strong>{record.title}</strong><span>{record.status.replaceAll("_", " ")}{record.historical ? " · Previous completion" : ""}{record.cohort ? ` · ${record.cohort}` : ""}</span><span>{record.completedAt ? `Completed ${date(record.completedAt)}` : `Started / enrolled ${date(record.enrolledAt)}`}</span></div><span>Private responses · respondent access only</span></summary>
-    <div className="crm-journey-record-content"><RequestState error={request.error} loading={request.loading} retry={() => void request.load()}/>{request.data && <SavedResponseLibrary data={request.data}/>}</div>
+    <summary><div><strong>{record.title}</strong><span>{record.status.replaceAll("_", " ")}{record.historical ? " · Previous completion" : ""}{record.cohort ? ` · ${record.cohort}` : ""}</span><span>{record.completedAt ? `Completed ${date(record.completedAt)}` : `Started / enrolled ${date(record.enrolledAt)}`}</span></div><span>View saved work and results</span></summary>
+    <div className="crm-journey-record-content">{!record.enrollmentId&&<a className="admin-secondary-link" href={`/admin/life-mapping-u/${encodeURIComponent(record.id)}`}>View module progress and saved assessment work</a>}<RequestState error={request.error} loading={request.loading} retry={() => void request.load()}/>{request.data && <SavedResponseLibrary data={request.data}/>}</div>
   </details>;
 }
 export function WayfinderJourney({ participantId }: { participantId: string }) {
@@ -64,7 +65,7 @@ export function WayfinderJourney({ participantId }: { participantId: string }) {
     { title: "Assessments & guided experiences", records: request.data?.records.filter(record => record.kind === "assessment") ?? [] },
     { title: "Other course records", records: request.data?.records.filter(record => record.kind === "course" && !["enrolled", "in_progress", "completed"].includes(record.status)) ?? [] },
   ];
-  return <section className="crm-workspace-section" id="journey"><header><p className="admin-kicker">Journey</p><h2>Courses and assessment progress</h2><p>View operational enrollment and completion records. Private responses and individual results require respondent access.</p><a className="admin-secondary-link" href={`/api/admin/wayfinders/${encodeURIComponent(participantId)}/export?view=operational`}>Download operational CSV</a></header>
-    <details className="crm-journey-disclosure" ref={disclosure} onToggle={event => { if (event.currentTarget.open) void load(); }}><summary>Open Journey records</summary><RequestState error={request.error} loading={request.loading} retry={() => void load()}/>{request.data && (request.data.records.length ? groups.filter(group => group.records.length).map(group => <section key={group.title}><h3>{group.title}</h3>{group.records.map(record => <JourneyEntry key={record.id} record={record} endpoint={endpoint}/>)}</section>) : <p>No courses or assessments have been started yet.</p>)}</details>
+  return <section className="crm-workspace-section" id="journey"><header><p className="admin-kicker">Journey</p><h2>Courses and assessment progress</h2><p>Review course and assessment progress, saved responses, and results. Personal course notes remain private.</p><a className="admin-secondary-link" href={`/api/admin/wayfinders/${encodeURIComponent(participantId)}/export?view=operational`}>Download operational CSV</a></header>
+    <details className="crm-journey-disclosure" ref={disclosure} onToggle={event => { if (event.currentTarget.open) void load(); }}><summary>Open Journey records</summary><RequestState error={request.error} loading={request.loading} retry={() => void load()}/>{request.data&&<AssessmentPdfDownloads participantId={participantId}/>} {request.data && (request.data.records.length ? groups.filter(group => group.records.length).map(group => <section key={group.title}><h3>{group.title}</h3>{group.records.map(record => <JourneyEntry key={record.id} record={record} endpoint={endpoint}/>)}</section>) : <p>No courses or assessments have been started yet.</p>)}</details>
   </section>;
 }

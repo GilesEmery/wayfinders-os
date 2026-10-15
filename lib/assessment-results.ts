@@ -34,8 +34,11 @@ async function canonicalGenericCompletions(participantId: string) {
 
 const GENERIC_KEYS = [BRIDGES_RESPONSE_KEY, CIRCLE_RESPONSE_KEY, PERSONAL_IMPACT_RESPONSE_KEY, START_SOMETHING_RESPONSE_KEY, ...Object.keys(NATIVE_ASSESSMENT_RESULTS)];
 
-export async function listCompletedAssessmentResults(participantId: string): Promise<AssessmentResultSummary[]> {
-  if (!await ownsAssessmentResults(participantId)) throw new Error("Assessment results are unavailable.");
+export async function listCompletedAssessmentResults(participantId: string, options: {adminReview?: boolean} = {}): Promise<AssessmentResultSummary[]> {
+  if (options.adminReview) {
+    const {getAdmin}=await import("@/lib/admin/auth");
+    if(!await getAdmin()) throw new Error("Admin access is required.");
+  } else if (!await ownsAssessmentResults(participantId)) throw new Error("Assessment results are unavailable.");
   const db = createAdminSupabaseClient();
   const [lmu, definitions] = await Promise.all([
     db.from("lmu_assessments").select("id,completed_at").eq("participant_id", participantId).eq("status", "completed").not("completed_at", "is", null),

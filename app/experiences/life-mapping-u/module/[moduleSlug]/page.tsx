@@ -4,6 +4,7 @@ import { MapAccent } from "@/components/experiences/lmu/MapAccent";
 import { ModuleHeader } from "@/components/experiences/lmu/ModuleHeader";
 import { DevelopmentCompletionControl } from "@/components/experiences/lmu/DevelopmentCompletionControl";
 import { FinishModuleButton } from "@/components/experiences/lmu/FinishModuleButton";
+import {SuccessStoryDirectEntry} from "@/components/experiences/lmu/SuccessStoryDirectEntry";
 import { SuccessStoriesModule } from "@/components/experiences/lmu/SuccessStoriesModule";
 import { TransferableSkillsModule } from "@/components/experiences/lmu/TransferableSkillsModule";
 import { SupervisorModule, TeammatesModule } from "@/components/experiences/lmu/TeammatesModule";
@@ -18,12 +19,13 @@ import { LMU_ORIGINAL_EXPERIENCE_ID } from "@/lib/experiences/lmu/original-journ
 import { getAllModuleDefinitions, getModuleDefinition } from "@/lib/experiences/lmu/module-registry";
 import { notFound } from "next/navigation";
 
-export default async function ModulePage({ params }: PageProps<"/experiences/life-mapping-u/module/[moduleSlug]">) {
+export default async function ModulePage({ params, searchParams }: PageProps<"/experiences/life-mapping-u/module/[moduleSlug]">) {
   const { moduleSlug } = await params;
   const moduleDefinition = getModuleDefinition(moduleSlug);
   if (!moduleDefinition) notFound();
   if (moduleDefinition.id === "success-stories") {
-    return <SuccessStoriesModule media={moduleDefinition.instructionalMedia} />;
+    const query=await searchParams;
+    return query.entry === "story" ? <SuccessStoryDirectEntry media={moduleDefinition.instructionalMedia}/> : <SuccessStoriesModule media={moduleDefinition.instructionalMedia} />;
   }
   if (moduleDefinition.id === "transferable-skills") {
     return <TransferableSkillsModule media={moduleDefinition.instructionalMedia} />;

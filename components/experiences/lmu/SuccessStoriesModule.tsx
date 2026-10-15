@@ -50,7 +50,7 @@ function excerpt(value: string) {
   return value.length > 190 ? `${value.slice(0, 187).trim()}…` : value;
 }
 
-export function SuccessStoriesModule({ media }: { media?: Record<string, LMUInstructionalMedia> }) {
+export function SuccessStoriesModule({ media, startInEditor=false }: { media?: Record<string, LMUInstructionalMedia>; startInEditor?:boolean }) {
   const progress = useOriginalProgress();
   const moduleProgress = progress.find((item) => item.moduleId === "success-stories");
   const hasTransferableSkillsWork = progress.some((item) => item.moduleId === "transferable-skills" && Boolean(item.startedAt));
@@ -58,7 +58,7 @@ export function SuccessStoriesModule({ media }: { media?: Record<string, LMUInst
   const stories = useMemo(() => response.stories ?? [], [response.stories]);
   const validStoryCount = stories.filter((story) => story.title.trim() && story.story.trim()).length;
   const [screen, setScreen] = useState<Screen>(() => {
-    if (response.draft) return "editor";
+    if (response.draft || startInEditor && stories.length < SUCCESS_STORIES_MAXIMUM) return "editor";
     const resumeScreen = response.resumeScreen;
     if (resumeScreen === "comparison" || resumeScreen === "top-three-intro") return validStoryCount >= SUCCESS_STORIES_MINIMUM ? resumeScreen : "collection";
     if (resumeScreen === "top-three-review") return response.topThreeSelection?.proposedStoryIds.length === 3 || response.topThreeSelection?.finalStoryIds.length === 3 ? resumeScreen : "collection";
@@ -66,7 +66,7 @@ export function SuccessStoriesModule({ media }: { media?: Record<string, LMUInst
     if (resumeScreen === "introduction") return stories.length ? "collection" : resumeScreen;
     return stories.length ? "collection" : "introduction";
   });
-  const [draft, setDraft] = useState<SuccessStoryDraft | null>(response.draft ?? null);
+  const [draft, setDraft] = useState<SuccessStoryDraft | null>(()=>response.draft ?? (startInEditor && stories.length < SUCCESS_STORIES_MAXIMUM ? emptyDraft() : null));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [collectionTargetId, setCollectionTargetId] = useState<string | null>(null);
