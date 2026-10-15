@@ -4089,3 +4089,33 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
 /* Explicit section hierarchy within the shared assessment shell. */
 .bridges-content h2,.bridges-results h2{font-family:var(--font-editorial),serif;font-size:26px;line-height:1.25;margin:0 0 20px}.bridges-content h3,.bridges-results h3{font-family:var(--font-editorial),serif;font-size:22px;line-height:1.35;margin:20px 0 14px}.bridges-content h4,.bridges-results h4{font:600 16px/1.5 var(--font-sans),sans-serif;margin:16px 0 10px}
 @media print{.bridges-review-banner{display:none!important}}
+
+/* File naming follows the same outlined authoring fields in both editors. */
+.universal-filename-field.universal-filename-field {
+ display:grid;gap:8px;width:100%;min-width:0;margin:20px 0 24px;
+ font:600 12px/1.5 var(--font-sans),sans-serif;color:#252a29;
+}
+.universal-filename-field.universal-filename-field input {
+ box-sizing:border-box;display:block;width:100%;min-width:0;min-height:48px;
+ padding:12px 14px;border:1px solid #d1d7df;border-radius:6px;background:#fff;
+ font:400 16px/1.5 var(--font-sans),sans-serif;color:#252a29;
+ transition:border-color .15s,box-shadow .15s;
+}
+.universal-filename-field.universal-filename-field input::placeholder{color:#858e94}
+.universal-filename-field.universal-filename-field input:focus-visible {
+ outline:2px solid var(--builder-accent,#0054a1);outline-offset:2px;
+ border-color:var(--builder-accent,#0054a1);
+}
+.universal-filename-field.universal-filename-field small {
+ display:block;font:400 12px/1.5 var(--font-sans),sans-serif;color:#68737b;
+}
+
+/* A consistent, clearly labelled assessment library field. */
+.universal-assessment-picker.universal-assessment-picker{display:grid;gap:10px;min-width:0;margin:20px 0 24px;padding:18px;background:#f5f7f9;border:1px solid #dbe1e6;border-radius:6px;color:#252a29}
+.universal-assessment-picker .universal-assessment-picker-heading{font:600 12px/1.5 var(--font-sans),sans-serif}
+.universal-assessment-select{display:block;position:relative;min-width:0}
+.universal-assessment-picker.universal-assessment-picker select{box-sizing:border-box;display:block;appearance:none;width:100%;min-width:0;min-height:48px;padding:12px 42px 12px 14px;border:1px solid #cbd3dc;border-radius:5px;background:#fff;color:#252a29;font:400 16px/1.5 var(--font-sans),sans-serif;cursor:pointer}
+.universal-assessment-select>svg{position:absolute;width:18px;height:18px;right:14px;top:50%;transform:translateY(-50%);pointer-events:none;color:#68737b}
+.universal-assessment-picker.universal-assessment-picker select:focus-visible{outline:2px solid var(--builder-accent,#0054a1);outline-offset:2px;border-color:var(--builder-accent,#0054a1)}
+.universal-assessment-picker.universal-assessment-picker small{display:block;font:400 12px/1.5 var(--font-sans),sans-serif;color:#68737b}
+@media(max-width:600px){.universal-assessment-picker.universal-assessment-picker{padding:14px}}

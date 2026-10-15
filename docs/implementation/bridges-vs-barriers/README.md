@@ -1,6 +1,6 @@
 # Bridges vs. Barriers
 
-Implemented October 15, 2026. No deployment, live registration, published content edits, or course placement performed.
+Implemented October 15, 2026. No deployment, published content edits, or course placement performed. Draft registration was applied on October 15 after the request to make it selectable.
 
 ## Review locally
 
@@ -23,7 +23,7 @@ No schema migration is needed. `scripts/create-bridges-barriers-draft.mjs` prepa
 - After review, applying requires `--apply --confirm=49a59b41-bf07-4a53-a0f9-d01dfd0ea034` with the existing administrative database environment.
 - Review and publish the assessment through the normal admin workflow before participant use. A draft alone is not participant-accessible.
 
-The setup script has **not** been applied in this task. Until registration/publication and deployment, the new choice is not available in the live picker.
+The setup script has now been applied. The active registry entry and draft experience match the existing builder picker query. Refreshing the builder exposes the choice. Participant launch still requires normal publication and deployed runtime support.
 
 ## Behavior and preservation
 
