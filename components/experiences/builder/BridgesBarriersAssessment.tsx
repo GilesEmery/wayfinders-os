@@ -24,7 +24,7 @@ function Field({ id, label, value, onChange, helper, short = false, required = f
     helper?: string;
     short?: boolean;
     required?: boolean;
-}) { return <div className="bridges-field"><label htmlFor={id}>{label}{!required && <small> (optional)</small>}</label>{helper && <p id={`${id}-help`}>{helper}</p>}{short ? <input id={id} value={value} maxLength={12000} aria-required={required} aria-describedby={helper ? `${id}-help` : undefined} onChange={e => onChange(e.target.value)}/> : <textarea id={id} rows={4} value={value} maxLength={12000} aria-required={required} aria-describedby={helper ? `${id}-help` : undefined} onChange={e => onChange(e.target.value)}/>}</div>; }
+}) { return <div className="bridges-field"><label htmlFor={id}>{label}{!required && <small> (optional)</small>}</label>{helper && <p id={`${id}-help`}>{helper}</p>}{short ? <input type="text" id={id} value={value} maxLength={12000} aria-required={required} aria-describedby={helper ? `${id}-help` : undefined} onChange={e => onChange(e.target.value)}/> : <textarea id={id} rows={4} value={value} maxLength={12000} aria-required={required} aria-describedby={helper ? `${id}-help` : undefined} onChange={e => onChange(e.target.value)}/>}</div>; }
 function Multiple({ id, label, options, values, other, onChange, onOther, helper }: {
     id: string;
     label: string;
@@ -34,7 +34,7 @@ function Multiple({ id, label, options, values, other, onChange, onOther, helper
     onChange: (v: string[]) => void;
     onOther: (v: string) => void;
     helper?: string;
-}) { return <fieldset className="bridges-multiple"><legend>{label} <small>(optional)</small></legend><p id={`${id}-help`}>Select all that apply. Unsure is exclusive.{helper && <> {helper}</>}</p><div>{options.map(value => <label key={value}><input type="checkbox" checked={values.includes(value)} aria-describedby={`${id}-help`} onChange={() => onChange(toggleBridgeSelection(values, value))}/>{value}</label>)}</div>{values.includes('Other') && <Field id={`${id}-other`} short label="Other" value={other} onChange={onOther}/>}</fieldset>; }
+}) { return <fieldset className="bridges-multiple"><legend>{label} <small>(optional)</small></legend><p id={`${id}-help`}>Select all that apply. Unsure is exclusive.{helper && <> {helper}</>}</p><div className="bridges-multiple-options">{options.map(value => <label key={value}><input type="checkbox" checked={values.includes(value)} aria-describedby={`${id}-help`} onChange={() => onChange(toggleBridgeSelection(values, value))}/>{value}</label>)}</div>{values.includes('Other') && <Field id={`${id}-other`} short label="Please specify" value={other} onChange={onOther}/>}</fieldset>; }
 function canonical(data: BridgesData) { return JSON.stringify({ ...data, conversations: data.conversations.map(c => ({ ...c, observations: c.observations.filter(meaningfulObservation) })) }); }
 export function BridgesBarriersAssessment({ initialData, route, preview = false, autoStart = false, returnTo = null, participantName }: {
     initialData: unknown;
