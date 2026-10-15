@@ -1,3 +1,5 @@
+import {BridgesBarriersResults} from "@/components/experiences/builder/BridgesBarriersResults";
+import type {BridgesData} from "@/lib/experiences/builder/bridges-barriers";
 import { CircleOfInfluenceResults } from "@/components/experiences/builder/CircleOfInfluenceResults";
 import { normalizeCircleData } from "@/lib/experiences/builder/circle-of-influence";
 import { activatePurposeResults, normalizeActivatePurposeAnswers } from "@/lib/experiences/builder/activate-purpose-assessment";
@@ -14,7 +16,7 @@ function completedDate(value: string) { return new Intl.DateTimeFormat("en-US", 
 export function CompletedAssessmentResult({ result }: { result: { kind: AssessmentResultKind; id: string; name: string; completedAt: string; data: unknown } }) {
   return <article className={`completed-assessment-result is-${result.kind}`}>
     <header className="completed-assessment-result-header"><div><p>PurposeOS Guided Experience</p><h1>{result.name}</h1><span>Completed {completedDate(result.completedAt)}</span></div><PrintResultsButton/></header>
-    {result.kind === "circle-of-influence" ? <CircleOfInfluenceResults data={normalizeCircleData(result.data)}/> : result.kind === "personal-impact-statement" ? <PersonalImpactResult data={result.data as PersonalImpactData}/> : result.kind === "start-something" ? <StartSomethingResult data={result.data as StartSomethingData}/> : result.kind !== "life-mapping-u" ? <NativeResult kind={result.kind} data={result.data}/> : <LifeMappingResult rows={result.data as Array<{ section_key: string; result_data: unknown; finalized_at: string }>}/>}
+    {result.kind === "bridges-vs-barriers" ? <BridgesBarriersResults data={result.data as BridgesData} completedAt={result.completedAt}/> : result.kind === "circle-of-influence" ? <CircleOfInfluenceResults data={normalizeCircleData(result.data)}/> : result.kind === "personal-impact-statement" ? <PersonalImpactResult data={result.data as PersonalImpactData}/> : result.kind === "start-something" ? <StartSomethingResult data={result.data as StartSomethingData}/> : result.kind !== "life-mapping-u" ? <NativeResult kind={result.kind} data={result.data}/> : <LifeMappingResult rows={result.data as Array<{ section_key: string; result_data: unknown; finalized_at: string }>}/>}
     <footer className="completed-assessment-result-footer"><span>PurposeOS</span><span>{result.name}</span></footer>
   </article>;
 }

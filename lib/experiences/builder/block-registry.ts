@@ -294,7 +294,12 @@ const CIRCLE_OF_INFLUENCE_DEFINITION = Object.freeze({
   supportsResponse: true, supportsCompletion: true, supportsResources: false, duplicable: false, availability: "experimental", participantRuntime: "available", response: { responseKind: "short_text", responseType: "structured_response", completionSignal: "response_submitted" },
 } satisfies BlockDefinition);
 
+const BRIDGES_BARRIERS_DEFINITION = Object.freeze({
+ ...PERSONAL_IMPACT_STATEMENT_DEFINITION, label:"Bridges vs. Barriers", description:"Three conversations about the church, bridges, barriers, and a relational next step.", participantRendererKey:"bridges-vs-barriers.v1",
+} satisfies BlockDefinition);
+
 const CUSTOM_PARTICIPANT_BLOCKS = new Map([
+  ["custom_component:bridges-vs-barriers.v1", BRIDGES_BARRIERS_DEFINITION],
   ["custom_component:circle-of-influence.v1", CIRCLE_OF_INFLUENCE_DEFINITION],
   ["system_component:wayfinders-ethos-assessment.v1", BLOCKS.get("system_component")!],
   ["custom_component:activate-your-purpose-assessment.v1", BLOCKS.get("custom_component")!],

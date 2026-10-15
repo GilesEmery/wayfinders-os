@@ -1,3 +1,5 @@
+import {BridgesBarriersEntry} from "./BridgesBarriersEntry";
+import {BRIDGES_RENDERER_KEY} from "@/lib/experiences/builder/bridges-barriers";
 import {UniversalContentView} from "./UniversalContentView";
 import {object,UNIVERSAL_BLOCK_TYPES} from "@/lib/experiences/builder/universal-block-editor";
 import {videoMediaConfiguration} from "@/lib/experiences/builder/video-editor";
@@ -55,6 +57,10 @@ function ParticipantBlockContent({ block, response, asset, route, preview = fals
   if (block.block_type === "custom_component" && block.custom_renderer_key === LAUNCHING_WAYFINDERS_HUB_RENDERER_KEY) {
     if (!response || response.definition.response_type !== "structured_response") return <Unavailable block={block}/>;
     return <LaunchingWayfindersHubAssessment initialData={response.response?.response_data ?? {}} route={{ ...route, blockKey: block.block_key }} preview={preview}/>;
+  }
+  if (block.block_type === "custom_component" && block.custom_renderer_key === BRIDGES_RENDERER_KEY) {
+    if (!response || response.definition.response_type !== "structured_response") return <Unavailable block={block}/>;
+    return <BridgesBarriersEntry initialData={response.response?.response_data ?? {}} route={{...route,blockKey:block.block_key}} preview={preview}/>;
   }
   if (block.block_type === "custom_component" && block.custom_renderer_key === PERSONAL_IMPACT_RENDERER_KEY) {
     if (!response || response.definition.response_type !== "structured_response") return <Unavailable block={block}/>;

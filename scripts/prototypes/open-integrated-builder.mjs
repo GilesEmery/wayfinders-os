@@ -27,7 +27,9 @@ await mkdir(join(scratch,'app/admin/trainings/[experienceId]/versions/[versionId
 await mkdir(join(scratch,'app/dev/universal'),{recursive:true});await writeFile(join(scratch,'app/dev/universal/page.tsx'),"export {default} from '@/scripts/prototypes/integration-fixtures/UniversalLearner';\n");
 await mkdir(join(scratch,'app/dev/companion-preview'),{recursive:true});await writeFile(join(scratch,'app/dev/companion-preview/page.tsx'),"export {default} from '@/scripts/prototypes/integration-fixtures/CompanionContexts';\n");
 await mkdir(join(scratch,'app/dev/scroll-columns'),{recursive:true});await writeFile(join(scratch,'app/dev/scroll-columns/page.tsx'),"export {default} from '@/scripts/prototypes/integration-fixtures/ScrollColumns';\n");
+await mkdir(join(scratch,'app/dev/bridges-vs-barriers'),{recursive:true});await writeFile(join(scratch,'app/dev/bridges-vs-barriers/page.tsx'),"export {default} from '@/scripts/prototypes/integration-fixtures/BridgesReview';\n");
 const aliases={
+ '@/lib/experiences/builder/bridges-barriers-actions':resolve('scripts/prototypes/integration-fixtures/BridgesActions.ts'),
  '@/lib/experiences/builder/universal-block-editor':resolve('lib/experiences/builder/universal-block-editor.ts'),
  '@/components/experiences/builder/UniversalContentView':resolve('components/experiences/builder/UniversalContentView.tsx'),
  '@/lib/experiences/builder/rich-text-document':resolve('lib/experiences/builder/rich-text-document.ts'),

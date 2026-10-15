@@ -1,3 +1,4 @@
+import {BRIDGES_RESPONSE_KEY,normalizeBridgesData,bridgesResponseItems} from "../experiences/builder/bridges-barriers.ts";
 import { CIRCLE_AREAS, CIRCLE_REFLECTIONS, CIRCLE_RESPONSE_KEY, normalizeCircleData } from "../experiences/builder/circle-of-influence.ts";
 import { ACTIVATE_PURPOSE_QUESTIONS, activatePurposeResults, normalizeActivatePurposeAnswers } from "../experiences/builder/activate-purpose-assessment.ts";
 import { ETHOS_CATEGORIES, ethosResults, normalizeEthosAnswers } from "../experiences/builder/ethos-assessment.ts";
@@ -62,6 +63,7 @@ export function activityResponseItems(responseKey: string, data: unknown, config
   const envelope = object(data), finished = object(envelope.finished);
   const currentDraft = envelope.draft ?? envelope.answers;
   const completedMaterial = finished.answers ?? finished.participantMaterial;
+  if (responseKey === BRIDGES_RESPONSE_KEY) return bridgesResponseItems(normalizeBridgesData(completedMaterial ?? currentDraft ?? data)).filter(item=>includeUnanswered||item.response.trim()).map(item=>({...item,answered:Boolean(item.response.trim()),response:item.response||"Not answered"}));
   if (responseKey === CIRCLE_RESPONSE_KEY) {
     const circle = normalizeCircleData(completedMaterial ?? currentDraft ?? data);
     return [...CIRCLE_AREAS.flatMap(area => {

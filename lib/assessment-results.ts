@@ -1,3 +1,4 @@
+import {BRIDGES_RESPONSE_KEY} from "@/lib/experiences/builder/bridges-barriers";
 import { CIRCLE_RESPONSE_KEY } from "@/lib/experiences/builder/circle-of-influence";
 import "server-only";
 import { requireExperiencePasswordBySlug } from "@/lib/experiences/access/server";
@@ -10,7 +11,7 @@ import { START_SOMETHING_RESPONSE_KEY } from "@/lib/experiences/builder/start-so
 import { completedJourneyRecords } from "@/lib/platform/journey-policy";
 import { NATIVE_ASSESSMENT_RESULTS, completedGenericResult, completedLegacyActivatePurpose } from "@/lib/assessment-results-policy";
 
-export type AssessmentResultKind = "circle-of-influence" | "life-mapping-u" | "personal-impact-statement" | "start-something" | "activate-your-purpose" | "wayfinders-ethos" | "launching-your-wayfinders-hub";
+export type AssessmentResultKind = "bridges-vs-barriers" | "circle-of-influence" | "life-mapping-u" | "personal-impact-statement" | "start-something" | "activate-your-purpose" | "wayfinders-ethos" | "launching-your-wayfinders-hub";
 export type AssessmentResultSummary = { kind: AssessmentResultKind; id: string; name: string; completedAt: string; enrollmentId?: string; versionId?: string };
 
 async function ownsAssessmentResults(participantId: string) {
@@ -31,7 +32,7 @@ async function canonicalGenericCompletions(participantId: string) {
   return completedJourneyRecords(enrollments.data ?? [], (history.data ?? []).map(row => ({ ...row, artifact_snapshot: { completion: row.completion } })));
 }
 
-const GENERIC_KEYS = [CIRCLE_RESPONSE_KEY, PERSONAL_IMPACT_RESPONSE_KEY, START_SOMETHING_RESPONSE_KEY, ...Object.keys(NATIVE_ASSESSMENT_RESULTS)];
+const GENERIC_KEYS = [BRIDGES_RESPONSE_KEY, CIRCLE_RESPONSE_KEY, PERSONAL_IMPACT_RESPONSE_KEY, START_SOMETHING_RESPONSE_KEY, ...Object.keys(NATIVE_ASSESSMENT_RESULTS)];
 
 export async function listCompletedAssessmentResults(participantId: string): Promise<AssessmentResultSummary[]> {
   if (!await ownsAssessmentResults(participantId)) throw new Error("Assessment results are unavailable.");
@@ -78,7 +79,7 @@ export async function loadCompletedAssessmentResult(participantId: string, kind:
     if (results.error) throw new Error("Unable to load finalized Life Mapping U results.");
     return { kind, id, name: "Life Mapping U", completedAt: assessment.data.completed_at!, data: results.data ?? [] } as const;
   }
-  const expectedKey = kind === "circle-of-influence" ? CIRCLE_RESPONSE_KEY : kind === "personal-impact-statement" ? PERSONAL_IMPACT_RESPONSE_KEY : kind === "start-something" ? START_SOMETHING_RESPONSE_KEY : Object.entries(NATIVE_ASSESSMENT_RESULTS).find(([, item]) => item.kind === kind)?.[0];
+  const expectedKey = kind === "bridges-vs-barriers" ? BRIDGES_RESPONSE_KEY : kind === "circle-of-influence" ? CIRCLE_RESPONSE_KEY : kind === "personal-impact-statement" ? PERSONAL_IMPACT_RESPONSE_KEY : kind === "start-something" ? START_SOMETHING_RESPONSE_KEY : Object.entries(NATIVE_ASSESSMENT_RESULTS).find(([, item]) => item.kind === kind)?.[0];
   if (!expectedKey) return null;
   const response = await db.from("participant_responses")
     .select("id,enrollment_id,experience_version_id,response_definition_id,response_data,status,finalized_at")

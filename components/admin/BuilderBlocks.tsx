@@ -1,3 +1,4 @@
+import {BridgesBarriersAssessment} from "@/components/experiences/builder/BridgesBarriersAssessment";
 import {UniversalContentEditor} from "./UniversalContentEditor";
 import {UNIVERSAL_BLOCK_TYPES} from "@/lib/experiences/builder/universal-block-editor";
 import {VideoEditorSession,VideoMainEditor,VideoAdvancedEditor} from "./VideoAdvancedEditor";
@@ -117,6 +118,7 @@ function BlockPreviewContent({ block, responseDefinition, asset }: { block: Bloc
   if (block.block_type === "system_component" && block.custom_renderer_key === ETHOS_RENDERER_KEY) return <EthosAssessment initialData={{}} route={{ slug: "", moduleKey: "", lessonKey: "", sectionKey: "", blockKey: block.block_key }} preview/>;
   if (block.block_type === "custom_component" && block.custom_renderer_key === ACTIVATE_PURPOSE_RENDERER_KEY) return <ActivatePurposeAssessment initialData={{}} route={{ slug: "", moduleKey: "", lessonKey: "", sectionKey: "", blockKey: block.block_key }} preview/>;
   if (block.block_type === "custom_component" && block.custom_renderer_key === LAUNCHING_WAYFINDERS_HUB_RENDERER_KEY) return <LaunchingWayfindersHubAssessment initialData={{}} route={{ slug: "", moduleKey: "", lessonKey: "", sectionKey: "", blockKey: block.block_key }} preview/>;
+  if (block.block_type === "custom_component" && block.custom_renderer_key === "bridges-vs-barriers.v1") return <BridgesBarriersAssessment initialData={{}} route={{slug:"",moduleKey:"",lessonKey:"",sectionKey:"",blockKey:block.block_key}} preview/>;
   if (block.block_type === "custom_component" && block.custom_renderer_key === PERSONAL_IMPACT_RENDERER_KEY) return <PersonalImpactStatementAssessment initialData={{}} route={{ slug: "", moduleKey: "", lessonKey: "", sectionKey: "", blockKey: block.block_key }} preview/>;
   const definition = participantDefinition;
   const parsed = definition.validateConfiguration(block.content);
