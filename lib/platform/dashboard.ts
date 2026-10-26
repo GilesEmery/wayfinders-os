@@ -1,3 +1,4 @@
+import { cardPresentationConfiguration } from "@/lib/experiences/builder/card-presentation";
 import "server-only";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { ensurePlatformProfile, getPlatformUser } from "@/lib/platform/auth";
@@ -86,7 +87,7 @@ export async function getWayfinderDashboard({ includeNetworkOverview = true }: {
   const imageIds = cardEnrollments.map((enrollment) => {
     const experience = experienceById.get(enrollment.experience_id);
     const version = versionById.get(experienceById.get(enrollment.experience_id)?.current_published_version_id ?? enrollment.experience_version_id ?? "");
-    return imageFor(experience?.delivery_mode === "custom_code" ? experience.card_configuration : version?.course_configuration ?? experience?.card_configuration, version?.theme_id ?? experience?.default_theme_id);
+    return imageFor(cardPresentationConfiguration(experience?.delivery_mode === "custom_code" ? undefined : version?.course_configuration, experience?.card_configuration), version?.theme_id ?? experience?.default_theme_id);
   });
   const lmuImageId = lmuExperience ? imageFor(lmuExperience.card_configuration, lmuExperience.default_theme_id) : [];
   const archivedCardIds = [...presentationVersions.map(version => version.course_configuration), ...experienceRows.map(experience => experience.card_configuration), lmuExperience?.card_configuration]
@@ -96,7 +97,7 @@ export async function getWayfinderDashboard({ includeNetworkOverview = true }: {
     const experience = experienceById.get(enrollment.experience_id);
     const version = versionById.get(experienceById.get(enrollment.experience_id)?.current_published_version_id ?? enrollment.experience_version_id ?? "");
     if (!experience) return [enrollment.id, null] as const;
-    const configurationSource = experience.delivery_mode === "custom_code" ? experience.card_configuration : version?.course_configuration ?? experience.card_configuration;
+    const configurationSource = cardPresentationConfiguration(experience.delivery_mode === "custom_code" ? undefined : version?.course_configuration, experience.card_configuration);
     const configuration = normalizeCourseConfiguration(configurationSource);
     const cardImageUrl = courseCardImageUrl(cardImages, imageIds[index]);
     return [enrollment.id, resolveCourseCard({ configuration, courseTitle: version?.title || experience.name, courseDescription: experience.description, experienceType: experience.experience_type, cardImageUrl })] as const;

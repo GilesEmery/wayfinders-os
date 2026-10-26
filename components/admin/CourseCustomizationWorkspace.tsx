@@ -35,7 +35,7 @@ function ImageCard({ kind, action, images, current, editable, mode }: { kind: "l
 
 export function CourseCardEditor({ textAction, imageAction, configuration, images, current, editable }: { textAction: ImageAction; imageAction: ImageAction; configuration: CourseConfiguration; images: CourseAsset[]; current?: ResolvedAsset; editable: boolean }) {
   return <section className="course-customization-card course-card-editor">
-    <CardHeading icon="▤" title="Participant Course Card">Customize the complete card participants see in Course lists.</CardHeading>
+    <CardHeading icon="▤" title="Participant Course Card">Customize the complete card participants see in Course lists. Image changes apply immediately, including to started and completed experiences.</CardHeading>
     <div className="course-card-editor-layout">
       <div className="course-card-editor-image">
         <div className="course-image-preview">{current ? <Image src={current.url} alt="Current Course Card image" width={960} height={540} unoptimized/> : <div><span aria-hidden="true">◇</span><strong>No card image selected</strong><small>The Course Cover is used as the fallback</small></div>}</div>

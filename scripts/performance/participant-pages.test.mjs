@@ -26,7 +26,7 @@ function libraryFixture(){
   let user={id:'auth-a',email:'a@example.test'},structures=0,locked=false;
   const db=database(rows,calls);
   const library=load('lib/platform/response-library.ts',{
-    '@/lib/supabase/admin':{createAdminSupabaseClient:()=>db},'./auth':{getPlatformUser:async()=>user},'./authorization':{},
+    '@/lib/experiences/builder/card-presentation':{cardPresentationConfiguration:(version,live)=>live?.card?.image_resource_id?live:version??live},'@/lib/supabase/admin':{createAdminSupabaseClient:()=>db},'./auth':{getPlatformUser:async()=>user},'./authorization':{},
     '@/lib/experiences/access/server':{needsExperiencePassword:async()=>locked},'@/lib/experiences/builder/data':{getExperienceStructure:async(id,version)=>{structures++;return {experience:{id,name:'Owned',slug:id},version:{version_label:version},modules:[]};}},
     '@/lib/experiences/builder/participant-runtime':{effectiveDeliveryStructure:async x=>x},'@/lib/experiences/builder/prebuilt-assessment':{},'./response-library-policy':{},'./response-sharing-policy':{},
   });return {library,calls,rows,structures:()=>structures,setUser:x=>user=x,setLocked:x=>locked=x};
@@ -56,7 +56,7 @@ test('own response endpoint rejects invalid selection, signed-out access and fai
 });
 test('My Journey skips unused network totals and Hub roster reads while retaining owner summaries',async()=>{
   const calls=[],db=database({},calls);
-  const dashboard=load('lib/platform/dashboard.ts',{'@/lib/supabase/admin':{createAdminSupabaseClient:()=>db},'@/lib/platform/auth':{getPlatformUser:async()=>({id:'auth',email:'fixture@example.test'}),ensurePlatformProfile:async()=>({participant:{id:'p'}})},'@/lib/platform/authorization':{resolveDashboardCapabilities:async()=>({isAdmin:true})},'@/lib/experiences/builder/course-configuration':{normalizeCourseConfiguration:()=>({card:{}})},'@/lib/experiences/builder/card-images':{courseCardImageIds:()=>[],courseCardImageUrl:()=>null,resolveCardImages:async()=>new Map()},'@/lib/platform/course-card':{},'./journey-policy':{completedJourneyRecords:()=>[]}});
+  const dashboard=load('lib/platform/dashboard.ts',{'@/lib/experiences/builder/card-presentation':{cardPresentationConfiguration:(version,live)=>live?.card?.image_resource_id?live:version??live},'@/lib/supabase/admin':{createAdminSupabaseClient:()=>db},'@/lib/platform/auth':{getPlatformUser:async()=>({id:'auth',email:'fixture@example.test'}),ensurePlatformProfile:async()=>({participant:{id:'p'}})},'@/lib/platform/authorization':{resolveDashboardCapabilities:async()=>({isAdmin:true})},'@/lib/experiences/builder/course-configuration':{normalizeCourseConfiguration:()=>({card:{}})},'@/lib/experiences/builder/card-images':{courseCardImageIds:()=>[],courseCardImageUrl:()=>null,resolveCardImages:async()=>new Map()},'@/lib/platform/course-card':{},'./journey-policy':{completedJourneyRecords:()=>[]}});
   const result=await dashboard.getWayfinderDashboard({includeNetworkOverview:false});assert.equal(result.networkOverview,null);
   assert.ok(!calls.some(c=>c.table==='participants'||c.table==='admin_audit_log'));
   assert.ok(calls.some(c=>c.table==='experience_enrollments'&&c.filters.some(filter=>filter[1]==='participant_id'&&filter[2]==='p')));
@@ -190,7 +190,7 @@ test('Journey cards use current custom-code artwork even when a completed enroll
   const db=database(rows,calls);
   const configurations=[];
   const dashboard=load('lib/platform/dashboard.ts',{
-    '@/lib/supabase/admin':{createAdminSupabaseClient:()=>db},
+    '@/lib/experiences/builder/card-presentation':{cardPresentationConfiguration:(version,live)=>live?.card?.image_resource_id?live:version??live},'@/lib/supabase/admin':{createAdminSupabaseClient:()=>db},
     '@/lib/platform/auth':{getPlatformUser:async()=>({id:'auth'}),ensurePlatformProfile:async()=>({participant:{id:'p'}})},
     '@/lib/platform/authorization':{resolveDashboardCapabilities:async()=>({isAdmin:false})},
     '@/lib/experiences/builder/course-configuration':{normalizeCourseConfiguration:x=>x??{card:{}}},
@@ -208,14 +208,14 @@ test('Journey cards use current custom-code artwork even when a completed enroll
   assert.deepEqual(configurations,[current]);
   rows.experiences[0].delivery_mode='builder';
   const builder=await dashboard.getWayfinderDashboard({includeNetworkOverview:false});
-  assert.equal(builder.trainingCards.completed.imageUrl,'https://fixture.test/old-image.jpg');
+  assert.equal(builder.trainingCards.completed.imageUrl,'https://fixture.test/uploaded-jpeg.jpg');
 });
 
 test('completed builder cards use current published artwork while retaining enrollment version',async()=>{
   const dbRows={experience_enrollments:[{id:'completed',participant_id:'p',experience_id:'bridges',experience_version_id:'old',status:'completed'}],experiences:[{id:'bridges',delivery_mode:'builder',current_published_version_id:'current'}],experience_versions:[{id:'old',experience_id:'bridges',course_configuration:{card:{}}},{id:'current',experience_id:'bridges',status:'published',course_configuration:{card:{image_resource_id:'jpeg'}}}]};
   const db=database(dbRows,[]);
   const dashboard=load('lib/platform/dashboard.ts',{
-    '@/lib/supabase/admin':{createAdminSupabaseClient:()=>db},
+    '@/lib/experiences/builder/card-presentation':{cardPresentationConfiguration:(version,live)=>live?.card?.image_resource_id?live:version??live},'@/lib/supabase/admin':{createAdminSupabaseClient:()=>db},
     '@/lib/platform/auth':{getPlatformUser:async()=>({id:'auth'}),ensurePlatformProfile:async()=>({participant:{id:'p'}})},
     '@/lib/platform/authorization':{resolveDashboardCapabilities:async()=>({isAdmin:false})},
     '@/lib/experiences/builder/course-configuration':{normalizeCourseConfiguration:x=>x??{card:{}}},

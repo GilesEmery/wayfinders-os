@@ -121,6 +121,7 @@ export async function updateCourseCardAction(experienceId: string, versionId: st
   revalidatePath(`/admin/trainings/${experienceId}/versions/${versionId}`);
   revalidatePath("/trainings");
   revalidatePath("/dashboard");
+  revalidatePath("/my-journey");
   redirect(`/admin/trainings/${experienceId}/versions/${versionId}?saved=${encodeURIComponent("Course Card saved for this Draft.")}`);
 }
 
@@ -210,6 +211,16 @@ async function setCourseImage(experienceId: string, versionId: string, form: For
   const updated = kind === "card" ? { ...configuration, card: { ...configuration.card, image_resource_id: resourceId } } : { ...configuration, appearance: { ...configuration.appearance, ...imageUpdate } };
   const result = await db.from("experience_versions").update({ course_configuration: updated }).eq("id", versionId).eq("experience_id", experienceId).eq("status", "draft").select("id").maybeSingle();
   if (result.error || !result.data) throw new Error(`Course ${kind} could not be saved.`);
+  if (kind === "card" || kind === "cover") {
+    const live = await db.from("experiences").select("card_configuration").eq("id", experienceId).single();
+    if (live.error) throw new Error("Unable to load live Course Card artwork.");
+    const root = live.data.card_configuration && typeof live.data.card_configuration === "object" && !Array.isArray(live.data.card_configuration) ? live.data.card_configuration as Record<string, Json> : {};
+    const key = kind === "card" ? "card" : "appearance";
+    const prior = root[key] && typeof root[key] === "object" && !Array.isArray(root[key]) ? root[key] as Record<string, Json> : {};
+    const artwork = { ...root, [key]: { ...prior, [kind === "card" ? "image_resource_id" : "cover_resource_id"]: resourceId } };
+    const savedArtwork = await db.from("experiences").update({ card_configuration: artwork }).eq("id", experienceId);
+    if (savedArtwork.error) throw new Error("The draft image was saved, but live Course Card artwork could not be updated. Please retry.");
+  }
   await audit(admin, `course.${kind}.updated`, "experience_version", versionId, { experienceId, resourceId });
   } catch (error) {
     const message = error instanceof Error ? error.message : "The image could not be saved. Please try again.";
@@ -218,7 +229,8 @@ async function setCourseImage(experienceId: string, versionId: string, form: For
   revalidatePath(`/admin/trainings/${experienceId}/versions/${versionId}`);
   revalidatePath("/trainings");
   revalidatePath("/dashboard");
-  redirect(`/admin/trainings/${experienceId}/versions/${versionId}?saved=${encodeURIComponent(`Course ${kind} saved for this Draft.`)}`);
+  revalidatePath("/my-journey");
+  redirect(`/admin/trainings/${experienceId}/versions/${versionId}?saved=${encodeURIComponent(kind === "card" || kind === "cover" ? "Course artwork saved for all participants." : `Course ${kind} saved for this Draft.`)}`);
 }
 
 export async function saveCourseThemeAction(experienceId: string, versionId: string, form: FormData) {
