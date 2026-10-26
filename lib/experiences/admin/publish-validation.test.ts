@@ -36,3 +36,11 @@ test("Preview and participant runtime use the same strict participant resolver",
   assert.match(runtime, /getParticipantBlockDefinition\(block\.block_type, block\.custom_renderer_key\)/);
   assert.match(publish, /getPublishBlockDefinition\(block\.block_type, block\.custom_renderer_key\)/);
 });
+
+test("Microchurch Assessment is publish-valid with its exact saved renderer", () => {
+  const definition = getPublishBlockDefinition("custom_component", "microchurch.v1");
+  assert.equal(definition?.participantRendererKey, "microchurch.v1");
+  assert.equal(definition?.label, "Microchurch Assessment");
+  assert.equal(definition?.validateConfiguration({}).ok, true);
+  assert.equal(getPublishBlockDefinition("custom_component", "microchurch.v2"), null);
+});
