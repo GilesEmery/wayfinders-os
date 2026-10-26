@@ -1,3 +1,4 @@
+import {MICROCHURCH_RESPONSE_KEY,normalizeMicrochurchData,microchurchResponseItems,microchurchScores,microchurchComplete,MICROCHURCH_REFLECTIONS,MICROCHURCH_LIMITING_INTRO} from "../experiences/builder/microchurch.ts";
 import {BRIDGES_RESPONSE_KEY,normalizeBridgesData,bridgesResponseItems} from "../experiences/builder/bridges-barriers.ts";
 import { CIRCLE_AREAS, CIRCLE_REFLECTIONS, CIRCLE_RESPONSE_KEY, normalizeCircleData } from "../experiences/builder/circle-of-influence.ts";
 import { ACTIVATE_PURPOSE_QUESTIONS, activatePurposeResults, normalizeActivatePurposeAnswers } from "../experiences/builder/activate-purpose-assessment.ts";
@@ -63,6 +64,7 @@ export function activityResponseItems(responseKey: string, data: unknown, config
   const envelope = object(data), finished = object(envelope.finished);
   const currentDraft = envelope.draft ?? envelope.answers;
   const completedMaterial = finished.answers ?? finished.participantMaterial;
+  if (responseKey === MICROCHURCH_RESPONSE_KEY) return microchurchResponseItems(normalizeMicrochurchData(completedMaterial ?? currentDraft ?? data)).filter(item=>includeUnanswered||item.response).map(item=>({...item,answered:Boolean(item.response),response:item.response||"Not answered"}));
   if (responseKey === BRIDGES_RESPONSE_KEY) return bridgesResponseItems(normalizeBridgesData(completedMaterial ?? currentDraft ?? data)).filter(item=>includeUnanswered||item.response.trim()).map(item=>({...item,answered:Boolean(item.response.trim()),response:item.response||"Not answered"}));
   if (responseKey === CIRCLE_RESPONSE_KEY) {
     const circle = normalizeCircleData(completedMaterial ?? currentDraft ?? data);
@@ -117,6 +119,11 @@ export function activityResultItems(responseKey: string, data: unknown, status: 
   const envelope = object(data), finished = object(envelope.finished);
   if (envelope.finished && finished.completedAt !== finalizedAt) return [];
   const answers = finished.answers ?? envelope.answers;
+  if (responseKey === MICROCHURCH_RESPONSE_KEY) {
+    const material = normalizeMicrochurchData(finished.participantMaterial ?? answers);
+    if (!microchurchComplete(material)) return [];
+    return [...microchurchScores(material).map(score=>({question:score.name,response:`${score.total} / 35 · Statements ${score.statements.join(', ')}`})), {question:'Limiting Church',response:MICROCHURCH_LIMITING_INTRO}, ...MICROCHURCH_REFLECTIONS.map(item=>({question:item.title,response:item.text}))];
+  }
   if (responseKey === "activate_your_purpose_assessment") {
     const results = activatePurposeResults(normalizeActivatePurposeAnswers(answers));
     if (!results) return [];

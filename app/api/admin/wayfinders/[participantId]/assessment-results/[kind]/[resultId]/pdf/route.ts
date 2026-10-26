@@ -6,7 +6,7 @@ import {adminAssessmentDownloads} from '@/lib/admin/assessment-downloads';
 import type {AssessmentResultKind} from '@/lib/assessment-results';
 import {ResponseLibraryAccessError} from '@/lib/platform/response-library';
 export const runtime='nodejs';
-const KINDS=new Set(['life-mapping-u','wayfinders-ethos','activate-your-purpose','launching-your-wayfinders-hub','circle-of-influence','personal-impact-statement','start-something','bridges-vs-barriers']);
+const KINDS=new Set(['life-mapping-u','wayfinders-ethos','activate-your-purpose','launching-your-wayfinders-hub','circle-of-influence','personal-impact-statement','start-something','microchurch','bridges-vs-barriers']);
 const headers={'Cache-Control':'private, no-store'};
 export async function GET(_request:Request,{params}:{params:Promise<{participantId:string;kind:string;resultId:string}>}){
  try{const {participantId,kind,resultId}=await params;if(!KINDS.has(kind)||![participantId,resultId].every(v=>/^[0-9a-f-]{36}$/i.test(v)))return NextResponse.json({error:'Invalid assessment.'},{status:400,headers});

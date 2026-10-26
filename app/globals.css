@@ -4126,3 +4126,30 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
 .crm-assessment-downloads article>div{display:grid;gap:5px;flex:1;min-width:0;color:#252a29}.crm-assessment-downloads strong{overflow-wrap:anywhere}.crm-assessment-downloads article span{font-size:12px;color:#68737b}
 .crm-assessment-downloads button{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid #0054a1;border-radius:4px;padding:10px 14px;background:#0054a1;color:#fff;font:600 12px/1.5 var(--font-sans),sans-serif;cursor:pointer}.crm-assessment-downloads button:disabled{opacity:.55;cursor:wait}.crm-assessment-downloads button:focus-visible{outline:2px solid #0054a1;outline-offset:3px}
 @media(max-width:600px){.crm-assessment-downloads{padding:14px}.crm-assessment-downloads>article{flex-wrap:wrap}.crm-assessment-downloads article>button{width:100%}}
+
+.universal-link-panel {
+  margin: .5rem 0;
+  padding: 1rem;
+  border: 1px solid #d5dcd9;
+  border-radius: .5rem;
+  background: #fff;
+  color: #252a29;
+  display: grid;
+  gap: .75rem;
+}
+.universal-link-panel label { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.universal-link-panel select, .universal-link-panel input[type="text"] { width: 100%; min-width: 0; padding: .5rem; }
+.universal-link-panel input[type="checkbox"] { width: auto; }
+.universal-link-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+
+.microchurch-question { margin: 1.5rem 0; border: 1px solid var(--border-color, #d5dcd9); padding: 1.25rem; border-radius: .5rem; }
+.microchurch-question legend { padding: 0 .5rem; font-weight: 600; line-height: 1.5; }
+.microchurch-ratings { display: flex; gap: .5rem; justify-content: space-between; }
+.microchurch-ratings label { display: flex; flex: 1; flex-direction: column; align-items: center; gap: .4rem; cursor: pointer; padding: .6rem .1rem; border-radius: .3rem; }
+.microchurch-ratings label:has(input:checked) { background: #eaf2fa; color: #0054a1; }
+.microchurch-ratings input { width: 1.2rem; height: 1.2rem; accent-color: #0054a1; }
+.microchurch-ratings small { font-size: .65rem; text-align: center; }
+.microchurch-scores { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 1rem; }
+.microchurch-scores article { border: 1px solid #d5dcd9; padding: 1rem; }
+.microchurch-score { font-size: 2.5rem; font-weight: 600; }
+.microchurch-score small { font-size: 1rem; }

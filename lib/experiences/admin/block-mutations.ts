@@ -10,7 +10,8 @@ import type { Json, TablesInsert } from "@/lib/supabase/database.types";
 import { getBlockDefinition, parseBlockConfiguration, retainSingleSelectSettings } from "../builder/block-registry";
 import { assertVersionEditable, validateBuilderBlockPlacement } from "../builder/validation";
 import { inspectBlockResourceLinks, resourceBelongsToCourse } from "./resource-copy";
-import { uploadCourseAsset } from "../builder/resource-assets";
+import { randomUUID } from "node:crypto";
+import { COURSE_ASSET_BUCKET, COURSE_ASSET_MIME_TYPES, NATIVE_ASSET_MAX_BYTES, uploadCourseAsset } from "../builder/resource-assets";
 
 type Db = ReturnType<typeof createAdminSupabaseClient>;
 type Direction = "up" | "down";
@@ -324,6 +325,57 @@ export async function updateBlockSettings(experienceId: string, versionId: strin
     if (responseResult.error || !responseResult.data) throw new Error(`Unable to update the linked Assessment requirement${responseResult.error ? `: ${responseResult.error.message}` : "."}`);
   }
   await audit(admin, "section.block.settings.updated", "content_block", blockId, { experienceId, versionId, sectionId, columnId: block.column_id, requirement, visibility });
+}
+
+type UploadMetadata = { name: string; type: string; size: number; title: string };
+
+function validateBlockUpload(blockType: string, file: UploadMetadata) {
+  if (!["image", "pdf_reader", "document", "download"].includes(blockType)) throw new Error("This block does not support file uploads.");
+  if (!file.name || file.name.length > 255 || file.title.length > 200) throw new Error("Choose a valid filename and resource title.");
+  if (!COURSE_ASSET_MIME_TYPES.has(file.type)) throw new Error("Choose a supported image, PDF, or document.");
+  if (!Number.isSafeInteger(file.size) || file.size < 1 || file.size > NATIVE_ASSET_MAX_BYTES) throw new Error("Files must be non-empty and no larger than 25 MB.");
+  if (blockType === "pdf_reader" && file.type !== "application/pdf") throw new Error("PDF Reader Blocks require a PDF file.");
+  if (blockType === "image" && !file.type.startsWith("image/")) throw new Error("Image Blocks require an image.");
+}
+
+function uploadPrefix(experienceId: string, versionId: string, sectionId: string, blockId: string, actorId: string) {
+  return `courses/${experienceId}/pending/${versionId}/${sectionId}/${blockId}/${actorId}/`;
+}
+
+export async function prepareBlockAssetUpload(experienceId: string, versionId: string, sectionId: string, blockId: string, metadata: UploadMetadata) {
+  const { admin, db } = await context(experienceId, versionId, sectionId);
+  const block = await blockInContext(db, blockId, sectionId);
+  validateBlockUpload(block.block_type, metadata);
+  const path = `${uploadPrefix(experienceId, versionId, sectionId, blockId, admin.id)}${randomUUID()}`;
+  const signed = await db.storage.from(COURSE_ASSET_BUCKET).createSignedUploadUrl(path, { upsert: false });
+  if (signed.error) throw new Error("Unable to prepare the upload. Please try again.");
+  return { bucket: COURSE_ASSET_BUCKET, path, token: signed.data.token };
+}
+
+export async function completeBlockAssetUpload(experienceId: string, versionId: string, sectionId: string, blockId: string, path: string, metadata: UploadMetadata) {
+  // Recheck permissions and draft state after the browser has uploaded the bytes.
+  const { admin, db } = await context(experienceId, versionId, sectionId);
+  const block = await blockInContext(db, blockId, sectionId);
+  validateBlockUpload(block.block_type, metadata);
+  const prefix = uploadPrefix(experienceId, versionId, sectionId, blockId, admin.id);
+  if (!path.startsWith(prefix) || !/^[0-9a-f-]{36}$/.test(path.slice(prefix.length))) throw new Error("This upload does not belong to this block and author.");
+  try {
+    const stored = await db.storage.from(COURSE_ASSET_BUCKET).download(path);
+    if (stored.error || !stored.data) throw new Error("The uploaded file could not be read. Please retry the upload.");
+    if (stored.data.size !== metadata.size) throw new Error("The uploaded file size does not match. Please retry the upload.");
+    // Reuse native size, MIME, and file-signature validation before publishing
+    // a resource. The pending object is never linked to participant content.
+    const file = new File([stored.data], metadata.name, { type: metadata.type });
+    const asset = await uploadCourseAsset(db, file, experienceId, admin.id, metadata.title);
+    const form = new FormData();
+    form.set("asset_operation", "select");
+    form.set("resource_id", asset.id);
+    await setBlockAsset(experienceId, versionId, sectionId, blockId, form);
+    return asset.id;
+  } finally {
+    const cleanup = await db.storage.from(COURSE_ASSET_BUCKET).remove([path]);
+    if (cleanup.error) console.error("Pending course upload cleanup failed", { message: cleanup.error.message });
+  }
 }
 
 export async function setBlockAsset(experienceId: string, versionId: string, sectionId: string, blockId: string, form: FormData) {

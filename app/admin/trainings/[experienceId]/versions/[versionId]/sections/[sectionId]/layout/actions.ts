@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { configureSectionLayout, moveSectionColumn, updateSectionColumns } from "@/lib/experiences/admin/layout-mutations";
-import { createBlock, deleteBlock, duplicateBlock, moveBlock, reorderBlock, reorderBlockToPosition, setBlockAsset, updateBlock, updateBlockSettings, updateInlineTextBlock } from "@/lib/experiences/admin/block-mutations";
+import { prepareBlockAssetUpload, completeBlockAssetUpload, createBlock, deleteBlock, duplicateBlock, moveBlock, reorderBlock, reorderBlockToPosition, setBlockAsset, updateBlock, updateBlockSettings, updateInlineTextBlock } from "@/lib/experiences/admin/block-mutations";
 import type { InlineSaveResult } from "@/lib/experiences/admin/inline-draft";
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 
@@ -79,4 +79,18 @@ export async function saveVideoBlockAction(experienceId:string,versionId:string,
 
 export async function saveUniversalBlockAction(experienceId:string,versionId:string,sectionId:string,blockId:string,form:FormData):Promise<import('@/lib/experiences/builder/universal-block-editor').UniversalReceipt>{
  try{const {saveUniversalBlockDraft}=await import('@/lib/experiences/admin/block-mutations');const result=await saveUniversalBlockDraft(experienceId,versionId,sectionId,blockId,form);if(result.ok&&!result.unchanged)revalidatePath(`/admin/trainings/${experienceId}/versions/${versionId}`);return result;}catch(error){return {ok:false,error:error instanceof Error?error.message:'Save could not be confirmed. Your edits are retained.'};}
+}
+
+export async function prepareBlockAssetUploadAction(experienceId: string, versionId: string, sectionId: string, blockId: string, metadata: Parameters<typeof prepareBlockAssetUpload>[4]) {
+  try { return { ok: true as const, upload: await prepareBlockAssetUpload(experienceId, versionId, sectionId, blockId, metadata) }; }
+  catch (error) { return { ok: false as const, error: error instanceof Error ? error.message : "Unable to prepare the upload." }; }
+}
+
+export async function completeBlockAssetUploadAction(experienceId: string, versionId: string, sectionId: string, blockId: string, path: string, metadata: Parameters<typeof prepareBlockAssetUpload>[4]) {
+  try {
+    await completeBlockAssetUpload(experienceId, versionId, sectionId, blockId, path, metadata);
+    revalidatePath(`/admin/trainings/${experienceId}/versions/${versionId}`);
+    revalidatePath(`/admin/trainings/${experienceId}/versions/${versionId}/sections/${sectionId}/layout`);
+    return { ok: true as const };
+  } catch (error) { return { ok: false as const, error: error instanceof Error ? error.message : "Unable to save the uploaded file." }; }
 }

@@ -1,3 +1,4 @@
+import {MICROCHURCH_RESPONSE_KEY,normalizeMicrochurchEnvelope} from "./experiences/builder/microchurch.ts";
 import {BRIDGES_RESPONSE_KEY,normalizeBridgesEnvelope} from "./experiences/builder/bridges-barriers.ts";
 import { CIRCLE_RESPONSE_KEY, normalizeCircleEnvelope, circleSaveError } from "./experiences/builder/circle-of-influence.ts";
 import { activatePurposeComplete, normalizeActivatePurposeAnswers } from "./experiences/builder/activate-purpose-assessment.ts";
@@ -12,6 +13,7 @@ import { normalizePersonalImpactEnvelope, PERSONAL_IMPACT_RESPONSE_KEY } from ".
 import { normalizeStartSomethingEnvelope, START_SOMETHING_RESPONSE_KEY } from "./experiences/builder/start-something.ts";
 
 export function completedGenericResult(responseKey: string, responseData: unknown, finalizedAt: string | null) {
+  if (responseKey === MICROCHURCH_RESPONSE_KEY) { const finished=normalizeMicrochurchEnvelope(responseData).finished; return finished && finished.completedAt===finalizedAt ? {kind:"microchurch" as const,name:"Microchurch Assessment",completedAt:finished.completedAt,data:finished.participantMaterial}:null; }
   if (responseKey === BRIDGES_RESPONSE_KEY) {const finished=normalizeBridgesEnvelope(responseData).finished;return finished && finished.completedAt===finalizedAt ? {kind:"bridges-vs-barriers" as const,name:"Bridges vs. Barriers",completedAt:finished.completedAt,data:finished.participantMaterial}:null;}
   if (responseKey === CIRCLE_RESPONSE_KEY) {
     const finished = normalizeCircleEnvelope(responseData).finished;

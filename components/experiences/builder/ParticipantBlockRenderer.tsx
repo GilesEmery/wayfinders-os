@@ -1,3 +1,5 @@
+import {MicrochurchEntry} from "./MicrochurchEntry";
+import {MICROCHURCH_RENDERER_KEY} from "@/lib/experiences/builder/microchurch";
 import {BridgesBarriersEntry} from "./BridgesBarriersEntry";
 import {BRIDGES_RENDERER_KEY} from "@/lib/experiences/builder/bridges-barriers";
 import {UniversalContentView} from "./UniversalContentView";
@@ -57,6 +59,10 @@ function ParticipantBlockContent({ block, response, asset, route, preview = fals
   if (block.block_type === "custom_component" && block.custom_renderer_key === LAUNCHING_WAYFINDERS_HUB_RENDERER_KEY) {
     if (!response || response.definition.response_type !== "structured_response") return <Unavailable block={block}/>;
     return <LaunchingWayfindersHubAssessment initialData={response.response?.response_data ?? {}} route={{ ...route, blockKey: block.block_key }} preview={preview}/>;
+  }
+  if (block.block_type === "custom_component" && block.custom_renderer_key === MICROCHURCH_RENDERER_KEY) {
+    if (!response || response.definition.response_type !== "structured_response") return <Unavailable block={block}/>;
+    return <MicrochurchEntry initialData={response.response?.response_data ?? {}} route={{...route,blockKey:block.block_key}} preview={preview}/>;
   }
   if (block.block_type === "custom_component" && block.custom_renderer_key === BRIDGES_RENDERER_KEY) {
     if (!response || response.definition.response_type !== "structured_response") return <Unavailable block={block}/>;

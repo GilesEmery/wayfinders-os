@@ -2,7 +2,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { performance } from "node:perf_hooks";
 
 type Category = "databaseHttp" | "storageHttp" | "authHttp" | "otherHttp";
-type Operation = "course-render-data" | "course-mutation-data" | "pis-save" | "pis-finish" | "bridges-save" | "bridges-finish" | "companion-update";
+type Operation = "course-render-data" | "course-mutation-data" | "pis-save" | "pis-finish" | "microchurch-save" | "microchurch-finish" | "bridges-save" | "bridges-finish" | "companion-update";
 type Measurement = { operation: Operation; totalMs: number; requests: Record<Category, { count: number; totalMs: number }> };
 type Scope = { measurement: Measurement; parent?: Scope };
 const measurements = new AsyncLocalStorage<Scope>();
