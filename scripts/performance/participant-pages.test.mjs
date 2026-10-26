@@ -177,3 +177,53 @@ test('one completed Personal Impact Statement appears in its course, separate pr
  assert.ok(texts(ownCourse).includes('Week two fixture'),'native cohort responses also remain in the profile course');
  assert.ok(f.structureCalls.filter(c=>c.id==='child').every(c=>!c.moduleId||c.moduleId==='child-module'),'parent module filters must never reach child assessment hydration');
 });
+
+test('Journey cards use current custom-code artwork even when a completed enrollment has older version settings', async()=>{
+  const calls=[];
+  const current={card:{image_resource_id:'uploaded-jpeg'}};
+  const previous={card:{image_resource_id:'old-image'}};
+  const rows={
+    experience_enrollments:[{id:'completed',participant_id:'p',experience_id:'bridges',experience_version_id:'old-version',status:'completed'}],
+    experiences:[{id:'bridges',name:'Bridges vs. Barriers',delivery_mode:'custom_code',card_configuration:current}],
+    experience_versions:[{id:'old-version',experience_id:'bridges',course_configuration:previous}],
+  };
+  const db=database(rows,calls);
+  const configurations=[];
+  const dashboard=load('lib/platform/dashboard.ts',{
+    '@/lib/supabase/admin':{createAdminSupabaseClient:()=>db},
+    '@/lib/platform/auth':{getPlatformUser:async()=>({id:'auth'}),ensurePlatformProfile:async()=>({participant:{id:'p'}})},
+    '@/lib/platform/authorization':{resolveDashboardCapabilities:async()=>({isAdmin:false})},
+    '@/lib/experiences/builder/course-configuration':{normalizeCourseConfiguration:x=>x??{card:{}}},
+    '@/lib/experiences/builder/card-images':{
+      courseCardImageIds:configuration=>{configurations.push(configuration);return [configuration.card.image_resource_id];},
+      courseCardImageUrl:(images,ids)=>images.get(ids[0]),
+      resolveCardImages:async(_db,ids)=>new Map(ids.map(id=>[id,`https://fixture.test/${id}.jpg`])),
+    },
+    '@/lib/platform/course-card':{resolveCourseCard:input=>({imageUrl:input.cardImageUrl,configuration:input.configuration})},
+    './journey-policy':{completedJourneyRecords:()=>[]},
+  });
+  const result=await dashboard.getWayfinderDashboard({includeNetworkOverview:false});
+  assert.equal(result.trainingCards.completed.imageUrl,'https://fixture.test/uploaded-jpeg.jpg');
+  assert.deepEqual(result.trainingCards.completed.configuration,current);
+  assert.deepEqual(configurations,[current]);
+  rows.experiences[0].delivery_mode='builder';
+  const builder=await dashboard.getWayfinderDashboard({includeNetworkOverview:false});
+  assert.equal(builder.trainingCards.completed.imageUrl,'https://fixture.test/old-image.jpg');
+});
+
+test('completed builder cards use current published artwork while retaining enrollment version',async()=>{
+  const dbRows={experience_enrollments:[{id:'completed',participant_id:'p',experience_id:'bridges',experience_version_id:'old',status:'completed'}],experiences:[{id:'bridges',delivery_mode:'builder',current_published_version_id:'current'}],experience_versions:[{id:'old',experience_id:'bridges',course_configuration:{card:{}}},{id:'current',experience_id:'bridges',status:'published',course_configuration:{card:{image_resource_id:'jpeg'}}}]};
+  const db=database(dbRows,[]);
+  const dashboard=load('lib/platform/dashboard.ts',{
+    '@/lib/supabase/admin':{createAdminSupabaseClient:()=>db},
+    '@/lib/platform/auth':{getPlatformUser:async()=>({id:'auth'}),ensurePlatformProfile:async()=>({participant:{id:'p'}})},
+    '@/lib/platform/authorization':{resolveDashboardCapabilities:async()=>({isAdmin:false})},
+    '@/lib/experiences/builder/course-configuration':{normalizeCourseConfiguration:x=>x??{card:{}}},
+    '@/lib/experiences/builder/card-images':{courseCardImageIds:x=>x?.card.image_resource_id?[x.card.image_resource_id]:[],courseCardImageUrl:(images,ids)=>images.get(ids[0]),resolveCardImages:async(_db,ids)=>new Map(ids.map(id=>[id,`https://fixture.test/${id}.jpg`]))},
+    '@/lib/platform/course-card':{resolveCourseCard:x=>({imageUrl:x.cardImageUrl})},
+    './journey-policy':{completedJourneyRecords:()=>[]},
+  });
+  const result=await dashboard.getWayfinderDashboard({includeNetworkOverview:false});
+  assert.equal(result.trainingCards.completed.imageUrl,'https://fixture.test/jpeg.jpg');
+  assert.equal(result.enrollments[0].experience_version_id,'old');
+});

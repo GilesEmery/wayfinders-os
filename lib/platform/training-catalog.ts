@@ -78,10 +78,10 @@ export async function getTrainingCatalog(): Promise<{ items: TrainingCatalogItem
   const imageIds = eligibleRows.map(({ item }) => {
     const version = publishedByExperience.get(item.id);
     const themeId = version?.theme_id ?? item.default_theme_id;
-    return courseCardImageIds(version?.course_configuration ?? item.card_configuration, themeId ? themeById.get(themeId) : null);
+    return courseCardImageIds(item.delivery_mode === "custom_code" ? item.card_configuration : version?.course_configuration ?? item.card_configuration, themeId ? themeById.get(themeId) : null);
   });
   const archivedCardIds = eligibleRows.flatMap(({ item }) => {
-    const id = normalizeCourseConfiguration(publishedByExperience.get(item.id)?.course_configuration ?? item.card_configuration).card.image_resource_id;
+    const id = normalizeCourseConfiguration(item.delivery_mode === "custom_code" ? item.card_configuration : publishedByExperience.get(item.id)?.course_configuration ?? item.card_configuration).card.image_resource_id;
     return id ? [id] : [];
   });
   const [cardImages, results] = await Promise.all([
@@ -90,7 +90,7 @@ export async function getTrainingCatalog(): Promise<{ items: TrainingCatalogItem
   ]);
   const items = eligibleRows.map(({ item, href }, index) => {
     const version = publishedByExperience.get(item.id);
-    const configurationSource = version?.course_configuration ?? item.card_configuration;
+    const configurationSource = item.delivery_mode === "custom_code" ? item.card_configuration : version?.course_configuration ?? item.card_configuration;
     const configuration = normalizeCourseConfiguration(configurationSource);
     const cardImageUrl = courseCardImageUrl(cardImages, imageIds[index]);
     const enrollment = enrollmentByExperience.get(item.id);

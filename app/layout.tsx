@@ -1,18 +1,22 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Geist } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { WayfindersAuthProvider } from "@/components/platform/WayfindersAuthProvider";
 import { EmbeddedAssessmentDocument } from "@/components/platform/EmbeddedAssessmentDocument";
 
-const geist = Geist({
+// Keep fonts local to avoid build-time Google Fonts requests and URL parsing.
+const geist = localFont({
+  src: "./fonts/geist.ttf",
   variable: "--font-sans",
-  subsets: ["latin"],
+  weight: "100 900",
+  display: "swap",
 });
 
-const cormorant = Cormorant_Garamond({
+const cormorant = localFont({
+  src: "./fonts/cormorant-garamond.ttf",
   variable: "--font-editorial",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: "400 600",
+  display: "swap",
 });
 
 export const metadata: Metadata = {

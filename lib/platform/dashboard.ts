@@ -45,7 +45,7 @@ export async function getWayfinderDashboard({ includeNetworkOverview = true }: {
   const cohortIds = (cohorts.data ?? []).map((row) => row.cohort_id);
   const tagIds = (tags.data ?? []).map((row) => row.tag_id);
   const [experienceCatalog, versionCatalog, organizationCatalog, hubCatalog, hubMemberCatalog, cohortCatalog, cohortOfferingCatalog, tagCatalog, networkOverview] = await Promise.all([
-    experienceIds.length ? db.from("experiences").select("id,slug,name,description,experience_type,delivery_mode,accent_color,default_theme_id,card_configuration").in("id", experienceIds) : Promise.resolve({ data: [] }),
+    experienceIds.length ? db.from("experiences").select("id,slug,name,description,experience_type,delivery_mode,accent_color,default_theme_id,card_configuration,current_published_version_id").in("id", experienceIds) : Promise.resolve({ data: [] }),
     versionIds.length ? db.from("experience_versions").select("id,experience_id,title,theme_id,course_configuration").in("id", versionIds) : Promise.resolve({ data: [] }),
     organizationIds.length ? db.from("organizations").select("id,name").in("id", organizationIds) : Promise.resolve({ data: [] }),
     hubIds.length ? db.from("hubs").select("id,name,slug,description,location").in("id", hubIds).eq("status", "active") : Promise.resolve({ data: [] }),
@@ -63,13 +63,19 @@ export async function getWayfinderDashboard({ includeNetworkOverview = true }: {
 
   const experienceRows = experienceCatalog.data ?? [];
   const versionRows = versionCatalog.data ?? [];
+  // Course-list presentation follows the current published card, even for
+  // completed enrollments that retain an earlier curriculum version.
+  const currentVersionIds = [...new Set(experienceRows.flatMap(item => item.current_published_version_id ? [item.current_published_version_id] : []))].filter(id => !versionRows.some(version => version.id === id));
+  const currentVersions = currentVersionIds.length ? await db.from("experience_versions").select("id,experience_id,title,theme_id,course_configuration").in("id", currentVersionIds).eq("status", "published") : { data: [], error: null };
+  if (currentVersions.error) throw new Error("Unable to load current Course Cards.");
+  const presentationVersions = [...versionRows, ...(currentVersions.data ?? [])];
   const lmuExperienceResult = await db.from("experiences").select("id,name,description,experience_type,default_theme_id,card_configuration").eq("slug", "life-mapping-u").maybeSingle();
   if (lmuExperienceResult.error) throw new Error("Unable to load Life Mapping U card settings.");
   const lmuExperience = lmuExperienceResult.data;
   const experienceById = new Map(experienceRows.map((item) => [item.id, item]));
-  const versionById = new Map(versionRows.map((item) => [item.id, item]));
+  const versionById = new Map(presentationVersions.map((item) => [item.id, item]));
   const themeIds = [...new Set([...cardEnrollments.flatMap((enrollment) => {
-    const version = enrollment.experience_version_id ? versionById.get(enrollment.experience_version_id) : undefined;
+    const version = versionById.get(experienceById.get(enrollment.experience_id)?.current_published_version_id ?? enrollment.experience_version_id ?? "");
     const themeId = version?.theme_id ?? experienceById.get(enrollment.experience_id)?.default_theme_id;
     return themeId ? [themeId] : [];
   }), ...(lmuExperience?.default_theme_id ? [lmuExperience.default_theme_id] : [])])];
@@ -79,18 +85,18 @@ export async function getWayfinderDashboard({ includeNetworkOverview = true }: {
   const imageFor = (configuration: unknown, themeId: string | null | undefined) => courseCardImageIds(configuration, themeId ? themeById.get(themeId) : null);
   const imageIds = cardEnrollments.map((enrollment) => {
     const experience = experienceById.get(enrollment.experience_id);
-    const version = enrollment.experience_version_id ? versionById.get(enrollment.experience_version_id) : undefined;
-    return imageFor(version?.course_configuration ?? experience?.card_configuration, version?.theme_id ?? experience?.default_theme_id);
+    const version = versionById.get(experienceById.get(enrollment.experience_id)?.current_published_version_id ?? enrollment.experience_version_id ?? "");
+    return imageFor(experience?.delivery_mode === "custom_code" ? experience.card_configuration : version?.course_configuration ?? experience?.card_configuration, version?.theme_id ?? experience?.default_theme_id);
   });
   const lmuImageId = lmuExperience ? imageFor(lmuExperience.card_configuration, lmuExperience.default_theme_id) : [];
-  const archivedCardIds = [...versionRows.map(version => version.course_configuration), ...experienceRows.map(experience => experience.card_configuration), lmuExperience?.card_configuration]
+  const archivedCardIds = [...presentationVersions.map(version => version.course_configuration), ...experienceRows.map(experience => experience.card_configuration), lmuExperience?.card_configuration]
     .flatMap(source => { const id = normalizeCourseConfiguration(source).card.image_resource_id; return id ? [id] : []; });
   const cardImages = await resolveCardImages(db, [...imageIds.flat(), ...lmuImageId], user.id, archivedCardIds);
   const trainingCards = Object.fromEntries(cardEnrollments.map((enrollment, index) => {
     const experience = experienceById.get(enrollment.experience_id);
-    const version = enrollment.experience_version_id ? versionById.get(enrollment.experience_version_id) : undefined;
+    const version = versionById.get(experienceById.get(enrollment.experience_id)?.current_published_version_id ?? enrollment.experience_version_id ?? "");
     if (!experience) return [enrollment.id, null] as const;
-    const configurationSource = version?.course_configuration ?? experience.card_configuration;
+    const configurationSource = experience.delivery_mode === "custom_code" ? experience.card_configuration : version?.course_configuration ?? experience.card_configuration;
     const configuration = normalizeCourseConfiguration(configurationSource);
     const cardImageUrl = courseCardImageUrl(cardImages, imageIds[index]);
     return [enrollment.id, resolveCourseCard({ configuration, courseTitle: version?.title || experience.name, courseDescription: experience.description, experienceType: experience.experience_type, cardImageUrl })] as const;

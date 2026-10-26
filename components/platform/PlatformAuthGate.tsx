@@ -8,7 +8,7 @@ export function PlatformAuthGate() {
   const pathname = usePathname();
   const { authenticated, ready, requireAuth } = useWayfindersAuth();
   useEffect(() => {
-    if (ready && !authenticated) requireAuth(pathname);
+    if (ready && !authenticated) requireAuth(`${pathname}${window.location.search}`);
   }, [authenticated, ready, pathname, requireAuth]);
   return null;
 }
