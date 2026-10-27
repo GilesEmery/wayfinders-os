@@ -44,3 +44,8 @@ test("Microchurch Assessment is publish-valid with its exact saved renderer", ()
   assert.equal(definition?.validateConfiguration({}).ok, true);
   assert.equal(getPublishBlockDefinition("custom_component", "microchurch.v2"), null);
 });
+
+test("APEST is publish-valid only with its exact native renderer", () => {
+  assert.equal(getPublishBlockDefinition("custom_component", "apest-assessment.v1")?.participantRendererKey, "apest-assessment.v1");
+  assert.equal(getPublishBlockDefinition("system_component", "apest-assessment.v1"), null);
+});

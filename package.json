@@ -31,7 +31,8 @@
     "import:kaleo-leader:dry-run": "node --env-file=.env.local scripts/imports/import-kaleo-888.mjs --course=969",
     "test:completion-consistency": "node --test lib/experiences/builder/assessment-completion.test.mjs lib/experiences/lmu/server/completion.test.mjs lib/platform/journey-policy.test.ts",
     "preview:journey-fixtures": "node scripts/preview-journey-fixtures.mjs",
-    "test:completion-regressions": "node --test lib/experiences/builder/shared-assessment-completion.test.ts lib/experiences/builder/activate-purpose-completion.test.ts lib/experiences/builder/personal-impact-statement.test.ts lib/experiences/builder/start-something.test.ts lib/experiences/access/password-access.test.mjs lib/experiences/builder/prebuilt-assessment.test.ts lib/platform/participant-navigation.test.ts lib/platform/course-card.test.ts lib/assessment-results.test.ts lib/experiences/builder/cohort-context.test.ts lib/platform/effective-access-policy.test.ts lib/experiences/builder/personal-notes.test.ts"
+    "test:completion-regressions": "node --test lib/experiences/builder/shared-assessment-completion.test.ts lib/experiences/builder/activate-purpose-completion.test.ts lib/experiences/builder/personal-impact-statement.test.ts lib/experiences/builder/start-something.test.ts lib/experiences/access/password-access.test.mjs lib/experiences/builder/prebuilt-assessment.test.ts lib/platform/participant-navigation.test.ts lib/platform/course-card.test.ts lib/assessment-results.test.ts lib/experiences/builder/cohort-context.test.ts lib/platform/effective-access-policy.test.ts lib/experiences/builder/personal-notes.test.ts",
+    "test:apest": "node --test lib/experiences/builder/apest.test.ts lib/experiences/builder/assessment-completion.test.mjs lib/experiences/admin/publish-validation.test.ts"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.6.1",

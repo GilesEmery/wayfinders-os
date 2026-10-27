@@ -4153,3 +4153,71 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
 .microchurch-scores article { border: 1px solid #d5dcd9; padding: 1rem; }
 .microchurch-score { font-size: 2.5rem; font-weight: 600; }
 .microchurch-score small { font-size: 1rem; }
+
+/* APEST shares the native assessment shell, spacing and neutral palette. */
+.apest-assessment { --apest-ink: #252a29; }
+.apest-assessment p { line-height: 1.65; }
+.apest-assessment fieldset { min-width: 0; padding: 1.5rem; border: 1px solid #deded7; border-radius: 14px; }
+.apest-assessment legend { padding: 0 .4rem; font-weight: 600; line-height: 1.5; }
+.apest-slider-label { display: block; margin: .6rem 0 1rem; color: #575e59; font-size: .9rem; }
+.apest-assessment input[type="range"] { width: 100%; accent-color: var(--apest-ink); cursor: pointer; min-height: 32px; }
+.apest-stops { display: flex; justify-content: space-between; gap: .25rem; }
+.apest-stops button { display: flex; flex-direction: column; align-items: center; min-width: 44px; min-height: 44px; padding: .4rem; background: transparent; border: 1px solid transparent; border-radius: 8px; color: var(--apest-ink); }
+.apest-stops button[aria-pressed="true"] { background: #edf1e8; border-color: #707d69; }
+.apest-stops small { font-size: .65rem; }
+.apest-pages, .apest-actions { display: flex; flex-wrap: wrap; gap: .6rem; margin: 1.4rem 0; }
+.apest-pages button, .apest-actions button { min-height: 44px; padding: .6rem 1rem; border: 1px solid #d6dad2; border-radius: 8px; cursor: pointer; }
+.apest-pages button[aria-current], .apest-actions .is-primary { background: var(--apest-ink); color: white; }
+.apest-actions button:disabled { opacity: .5; cursor: default; }
+.apest-progress { display: flex; align-items: center; gap: 1rem; padding-top: 1rem; }
+.apest-progress progress { flex: 1; accent-color: var(--apest-ink); }
+.apest-score-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .75rem; margin: 1.5rem 0; }
+.apest-score-grid article { padding: 1rem; border: 1px solid #d6dad2; border-radius: 12px; background: #f5f6f1; }
+.apest-score-grid article > span { font-size: 1.8rem; font-weight: 700; }
+.apest-score-grid h3 { font-size: .9rem; margin: .6rem 0; }
+.apest-score-grid meter { display: block; width: 100%; margin-top: .8rem; }
+.apest-domain-detail { padding: 1.25rem 0; border-top: 1px solid #d6dad2; }
+.apest-domain-detail h3 { display: flex; justify-content: space-between; gap: .5rem; }
+.apest-results dl > div { margin: 1rem 0; }
+.apest-results dt { font-weight: 600; }
+.apest-results dd { margin: .25rem 0 0; line-height: 1.6; }
+.apest-scale-note { color: #575e59; font-size: .85rem; }
+@media (max-width: 640px) { .apest-score-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .apest-assessment fieldset { padding: .8rem; } }
+@media print { .apest-pages, .apest-actions, .apest-assessment .ethos-saved-actions { display: none; } .apest-domain-detail, .apest-score-grid article { break-inside: avoid; } }
+.apest-score-grid article { display: flex; flex-direction: column; gap: .6rem; background: #e9ebee; border-color: #d6dbe1; color: #414b58; }
+.apest-score-grid article.is-primary { background: #123d6b; border-color: #123d6b; color: #fff; }
+.apest-score-grid article.is-secondary { background: #397db3; border-color: #397db3; color: #fff; }
+.apest-score-grid article h3, .apest-score-grid article small, .apest-score-grid article > span { color: inherit; }
+.apest-score-grid article small { font-size: .72rem; font-weight: 600; }
+.apest-stops button { flex: 1; min-width: 0; justify-content: flex-start; gap: .4rem; padding: .35rem .1rem; }
+.apest-stops small { font-size: .6rem; overflow-wrap: anywhere; }
+.apest-stop-dot { width: 9px; height: 9px; border-radius: 50%; background: #bac2ca; }
+.apest-stops button[aria-pressed="true"] .apest-stop-dot { background: #123d6b; }
+@media print { .apest-score-grid article { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
+
+/* Clickable section progress, separate from response choices. */
+.apest-pages { display: flex; flex-wrap: nowrap; gap: 0; margin: 1.5rem 0 2rem; }
+.apest-pages button { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; gap: .65rem; min-width: 0; min-height: 60px; padding: .4rem 0; border: 0; border-radius: 0; background: transparent; color: #6b7280; cursor: pointer; }
+.apest-pages button::after { content: ""; position: absolute; z-index: 0; height: 2px; background: #d6dbe1; top: 17px; left: calc(50% + 13px); width: calc(100% - 26px); }
+.apest-pages button:last-child::after { display: none; }
+.apest-pages .apest-progress-dot { position: relative; z-index: 1; display: grid; place-items: center; width: 24px; height: 24px; border: 2px solid #c4cbd3; border-radius: 50%; background: #fff; color: #fff; font-size: .8rem; font-weight: 700; }
+.apest-pages .apest-progress-label { font-size: .7rem; }
+.apest-pages button[aria-current] { background: transparent; color: #123d6b; font-weight: 700; }
+.apest-pages button[aria-current] .apest-progress-dot { border-color: #397db3; box-shadow: 0 0 0 4px #e4eef8; }
+.apest-pages button.is-complete .apest-progress-dot { background: #236ca5; border-color: #236ca5; }
+.apest-pages button.is-complete::after { background: #236ca5; }
+.apest-pages button:focus-visible { outline: 2px solid #236ca5; outline-offset: 3px; border-radius: 8px; }
+.apest-progress progress { appearance: none; height: 6px; border: 0; border-radius: 999px; overflow: hidden; background: #e2e7ed; accent-color: #236ca5; }
+.apest-progress progress::-webkit-progress-bar { background: #e2e7ed; border-radius: 999px; }
+.apest-progress progress::-webkit-progress-value { background: #236ca5; border-radius: 999px; }
+.apest-progress progress::-moz-progress-bar { background: #236ca5; border-radius: 999px; }
+.apest-introduction { padding: 1.25rem 0; }
+.apest-intro-lede { font-size: 1.1rem; max-width: 68ch; }
+.apest-intro-gifts { display: grid; gap: 1rem; margin: 2rem 0; }
+.apest-intro-gifts article { display: flex; align-items: flex-start; gap: 1rem; padding: 1rem 1.2rem; border: 1px solid #e2e7ed; border-radius: 12px; }
+.apest-intro-gifts article > span { flex-shrink: 0; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: #e4eef8; color: #123d6b; font-weight: 700; font-size: 1.2rem; }
+.apest-intro-gifts h3 { margin: 0 0 .3rem; font-size: 1.05rem; color: #123d6b; }
+.apest-intro-gifts p { margin: 0; }
+.apest-intro-expect { padding: 1.25rem; border-radius: 12px; background: #f2f5f8; }
+.apest-intro-expect h3 { margin: 0; }
+@media print { .apest-introduction .apest-actions { display: none; } }

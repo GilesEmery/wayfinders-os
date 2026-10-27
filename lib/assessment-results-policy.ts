@@ -1,3 +1,4 @@
+import { apestComplete, normalizeApestAnswers } from "./experiences/builder/apest.ts";
 import {MICROCHURCH_RESPONSE_KEY,normalizeMicrochurchEnvelope} from "./experiences/builder/microchurch.ts";
 import {BRIDGES_RESPONSE_KEY,normalizeBridgesEnvelope} from "./experiences/builder/bridges-barriers.ts";
 import { CIRCLE_RESPONSE_KEY, normalizeCircleEnvelope, circleSaveError } from "./experiences/builder/circle-of-influence.ts";
@@ -5,6 +6,7 @@ import { activatePurposeComplete, normalizeActivatePurposeAnswers } from "./expe
 import { ethosComplete, normalizeEthosAnswers } from "./experiences/builder/ethos-assessment.ts";
 import { launchingHubComplete, normalizeLaunchingHubAnswers } from "./experiences/builder/launching-wayfinders-hub-assessment.ts";
 export const NATIVE_ASSESSMENT_RESULTS = {
+  apest_assessment: { kind: "apest", name: "APEST Assessment" },
   activate_your_purpose_assessment: { kind: "activate-your-purpose", name: "Activate Your Purpose" },
   wayfinders_ethos_assessment: { kind: "wayfinders-ethos", name: "Wayfinders Ethos Reflection" },
   launching_wayfinders_hub_assessment: { kind: "launching-your-wayfinders-hub", name: "Launching Your Wayfinders Hub" },
@@ -30,7 +32,7 @@ export function completedGenericResult(responseKey: string, responseData: unknow
   const native = NATIVE_ASSESSMENT_RESULTS[responseKey as keyof typeof NATIVE_ASSESSMENT_RESULTS];
   const finished = (responseData as { finished?: { completedAt?: string; answers?: unknown } } | null)?.finished;
   if (!native || !finished?.completedAt || !finalizedAt || finished.completedAt !== finalizedAt) return null;
-  const complete = native.kind === "activate-your-purpose" ? activatePurposeComplete(normalizeActivatePurposeAnswers(finished.answers)) : native.kind === "wayfinders-ethos" ? ethosComplete(normalizeEthosAnswers(finished.answers)) : launchingHubComplete(normalizeLaunchingHubAnswers(finished.answers));
+  const complete = native.kind === "apest" ? apestComplete(normalizeApestAnswers(finished.answers)) : native.kind === "activate-your-purpose" ? activatePurposeComplete(normalizeActivatePurposeAnswers(finished.answers)) : native.kind === "wayfinders-ethos" ? ethosComplete(normalizeEthosAnswers(finished.answers)) : launchingHubComplete(normalizeLaunchingHubAnswers(finished.answers));
   return complete ? { ...native, completedAt: finished.completedAt, data: finished.answers } : null;
 }
 

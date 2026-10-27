@@ -1,3 +1,6 @@
+import Link from "next/link";
+import { ApestResults } from "@/components/experiences/builder/ApestResults";
+import { normalizeApestAnswers } from "@/lib/experiences/builder/apest";
 import {MicrochurchResults} from "@/components/experiences/builder/MicrochurchResults";
 import {normalizeMicrochurchData} from "@/lib/experiences/builder/microchurch";
 import {BridgesBarriersResults} from "@/components/experiences/builder/BridgesBarriersResults";
@@ -36,6 +39,7 @@ function LifeMappingResult({ rows }: { rows: Array<{ section_key: string; result
 }
 
 function NativeResult({ kind, data }: { kind: AssessmentResultKind; data: unknown }) {
+  if (kind === "apest") return <><ApestResults answers={normalizeApestAnswers(data)}/><Link className="button" href="/experiences/apest">Review or retake APEST</Link></>;
   if (kind === "activate-your-purpose") return <main>{activatePurposeResults(normalizeActivatePurposeAnswers(data))?.map(({ area, score, stage }) => <section key={area.key}><h2>{area.title}</h2><strong>{score} / 20 · {stage.title}</strong><p>{stage.description}</p></section>)}</main>;
   if (kind === "wayfinders-ethos") {
     const results = ethosResults(normalizeEthosAnswers(data));

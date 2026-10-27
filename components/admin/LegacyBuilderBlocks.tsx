@@ -1,3 +1,5 @@
+import { ApestAssessment } from "@/components/experiences/builder/ApestAssessment";
+import { APEST_RENDERER_KEY } from "@/lib/experiences/builder/apest";
 import { readBlockPresentation, responsePresentationSettings } from "@/lib/experiences/builder/block-presentation";
 import { BlockPresentationFields } from "./BlockPresentationFields";
 import { BlockPresentation } from "@/components/experiences/builder/BlockPresentation";
@@ -87,6 +89,7 @@ function BlockPreviewContent({ block, responseDefinition, asset }: { block: Bloc
   const participantDefinition = getParticipantBlockDefinition(block.block_type, block.custom_renderer_key);
   if (!participantDefinition) return <div className="builder-block-unavailable"><strong>Unavailable Block Type</strong><span>Block type: {block.block_type}</span><p>This Block is preserved, but its current renderer and editor are unavailable.</p></div>;
   if (block.block_type === "custom_component" && block.custom_renderer_key === "circle-of-influence.v1") return <CircleOfInfluenceAssessment initialData={{}} route={{ slug: "", moduleKey: "", lessonKey: "", sectionKey: "", blockKey: block.block_key }} preview/>;
+  if (block.block_type === "custom_component" && block.custom_renderer_key === APEST_RENDERER_KEY) return <ApestAssessment initialData={{}} route={{ slug: "", moduleKey: "", lessonKey: "", sectionKey: "", blockKey: block.block_key }} preview/>;
   if (block.block_type === "system_component" && block.custom_renderer_key === ETHOS_RENDERER_KEY) return <EthosAssessment initialData={{}} route={{ slug: "", moduleKey: "", lessonKey: "", sectionKey: "", blockKey: block.block_key }} preview/>;
   if (block.block_type === "custom_component" && block.custom_renderer_key === ACTIVATE_PURPOSE_RENDERER_KEY) return <ActivatePurposeAssessment initialData={{}} route={{ slug: "", moduleKey: "", lessonKey: "", sectionKey: "", blockKey: block.block_key }} preview/>;
   if (block.block_type === "custom_component" && block.custom_renderer_key === LAUNCHING_WAYFINDERS_HUB_RENDERER_KEY) return <LaunchingWayfindersHubAssessment initialData={{}} route={{ slug: "", moduleKey: "", lessonKey: "", sectionKey: "", blockKey: block.block_key }} preview/>;
