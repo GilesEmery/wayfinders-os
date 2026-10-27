@@ -121,7 +121,7 @@ function BlockPreview(props: Parameters<typeof BlockPreviewContent>[0]) {
 }
 
 function EditorFields({ block, responseDefinition }: { block: Block; responseDefinition?: ResponseDefinition }) {
-  const definition = getBlockDefinition(block.block_type);
+  const definition = block.custom_renderer_key === APEST_RENDERER_KEY ? getParticipantBlockDefinition(block.block_type, block.custom_renderer_key) : getBlockDefinition(block.block_type);
   if (!definition) return null;
   const config = configuration(block);
   if (definition.editorKey === "prebuilt_assessment") return <PrebuiltAssessmentFields config={config}/>;
@@ -143,7 +143,7 @@ function EditorFields({ block, responseDefinition }: { block: Block; responseDef
 }
 
 function BlockCard({ block, blocks, columns, responseDefinition, asset, availableAssets, route, editable, selected, internalLinks = [] }: { internalLinks?: CourseLinkOption[]; block: Block; blocks: Block[]; columns: Column[]; responseDefinition?: ResponseDefinition; asset?: ResolvedAsset; availableAssets: Awaited<ReturnType<typeof listCourseAssets>>; route: Route; editable: boolean; selected: boolean }) {
-  const definition = getBlockDefinition(block.block_type);
+  const definition = block.custom_renderer_key === APEST_RENDERER_KEY ? getParticipantBlockDefinition(block.block_type, block.custom_renderer_key) : getBlockDefinition(block.block_type);
   const siblings = blocks.filter((candidate) => candidate.column_id === block.column_id);
   const targetColumns = columns.filter((column) => column.id !== block.column_id);
   const index = siblings.findIndex((candidate) => candidate.id === block.id);
@@ -185,7 +185,7 @@ export async function BuilderColumnBlocks({ column, columns, blocks, route, edit
 }
 
 export async function BuilderBlockInspector({ block, route, editable }: { block: Block; route: Route; editable: boolean }) {
-  const definition = getBlockDefinition(block.block_type);
+  const definition = block.custom_renderer_key === APEST_RENDERER_KEY ? getParticipantBlockDefinition(block.block_type, block.custom_renderer_key) : getBlockDefinition(block.block_type);
   const response = definition?.supportsResponse ? await createAdminSupabaseClient().from("response_definitions").select("*").eq("block_id", block.id).maybeSingle() : null;
   if (!definition) return <div className="course-builder-inspector-content"><strong>Unavailable content</strong><p>This stored item requires its registered editor.</p></div>;
   const inline = definition.editorKey === "heading" || definition.editorKey === "rich_text" || definition.editorKey === "callout";

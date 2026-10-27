@@ -149,7 +149,7 @@ function BlockPreviewContent({ block, responseDefinition, asset }: { block: Bloc
 }
 
 function EditorFields({ block, responseDefinition, formId }: { block: Block; responseDefinition?: ResponseDefinition; formId?:string }) {
-  const definition = getBlockDefinition(block.block_type);
+  const definition = block.custom_renderer_key === APEST_RENDERER_KEY ? getParticipantBlockDefinition(block.block_type, block.custom_renderer_key) : getBlockDefinition(block.block_type);
   if (!definition) return null;
   const config = configuration(block);
   if (definition.editorKey === "prebuilt_assessment") return <PrebuiltAssessmentFields config={config}/>;
@@ -171,14 +171,14 @@ function EditorFields({ block, responseDefinition, formId }: { block: Block; res
 }
 
 async function BlockCard({ block, blocks, columns, responseDefinition, asset, availableAssets, route, editable, selected, internalLinks = [] }: { internalLinks?: CourseLinkOption[]; block: Block; blocks: Block[]; columns: Column[]; responseDefinition?: ResponseDefinition; asset?: ResolvedAsset; availableAssets: Awaited<ReturnType<typeof listCourseAssets>>; route: Route; editable: boolean; selected: boolean }) {
-  const definition = getBlockDefinition(block.block_type);
+  const definition = block.custom_renderer_key === APEST_RENDERER_KEY ? getParticipantBlockDefinition(block.block_type, block.custom_renderer_key) : getBlockDefinition(block.block_type);
   const siblings = blocks.filter((candidate) => candidate.column_id === block.column_id);
   const targetColumns = columns.filter((column) => column.id !== block.column_id);
   const index = siblings.findIndex((candidate) => candidate.id === block.id);
   const directInline = definition?.editorKey === "heading" || definition?.editorKey === "rich_text";
   const assessmentSettingsOnly = definition?.category === "custom_assessment" && definition.blockType !== "prebuilt_assessment";
   const singleSelect=definition?.response?.responseKind==="single_select"&&Boolean(responseDefinition);
-  const shortResponse=definition?.editorKey==="response"&&["short_text","long_text"].includes(definition.response?.responseKind??"")&&Boolean(responseDefinition);
+  const shortResponse=block.custom_renderer_key!==APEST_RENDERER_KEY&&definition?.editorKey==="response"&&["short_text","long_text"].includes(definition.response?.responseKind??"")&&Boolean(responseDefinition);
   const nativeAsset = ["image", "pdf_reader", "document", "download"].includes(block.block_type);
   const config = configuration(block);
   const canvasPresentation=editable&&Boolean(definition)&&(!directInline||Boolean(readBlockPresentation(block.settings)));
@@ -218,7 +218,7 @@ export async function BuilderColumnBlocks({ column, columns, blocks, route, edit
 }
 
 export async function BuilderBlockInspector({ block, route, editable }: { block: Block; route: Route; editable: boolean }) {
-  const definition = getBlockDefinition(block.block_type);
+  const definition = block.custom_renderer_key === APEST_RENDERER_KEY ? getParticipantBlockDefinition(block.block_type, block.custom_renderer_key) : getBlockDefinition(block.block_type);
   const response = definition?.supportsResponse ? await createAdminSupabaseClient().from("response_definitions").select("*").eq("block_id", block.id).maybeSingle() : null;
   if (!definition) return <div className="course-builder-inspector-content"><strong>Unavailable content</strong><p>This stored item requires its registered editor.</p></div>;
   const inline = definition.editorKey === "heading" || definition.editorKey === "rich_text" || definition.editorKey === "callout";
