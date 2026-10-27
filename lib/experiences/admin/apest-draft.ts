@@ -28,7 +28,9 @@ export async function prepareApestDraft() {
   const native = await db.from("content_blocks").select("id,section_id,custom_renderer_key").eq("id", APEST_DRAFT.block).maybeSingle();
   if (native.error || (native.data && (native.data.section_id !== APEST_DRAFT.section || native.data.custom_renderer_key !== APEST_RENDERER_KEY))) throw new Error("Assessment content could not be verified.");
   if (!native.data) {
-    const result = await db.from("content_blocks").insert({ id: APEST_DRAFT.block, lesson_id: section.data.lesson_id, section_id: APEST_DRAFT.section, column_id: column.data.id, block_key: "apest", block_type: "custom_component", sort_order: 0, content: {}, settings: {}, requirement_level: "required", status: "active", visibility: "visible", completion_rule: "response_submitted", custom_renderer_key: APEST_RENDERER_KEY, metadata: { source: "native", schema_version: 1 } });
+    const last = await db.from("content_blocks").select("sort_order").eq("lesson_id", section.data.lesson_id).order("sort_order", { ascending: false }).limit(1).maybeSingle();
+    if (last.error) throw new Error("Unable to determine assessment placement.");
+    const result = await db.from("content_blocks").insert({ id: APEST_DRAFT.block, lesson_id: section.data.lesson_id, section_id: APEST_DRAFT.section, column_id: column.data.id, block_key: "apest", block_type: "custom_component", sort_order: (last.data?.sort_order ?? -1) + 1, content: {}, settings: {}, requirement_level: "required", status: "active", visibility: "visible", completion_rule: "response_submitted", custom_renderer_key: APEST_RENDERER_KEY, metadata: { source: "native", schema_version: 1 } });
     if (result.error) throw new Error("Unable to prepare assessment content.");
   }
   const definition = await db.from("response_definitions").select("id,response_key,response_type").eq("block_id", APEST_DRAFT.block).eq("experience_version_id", APEST_DRAFT.version).maybeSingle();
