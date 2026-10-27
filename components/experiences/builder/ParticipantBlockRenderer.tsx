@@ -1,4 +1,6 @@
 import { ApestAssessment } from "@/components/experiences/builder/ApestAssessment";
+import { FiveVoicesAssessment } from "@/components/experiences/builder/FiveVoicesAssessment";
+import { FIVE_VOICES_RENDERER_KEY } from "@/lib/experiences/builder/five-voices";
 import { APEST_RENDERER_KEY } from "@/lib/experiences/builder/apest";
 import {MicrochurchEntry} from "./MicrochurchEntry";
 import {MICROCHURCH_RENDERER_KEY} from "@/lib/experiences/builder/microchurch";
@@ -49,6 +51,10 @@ function ParticipantBlockContent({ block, response, asset, route, preview = fals
   if (block.block_type === "custom_component" && block.custom_renderer_key === CIRCLE_RENDERER_KEY) {
     if (!response || response.definition.response_type !== "structured_response") return <Unavailable block={block}/>;
     return <CircleOfInfluenceAssessment initialData={response.response?.response_data ?? {}} route={{ ...route, blockKey: block.block_key }} preview={preview}/>;
+  }
+  if (block.block_type === "custom_component" && block.custom_renderer_key === FIVE_VOICES_RENDERER_KEY) {
+    if (!response || response.definition.response_type !== "structured_response") return <Unavailable block={block}/>;
+    return <FiveVoicesAssessment initialData={response.response?.response_data ?? {}} route={{ ...route, blockKey: block.block_key }} preview={preview}/>;
   }
   if (block.block_type === "custom_component" && block.custom_renderer_key === APEST_RENDERER_KEY) {
     if (!response || response.definition.response_type !== "structured_response") return <Unavailable block={block}/>;

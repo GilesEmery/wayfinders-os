@@ -1,4 +1,6 @@
 import { ApestAssessment } from "@/components/experiences/builder/ApestAssessment";
+import { FiveVoicesAssessment } from "@/components/experiences/builder/FiveVoicesAssessment";
+import { FIVE_VOICES_RENDERER_KEY } from "@/lib/experiences/builder/five-voices";
 import { APEST_RENDERER_KEY } from "@/lib/experiences/builder/apest";
 import { readBlockPresentation, responsePresentationSettings } from "@/lib/experiences/builder/block-presentation";
 import { BlockPresentationFields } from "./BlockPresentationFields";
@@ -89,6 +91,7 @@ function BlockPreviewContent({ block, responseDefinition, asset }: { block: Bloc
   const participantDefinition = getParticipantBlockDefinition(block.block_type, block.custom_renderer_key);
   if (!participantDefinition) return <div className="builder-block-unavailable"><strong>Unavailable Block Type</strong><span>Block type: {block.block_type}</span><p>This Block is preserved, but its current renderer and editor are unavailable.</p></div>;
   if (block.block_type === "custom_component" && block.custom_renderer_key === "circle-of-influence.v1") return <CircleOfInfluenceAssessment initialData={{}} route={{ slug: "", moduleKey: "", lessonKey: "", sectionKey: "", blockKey: block.block_key }} preview/>;
+  if (block.block_type === "custom_component" && block.custom_renderer_key === FIVE_VOICES_RENDERER_KEY) return <FiveVoicesAssessment initialData={{}} route={{ slug: "", moduleKey: "", lessonKey: "", sectionKey: "", blockKey: block.block_key }} preview/>;
   if (block.block_type === "custom_component" && block.custom_renderer_key === APEST_RENDERER_KEY) return <ApestAssessment initialData={{}} route={{ slug: "", moduleKey: "", lessonKey: "", sectionKey: "", blockKey: block.block_key }} preview/>;
   if (block.block_type === "system_component" && block.custom_renderer_key === ETHOS_RENDERER_KEY) return <EthosAssessment initialData={{}} route={{ slug: "", moduleKey: "", lessonKey: "", sectionKey: "", blockKey: block.block_key }} preview/>;
   if (block.block_type === "custom_component" && block.custom_renderer_key === ACTIVATE_PURPOSE_RENDERER_KEY) return <ActivatePurposeAssessment initialData={{}} route={{ slug: "", moduleKey: "", lessonKey: "", sectionKey: "", blockKey: block.block_key }} preview/>;
@@ -121,7 +124,7 @@ function BlockPreview(props: Parameters<typeof BlockPreviewContent>[0]) {
 }
 
 function EditorFields({ block, responseDefinition }: { block: Block; responseDefinition?: ResponseDefinition }) {
-  const definition = block.custom_renderer_key === APEST_RENDERER_KEY ? getParticipantBlockDefinition(block.block_type, block.custom_renderer_key) : getBlockDefinition(block.block_type);
+  const definition = [APEST_RENDERER_KEY, FIVE_VOICES_RENDERER_KEY].includes(block.custom_renderer_key ?? "") ? getParticipantBlockDefinition(block.block_type, block.custom_renderer_key) : getBlockDefinition(block.block_type);
   if (!definition) return null;
   const config = configuration(block);
   if (definition.editorKey === "prebuilt_assessment") return <PrebuiltAssessmentFields config={config}/>;
@@ -143,7 +146,7 @@ function EditorFields({ block, responseDefinition }: { block: Block; responseDef
 }
 
 function BlockCard({ block, blocks, columns, responseDefinition, asset, availableAssets, route, editable, selected, internalLinks = [] }: { internalLinks?: CourseLinkOption[]; block: Block; blocks: Block[]; columns: Column[]; responseDefinition?: ResponseDefinition; asset?: ResolvedAsset; availableAssets: Awaited<ReturnType<typeof listCourseAssets>>; route: Route; editable: boolean; selected: boolean }) {
-  const definition = block.custom_renderer_key === APEST_RENDERER_KEY ? getParticipantBlockDefinition(block.block_type, block.custom_renderer_key) : getBlockDefinition(block.block_type);
+  const definition = [APEST_RENDERER_KEY, FIVE_VOICES_RENDERER_KEY].includes(block.custom_renderer_key ?? "") ? getParticipantBlockDefinition(block.block_type, block.custom_renderer_key) : getBlockDefinition(block.block_type);
   const siblings = blocks.filter((candidate) => candidate.column_id === block.column_id);
   const targetColumns = columns.filter((column) => column.id !== block.column_id);
   const index = siblings.findIndex((candidate) => candidate.id === block.id);
@@ -185,7 +188,7 @@ export async function BuilderColumnBlocks({ column, columns, blocks, route, edit
 }
 
 export async function BuilderBlockInspector({ block, route, editable }: { block: Block; route: Route; editable: boolean }) {
-  const definition = block.custom_renderer_key === APEST_RENDERER_KEY ? getParticipantBlockDefinition(block.block_type, block.custom_renderer_key) : getBlockDefinition(block.block_type);
+  const definition = [APEST_RENDERER_KEY, FIVE_VOICES_RENDERER_KEY].includes(block.custom_renderer_key ?? "") ? getParticipantBlockDefinition(block.block_type, block.custom_renderer_key) : getBlockDefinition(block.block_type);
   const response = definition?.supportsResponse ? await createAdminSupabaseClient().from("response_definitions").select("*").eq("block_id", block.id).maybeSingle() : null;
   if (!definition) return <div className="course-builder-inspector-content"><strong>Unavailable content</strong><p>This stored item requires its registered editor.</p></div>;
   const inline = definition.editorKey === "heading" || definition.editorKey === "rich_text" || definition.editorKey === "callout";

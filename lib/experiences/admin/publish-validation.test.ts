@@ -49,3 +49,8 @@ test("APEST is publish-valid only with its exact native renderer", () => {
   assert.equal(getPublishBlockDefinition("custom_component", "apest-assessment.v1")?.participantRendererKey, "apest-assessment.v1");
   assert.equal(getPublishBlockDefinition("system_component", "apest-assessment.v1"), null);
 });
+
+test("Five Voices requires its exact native renderer", () => {
+  assert.equal(getPublishBlockDefinition("custom_component", "five-voices-assessment.v1")?.participantRendererKey, "five-voices-assessment.v1");
+  assert.equal(getPublishBlockDefinition("system_component", "five-voices-assessment.v1"), null);
+});

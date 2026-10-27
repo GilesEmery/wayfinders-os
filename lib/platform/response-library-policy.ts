@@ -1,3 +1,4 @@
+import { FIVE_VOICES_QUESTIONS, FIVE_VOICES_SCALE, fiveVoicesResults, normalizeFiveVoicesAnswers } from "../experiences/builder/five-voices.ts";
 import { APEST_QUESTIONS, APEST_SCALE, apestResults, normalizeApestAnswers } from "../experiences/builder/apest.ts";
 import {MICROCHURCH_RESPONSE_KEY,normalizeMicrochurchData,microchurchResponseItems,microchurchScores,microchurchComplete,MICROCHURCH_REFLECTIONS,MICROCHURCH_LIMITING_INTRO} from "../experiences/builder/microchurch.ts";
 import {BRIDGES_RESPONSE_KEY,normalizeBridgesData,bridgesResponseItems} from "../experiences/builder/bridges-barriers.ts";
@@ -93,6 +94,10 @@ export function activityResponseItems(responseKey: string, data: unknown, config
     const answers = normalizeActivatePurposeAnswers(saved);
     return ACTIVATE_PURPOSE_QUESTIONS.flatMap<ResponseItem>((question) => answers[question.key] ? [{ question: question.prompt, response: `${answers[question.key]} · ${question.options[answers[question.key]]}`, ...(includeUnanswered ? { answered: true } : {}) }] : includeUnanswered ? [{ question: question.prompt, response: "Not answered", answered: false }] : []);
   }
+  if (responseKey === "five_voices_assessment") {
+    const answers = normalizeFiveVoicesAnswers(saved);
+    return FIVE_VOICES_QUESTIONS.flatMap<ResponseItem>(q => answers[q.key] ? [{ question: q.text, response: FIVE_VOICES_SCALE.find(option => option.value === answers[q.key])!.label, answered: true }] : includeUnanswered ? [{ question: q.text, response: "Not answered", answered: false }] : []);
+  }
   if (responseKey === "apest_assessment") {
     const answers = normalizeApestAnswers(saved);
     return APEST_QUESTIONS.flatMap<ResponseItem>(q => answers[q.key] ? [{ question: q.text, response: APEST_SCALE.find(option => option.value === answers[q.key])!.label, answered: true }] : includeUnanswered ? [{ question: q.text, response: "Not answered", answered: false }] : []);
@@ -141,6 +146,10 @@ export function activityResultItems(responseKey: string, data: unknown, status: 
       ]),
       ...results.map(({ area, score, stage }) => ({ question: area.title, response: `${score} / 20 · ${stage.title}. ${stage.description}` })),
     ];
+  }
+  if (responseKey === "five_voices_assessment") {
+    const results = fiveVoicesResults(normalizeFiveVoicesAnswers(answers));
+    return results ? results.ranked.map(({ domain, label }) => ({ question: `${label} · ${domain.title}`, response: `${domain.description} Possible contribution: ${domain.strength} How you communicate: ${domain.communication} Working with others: ${domain.collaboration} Growth to consider: ${domain.growth} Try this: ${domain.practice}` })) : [];
   }
   if (responseKey === "apest_assessment") {
     const results = apestResults(normalizeApestAnswers(answers));
