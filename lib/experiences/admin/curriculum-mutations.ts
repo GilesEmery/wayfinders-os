@@ -293,6 +293,7 @@ export async function deleteItem(experienceId: string, versionId: string, kind: 
     if (children.count) throw new Error("This Lesson still contains Sections. Delete its child curriculum explicitly first.");
   }
   const result = kind === "module" ? await db.from("experience_modules").delete().eq("id", itemId).eq("experience_version_id", versionId) : kind === "lesson" ? await db.from("experience_lessons").delete().eq("id", itemId).eq("experience_version_id", versionId) : await db.from("experience_sections").delete().eq("id", itemId).eq("experience_version_id", versionId);
+  if (result.error?.code === "23503") throw new Error("This item is linked to saved participant activity or a course delivery plan and cannot be deleted. Its content has been preserved.");
   if (result.error) throw new Error(`Unable to delete ${kind}: ${result.error.message}`);
   const parentId = String("module_id" in current.data ? current.data.module_id : "lesson_id" in current.data ? current.data.lesson_id : versionId);
   await normalize(kind === "module" ? "experience_modules" : kind === "lesson" ? "experience_lessons" : "experience_sections", kind === "module" ? "experience_version_id" : kind === "lesson" ? "module_id" : "lesson_id", parentId);
