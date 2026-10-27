@@ -4221,3 +4221,19 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
 .apest-intro-expect { padding: 1.25rem; border-radius: 12px; background: #f2f5f8; }
 .apest-intro-expect h3 { margin: 0; }
 @media print { .apest-introduction .apest-actions { display: none; } }
+
+/* Editable section names and discreet section deletion in the course outline. */
+.modern-course-builder .course-builder-outline .is-page.is-editable-section { display: grid; grid-template-columns: minmax(0,1fr); gap: 0; padding: 6px 32px 4px 30px; }
+.modern-course-builder .course-builder-outline .is-page.is-editable-section > .course-builder-section-footer { margin-right: -28px; }
+.modern-course-builder .course-builder-outline .is-page.is-editable-section > .course-builder-position-controls { top: 5px; transform: none; }
+.modern-course-builder .is-editable-section > .course-builder-inline-title { width: 100%; min-width: 0; margin: 0; }
+.modern-course-builder .is-editable-section > .course-builder-inline-title input { box-sizing: border-box; width: 100%; min-width: 0; padding: 8px 10px; font-size: 12px; }
+.modern-course-builder .is-editable-section.is-current-section { background: #edf5f9; box-shadow: inset 3px 0 0 var(--builder-course-accent,var(--builder-accent)); }
+.course-builder-section-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4px 0 10px; }
+.course-builder-section-footer > a { color: #65717a; font-size: 10px; text-decoration: none; }
+.course-builder-section-footer > a:hover { text-decoration: underline; }
+.course-builder-section-delete { margin: 0; }
+.course-builder-section-delete > button { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: #737d83; cursor: pointer; }
+.course-builder-section-delete > button:hover { background: #fae9e8; color: #a42d29; }
+.course-builder-section-delete > button:disabled { opacity: .45; cursor: wait; }
+.course-builder-section-footer :is(a,button):focus-visible { outline: 2px solid var(--builder-accent); outline-offset: 2px; }
