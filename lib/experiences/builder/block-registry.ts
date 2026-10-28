@@ -299,6 +299,7 @@ const BRIDGES_BARRIERS_DEFINITION = Object.freeze({
 } satisfies BlockDefinition);
 
 const CUSTOM_PARTICIPANT_BLOCKS = new Map([
+  ["custom_component:emotional-health-assessment.v1", { ...CIRCLE_OF_INFLUENCE_DEFINITION, label: "Emotional Health Assessment", description: "Reflect on four emotional health areas through 40 statements.", participantRendererKey: "emotional-health-assessment.v1" }],
   ["custom_component:five-voices-assessment.v1", { ...CIRCLE_OF_INFLUENCE_DEFINITION, label: "Five Voices Assessment", description: "Explore five communication voices through 25 original statements.", participantRendererKey: "five-voices-assessment.v1" }],
   ["custom_component:apest-assessment.v1", { ...CIRCLE_OF_INFLUENCE_DEFINITION, label: "APEST Assessment", description: "The 25-statement Three Minute APEST Test.", participantRendererKey: "apest-assessment.v1" }],
   ["custom_component:microchurch.v1", { ...BRIDGES_BARRIERS_DEFINITION, label: "Microchurch Assessment", description: "Worship, Community, and Mission", participantRendererKey: "microchurch.v1" }],

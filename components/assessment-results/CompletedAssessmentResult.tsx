@@ -1,3 +1,5 @@
+import { EmotionalHealthResults } from "@/components/experiences/builder/EmotionalHealthResults";
+import { normalizeEmotionalHealthAnswers } from "@/lib/experiences/builder/emotional-health";
 import { FiveVoicesResults } from "@/components/experiences/builder/FiveVoicesResults";
 import { normalizeFiveVoicesAnswers } from "@/lib/experiences/builder/five-voices";
 import Link from "next/link";
@@ -42,6 +44,7 @@ function LifeMappingResult({ rows }: { rows: Array<{ section_key: string; result
 
 function NativeResult({ kind, data }: { kind: AssessmentResultKind; data: unknown }) {
   if (kind === "five-voices") return <><FiveVoicesResults answers={normalizeFiveVoicesAnswers(data)}/><Link className="button" href="/experiences/five-voices">Review or retake Five Voices</Link></>;
+  if (kind === "emotional-health") return <><EmotionalHealthResults answers={normalizeEmotionalHealthAnswers(data)}/><Link className="button" href="/experiences/emotional-health">Review or retake Emotional Health</Link></>;
   if (kind === "apest") return <><ApestResults answers={normalizeApestAnswers(data)}/><Link className="button" href="/experiences/apest">Review or retake APEST</Link></>;
   if (kind === "activate-your-purpose") return <main>{activatePurposeResults(normalizeActivatePurposeAnswers(data))?.map(({ area, score, stage }) => <section key={area.key}><h2>{area.title}</h2><strong>{score} / 20 · {stage.title}</strong><p>{stage.description}</p></section>)}</main>;
   if (kind === "wayfinders-ethos") {

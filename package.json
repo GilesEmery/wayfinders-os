@@ -33,7 +33,8 @@
     "preview:journey-fixtures": "node scripts/preview-journey-fixtures.mjs",
     "test:completion-regressions": "node --test lib/experiences/builder/shared-assessment-completion.test.ts lib/experiences/builder/activate-purpose-completion.test.ts lib/experiences/builder/personal-impact-statement.test.ts lib/experiences/builder/start-something.test.ts lib/experiences/access/password-access.test.mjs lib/experiences/builder/prebuilt-assessment.test.ts lib/platform/participant-navigation.test.ts lib/platform/course-card.test.ts lib/assessment-results.test.ts lib/experiences/builder/cohort-context.test.ts lib/platform/effective-access-policy.test.ts lib/experiences/builder/personal-notes.test.ts",
     "test:apest": "node --test lib/experiences/builder/apest.test.ts lib/experiences/builder/assessment-completion.test.mjs lib/experiences/admin/publish-validation.test.ts",
-    "test:five-voices": "node --test lib/experiences/builder/five-voices.test.ts lib/experiences/builder/assessment-completion.test.mjs lib/experiences/admin/publish-validation.test.ts"
+    "test:five-voices": "node --test lib/experiences/builder/five-voices.test.ts lib/experiences/builder/assessment-completion.test.mjs lib/experiences/admin/publish-validation.test.ts",
+    "test:emotional-health": "node --test lib/experiences/builder/emotional-health.test.ts lib/experiences/builder/assessment-completion.test.mjs lib/experiences/admin/publish-validation.test.ts scripts/performance/emotional-health-render.test.mjs lib/assessment-pdf-content.test.mjs"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.6.1",

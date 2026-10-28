@@ -12,7 +12,7 @@ import { START_SOMETHING_RESPONSE_KEY } from "@/lib/experiences/builder/start-so
 import { completedJourneyRecords } from "@/lib/platform/journey-policy";
 import { NATIVE_ASSESSMENT_RESULTS, completedGenericResult, completedLegacyActivatePurpose } from "@/lib/assessment-results-policy";
 
-export type AssessmentResultKind = "five-voices" | "apest" | "microchurch" | "bridges-vs-barriers" | "circle-of-influence" | "life-mapping-u" | "personal-impact-statement" | "start-something" | "activate-your-purpose" | "wayfinders-ethos" | "launching-your-wayfinders-hub";
+export type AssessmentResultKind = "emotional-health" | "five-voices" | "apest" | "microchurch" | "bridges-vs-barriers" | "circle-of-influence" | "life-mapping-u" | "personal-impact-statement" | "start-something" | "activate-your-purpose" | "wayfinders-ethos" | "launching-your-wayfinders-hub";
 export type AssessmentResultSummary = { kind: AssessmentResultKind; id: string; name: string; completedAt: string; enrollmentId?: string; versionId?: string };
 
 async function ownsAssessmentResults(participantId: string) {

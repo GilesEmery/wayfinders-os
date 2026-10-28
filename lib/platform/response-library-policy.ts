@@ -1,3 +1,4 @@
+import { EMOTIONAL_HEALTH_QUESTIONS, EMOTIONAL_HEALTH_SCALE, emotionalHealthResults, normalizeEmotionalHealthAnswers } from "../experiences/builder/emotional-health.ts";
 import { FIVE_VOICES_QUESTIONS, FIVE_VOICES_SCALE, fiveVoicesResults, normalizeFiveVoicesAnswers } from "../experiences/builder/five-voices.ts";
 import { APEST_QUESTIONS, APEST_SCALE, apestResults, normalizeApestAnswers } from "../experiences/builder/apest.ts";
 import {MICROCHURCH_RESPONSE_KEY,normalizeMicrochurchData,microchurchResponseItems,microchurchScores,microchurchComplete,MICROCHURCH_REFLECTIONS,MICROCHURCH_LIMITING_INTRO} from "../experiences/builder/microchurch.ts";
@@ -98,6 +99,10 @@ export function activityResponseItems(responseKey: string, data: unknown, config
     const answers = normalizeFiveVoicesAnswers(saved);
     return FIVE_VOICES_QUESTIONS.flatMap<ResponseItem>(q => answers[q.key] ? [{ question: q.text, response: FIVE_VOICES_SCALE.find(option => option.value === answers[q.key])!.label, answered: true }] : includeUnanswered ? [{ question: q.text, response: "Not answered", answered: false }] : []);
   }
+  if (responseKey === "emotional_health_assessment") {
+    const answers = normalizeEmotionalHealthAnswers(saved);
+    return EMOTIONAL_HEALTH_QUESTIONS.flatMap<ResponseItem>(q => answers[q.key] ? [{ question: q.text, response: `${answers[q.key]} / 5 · ${EMOTIONAL_HEALTH_SCALE.find(option => option.value === answers[q.key])!.label}`, answered: true }] : includeUnanswered ? [{ question: q.text, response: "Not answered", answered: false }] : []);
+  }
   if (responseKey === "apest_assessment") {
     const answers = normalizeApestAnswers(saved);
     return APEST_QUESTIONS.flatMap<ResponseItem>(q => answers[q.key] ? [{ question: q.text, response: APEST_SCALE.find(option => option.value === answers[q.key])!.label, answered: true }] : includeUnanswered ? [{ question: q.text, response: "Not answered", answered: false }] : []);
@@ -150,6 +155,10 @@ export function activityResultItems(responseKey: string, data: unknown, status: 
   if (responseKey === "five_voices_assessment") {
     const results = fiveVoicesResults(normalizeFiveVoicesAnswers(answers));
     return results ? results.ranked.map(({ domain, label }) => ({ question: `${label} · ${domain.title}`, response: `${domain.description} Possible contribution: ${domain.strength} How you communicate: ${domain.communication} Working with others: ${domain.collaboration} Growth to consider: ${domain.growth} Try this: ${domain.practice}` })) : [];
+  }
+  if (responseKey === "emotional_health_assessment") {
+    const results = emotionalHealthResults(normalizeEmotionalHealthAnswers(answers));
+    return results ? results.scores.map(({ domain, score, band }) => ({ question: domain.title, response: `${score} / 50 · ${band.title}. ${band.description}` })) : [];
   }
   if (responseKey === "apest_assessment") {
     const results = apestResults(normalizeApestAnswers(answers));

@@ -4237,3 +4237,14 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
 .course-builder-section-delete > button:hover { background: #fae9e8; color: #a42d29; }
 .course-builder-section-delete > button:disabled { opacity: .45; cursor: wait; }
 .course-builder-section-footer :is(a,button):focus-visible { outline: 2px solid var(--builder-accent); outline-offset: 2px; }
+
+/* Emotional Health uses the shared APEST assessment shell and four fixed-order results. */
+.emotional-health-score-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.emotional-health-assessment .apest-pages { flex-wrap: wrap; row-gap: 1rem; }
+.emotional-health-assessment .apest-pages button { flex-basis: 12.5%; }
+@media (max-width: 640px) {
+  .emotional-health-score-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .emotional-health-assessment .apest-pages button { flex-basis: 25%; }
+  .emotional-health-assessment .apest-pages button:nth-child(4)::after { display: none; }
+  .emotional-health-results .apest-domain-detail h3 { flex-wrap: wrap; }
+}

@@ -4,7 +4,7 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { auditSecurityEvent, requireAdmin } from "@/lib/admin/auth";
 import { loadCompletedAssessmentResult, type AssessmentResultKind } from "@/lib/assessment-results";
 
-const KINDS = new Set<AssessmentResultKind>(["five-voices", "apest", "microchurch", "bridges-vs-barriers", "circle-of-influence", "life-mapping-u", "personal-impact-statement", "start-something", "activate-your-purpose", "wayfinders-ethos", "launching-your-wayfinders-hub"]);
+const KINDS = new Set<AssessmentResultKind>(["emotional-health", "five-voices", "apest", "microchurch", "bridges-vs-barriers", "circle-of-influence", "life-mapping-u", "personal-impact-statement", "start-something", "activate-your-purpose", "wayfinders-ethos", "launching-your-wayfinders-hub"]);
 
 export default async function AdminResultPage({ params }: { params: Promise<{ userId: string; kind: string; resultId: string }> }) {
   const identity = await requireAdmin();

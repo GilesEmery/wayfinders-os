@@ -1,0 +1,14 @@
+import { EMOTIONAL_HEALTH_QUESTIONS, EMOTIONAL_HEALTH_SCALE, emotionalHealthResults, type EmotionalHealthAnswers } from "@/lib/experiences/builder/emotional-health";
+
+export function EmotionalHealthResults({ answers }: { answers: EmotionalHealthAnswers }) {
+  const results = emotionalHealthResults(answers);
+  if (!results) return null;
+  return <section className="apest-results emotional-health-results" aria-label="Emotional Health results">
+    <header><p>Your emotional health at a glance</p><h2>Clarity for your next step</h2><p>Thank you for taking the time to complete the Emotional Health assessment. This tool is not meant to grade you or label you, but to offer clarity and awareness as you continue growing in your inner life and in how you relate to others.</p></header>
+    <div className="apest-score-grid emotional-health-score-grid">{results.scores.map(({ domain, score, band }) => <article className={band.key === "enhanced" ? "is-primary" : band.key === "effective" ? "is-secondary" : "is-supporting"} key={domain.key}><small>{band.title}</small><span>{score}<small> / 50</small></span><h3>{domain.title}</h3></article>)}</div>
+    {results.scores.map(({ domain, score, band }) => <section className="apest-domain-detail" key={domain.key}><h3>{domain.title} <small>{score} / 50</small></h3><p><strong>{band.title}</strong></p><p>{band.description}</p></section>)}
+    <details><summary>How to understand the scores</summary><p>A score between <strong>0 and 25</strong> indicates an <strong>area for enrichment</strong>.</p><p>A score between <strong>26 and 38</strong> reflects <strong>effective functioning</strong>.</p><p>A score between <strong>39 and 50</strong> represents an <strong>enhanced skills area</strong>.</p></details>
+    <section aria-label="Reflect on your results"><p>As you review your results, we encourage you to reflect prayerfully and honestly. Ask yourself where you feel encouraged, where you feel resistance, and where you sense an invitation to grow. Emotional health is deeply connected to spiritual formation, and growth in this area impacts not only your relationship with God, but also how you love, lead, and disciple others.</p><p>If you are walking through this assessment with a group, consider sharing insights together. If you are doing this individually, you may want to journal or talk through your reflections with a trusted friend or mentor.</p><p>We are grateful you took this step, and we look forward to continuing the journey with you.</p><p>Grace and peace,</p><p>The Wayfinders Team</p></section>
+    <details><summary>Review all 40 responses</summary><dl>{EMOTIONAL_HEALTH_QUESTIONS.map(q => <div key={q.key}><dt>{q.text}</dt><dd>{answers[q.key]} / 5 · {EMOTIONAL_HEALTH_SCALE.find(option => option.value === answers[q.key])?.label}</dd></div>)}</dl></details>
+  </section>;
+}

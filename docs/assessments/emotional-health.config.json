@@ -1,0 +1,394 @@
+{
+  "schemaVersion": 1,
+  "slug": "emotional-health",
+  "title": "Emotional Health Assessment",
+  "rendererKey": "emotional-health-assessment.v1",
+  "responseKey": "emotional_health_assessment",
+  "scale": [
+    {
+      "value": 1,
+      "label": "Strongly Disagree"
+    },
+    {
+      "value": 2,
+      "label": "2"
+    },
+    {
+      "value": 3,
+      "label": "3"
+    },
+    {
+      "value": 4,
+      "label": "4"
+    },
+    {
+      "value": 5,
+      "label": "Strongly Agree"
+    }
+  ],
+  "presentation": {
+    "pattern": "apest",
+    "pageSize": 5,
+    "pageCount": 8,
+    "shuffle": true,
+    "retainDraftOrder": true,
+    "untouchedControlIsAnswered": false
+  },
+  "categories": [
+    {
+      "key": "self_awareness",
+      "title": "Self-Awareness",
+      "questionKeys": [
+        "q1",
+        "q2",
+        "q3",
+        "q4",
+        "q5",
+        "q6",
+        "q7",
+        "q8",
+        "q9",
+        "q10"
+      ],
+      "scoring": "direct sum",
+      "maximum": 50,
+      "reverseScoredQuestionKeys": []
+    },
+    {
+      "key": "self_management",
+      "title": "Self-Management",
+      "questionKeys": [
+        "q11",
+        "q12",
+        "q13",
+        "q14",
+        "q15",
+        "q16",
+        "q17",
+        "q18",
+        "q19",
+        "q20"
+      ],
+      "scoring": "direct sum",
+      "maximum": 50,
+      "reverseScoredQuestionKeys": []
+    },
+    {
+      "key": "social_awareness",
+      "title": "Social Awareness",
+      "questionKeys": [
+        "q21",
+        "q22",
+        "q23",
+        "q24",
+        "q25",
+        "q26",
+        "q27",
+        "q28",
+        "q29",
+        "q30"
+      ],
+      "scoring": "direct sum",
+      "maximum": 50,
+      "reverseScoredQuestionKeys": []
+    },
+    {
+      "key": "relationship_management",
+      "title": "Relationship Management",
+      "questionKeys": [
+        "q31",
+        "q32",
+        "q33",
+        "q34",
+        "q35",
+        "q36",
+        "q37",
+        "q38",
+        "q39",
+        "q40"
+      ],
+      "scoring": "direct sum",
+      "maximum": 50,
+      "reverseScoredQuestionKeys": []
+    }
+  ],
+  "questions": [
+    {
+      "key": "q1",
+      "domain": "self_awareness",
+      "text": "My feelings are clear to me at any given moment.",
+      "required": true
+    },
+    {
+      "key": "q2",
+      "domain": "self_awareness",
+      "text": "Emotions play an important part in my life.",
+      "required": true
+    },
+    {
+      "key": "q3",
+      "domain": "self_awareness",
+      "text": "My moods impact the people around me.",
+      "required": true
+    },
+    {
+      "key": "q4",
+      "domain": "self_awareness",
+      "text": "I find it easy to put words to my feelings.",
+      "required": true
+    },
+    {
+      "key": "q5",
+      "domain": "self_awareness",
+      "text": "My moods are easily affected by external events.",
+      "required": true
+    },
+    {
+      "key": "q6",
+      "domain": "self_awareness",
+      "text": "I can easily sense when I am going to be angry.",
+      "required": true
+    },
+    {
+      "key": "q7",
+      "domain": "self_awareness",
+      "text": "I readily tell others my true feelings.",
+      "required": true
+    },
+    {
+      "key": "q8",
+      "domain": "self_awareness",
+      "text": "I find it easy to describe my feelings.",
+      "required": true
+    },
+    {
+      "key": "q9",
+      "domain": "self_awareness",
+      "text": "Even when I’m upset, I’m aware of what’s happening to me.",
+      "required": true
+    },
+    {
+      "key": "q10",
+      "domain": "self_awareness",
+      "text": "I am able to stand apart from my thoughts and feelings and examine them.",
+      "required": true
+    },
+    {
+      "key": "q11",
+      "domain": "self_management",
+      "text": "I accept responsibility for my reactions.",
+      "required": true
+    },
+    {
+      "key": "q12",
+      "domain": "self_management",
+      "text": "I find it easy to make goals and stick with them.",
+      "required": true
+    },
+    {
+      "key": "q13",
+      "domain": "self_management",
+      "text": "I am an emotionally balanced person.",
+      "required": true
+    },
+    {
+      "key": "q14",
+      "domain": "self_management",
+      "text": "I am a very patient person.",
+      "required": true
+    },
+    {
+      "key": "q15",
+      "domain": "self_management",
+      "text": "I can accept critical comments from others.",
+      "required": true
+    },
+    {
+      "key": "q16",
+      "domain": "self_management",
+      "text": "I maintain my composure, even during stressful times.",
+      "required": true
+    },
+    {
+      "key": "q17",
+      "domain": "self_management",
+      "text": "If an issue does not affect me directly, I don’t let it bother me.",
+      "required": true
+    },
+    {
+      "key": "q18",
+      "domain": "self_management",
+      "text": "I can restrain myself when I feel anger towards someone.",
+      "required": true
+    },
+    {
+      "key": "q19",
+      "domain": "self_management",
+      "text": "I control urges to overindulge in things that could damage my well-being.",
+      "required": true
+    },
+    {
+      "key": "q20",
+      "domain": "self_management",
+      "text": "I direct my energy into creative work or hobbies.",
+      "required": true
+    },
+    {
+      "key": "q21",
+      "domain": "social_awareness",
+      "text": "I consider the impact of my decisions on other people.",
+      "required": true
+    },
+    {
+      "key": "q22",
+      "domain": "social_awareness",
+      "text": "I can easily tell if the people around me are becoming annoyed.",
+      "required": true
+    },
+    {
+      "key": "q23",
+      "domain": "social_awareness",
+      "text": "I sense it when a person’s mood changes.",
+      "required": true
+    },
+    {
+      "key": "q24",
+      "domain": "social_awareness",
+      "text": "I am able to be supportive when giving bad news to others.",
+      "required": true
+    },
+    {
+      "key": "q25",
+      "domain": "social_awareness",
+      "text": "I am generally able to understand the way other people feel.",
+      "required": true
+    },
+    {
+      "key": "q26",
+      "domain": "social_awareness",
+      "text": "My friends can tell me intimate things about themselves.",
+      "required": true
+    },
+    {
+      "key": "q27",
+      "domain": "social_awareness",
+      "text": "It genuinely bothers me to see other people suffer.",
+      "required": true
+    },
+    {
+      "key": "q28",
+      "domain": "social_awareness",
+      "text": "I usually know when to speak and when to be silent.",
+      "required": true
+    },
+    {
+      "key": "q29",
+      "domain": "social_awareness",
+      "text": "I care what happens to other people.",
+      "required": true
+    },
+    {
+      "key": "q30",
+      "domain": "social_awareness",
+      "text": "I understand when people’s plans change.",
+      "required": true
+    },
+    {
+      "key": "q31",
+      "domain": "relationship_management",
+      "text": "I am able to show affection.",
+      "required": true
+    },
+    {
+      "key": "q32",
+      "domain": "relationship_management",
+      "text": "My relationships are safe places for me.",
+      "required": true
+    },
+    {
+      "key": "q33",
+      "domain": "relationship_management",
+      "text": "I find it easy to share my deep feelings with others.",
+      "required": true
+    },
+    {
+      "key": "q34",
+      "domain": "relationship_management",
+      "text": "I am good at motivating others.",
+      "required": true
+    },
+    {
+      "key": "q35",
+      "domain": "relationship_management",
+      "text": "I am a fairly cheerful person.",
+      "required": true
+    },
+    {
+      "key": "q36",
+      "domain": "relationship_management",
+      "text": "It is easy for me to make friends.",
+      "required": true
+    },
+    {
+      "key": "q37",
+      "domain": "relationship_management",
+      "text": "People tell me I am sociable and fun.",
+      "required": true
+    },
+    {
+      "key": "q38",
+      "domain": "relationship_management",
+      "text": "I like helping people.",
+      "required": true
+    },
+    {
+      "key": "q39",
+      "domain": "relationship_management",
+      "text": "Others can depend on me.",
+      "required": true
+    },
+    {
+      "key": "q40",
+      "domain": "relationship_management",
+      "text": "I am able to talk someone down if they are very upset.",
+      "required": true
+    }
+  ],
+  "bands": [
+    {
+      "id": "enrichment",
+      "minimum_inclusive": 0,
+      "maximum_inclusive": 25,
+      "label": "area for enrichment",
+      "message": "This points to a place that may need attention, care, and intentional development. These areas often signal where support, formative practices, or gentle accompaniment could be especially helpful."
+    },
+    {
+      "id": "effective",
+      "minimum_inclusive": 26,
+      "maximum_inclusive": 38,
+      "label": "effective functioning",
+      "message": "This suggests a generally healthy capacity in this area, with room to strengthen, mature, and stabilize what is already present."
+    },
+    {
+      "id": "enhanced",
+      "minimum_inclusive": 39,
+      "maximum_inclusive": 50,
+      "label": "enhanced skills area",
+      "message": "These are strengths that can serve as leverage points, helping support growth in other areas and shaping how this person may naturally show up for others in discipleship and leadership."
+    }
+  ],
+  "resultMessage": {
+    "delivery": "in-app",
+    "sourceText": "Dear Name,\n\nThank you for taking the time to complete the Emotional Health assessment. This tool is not meant to grade you or label you, but to offer clarity and awareness as you continue growing in your inner life and in how you relate to others.\n\nScores:\n\nSelf-Awareness Score = Self Awareness Score\n\nSelf-Management Score = Self Management Score\n\nSocial Awareness Score = Social Awareness Score\n\nRelationship Management Score = Relationship Management Score\n\nBelow is how to understand your scores in each section.\n\nA score between 0 and 25 indicates an area for enrichment. This points to a place that may need attention, care, and intentional development. These areas often signal where support, formative practices, or gentle accompaniment could be especially helpful.\n\nA score between 26 and 38 reflects effective functioning. This suggests a generally healthy capacity in this area, with room to strengthen, mature, and stabilize what is already present.\n\nA score between 39 and 50 represents an enhanced skills area. These are strengths that can serve as leverage points, helping support growth in other areas and shaping how this person may naturally show up for others in discipleship and leadership.\n\nAs you review your results, we encourage you to reflect prayerfully and honestly. Ask yourself where you feel encouraged, where you feel resistance, and where you sense an invitation to grow. Emotional health is deeply connected to spiritual formation, and growth in this area impacts not only your relationship with God, but also how you love, lead, and disciple others.\n\nIf you are walking through this assessment with a group, consider sharing insights together. If you are doing this individually, you may want to journal or talk through your reflections with a trusted friend or mentor.\n\nWe are grateful you took this step, and we look forward to continuing the journey with you.\n\nGrace and peace,\n\nThe Wayfinders Team",
+    "greeting": "Name/email greeting omitted in the native in-app view.",
+    "closing": "The Wayfinders Team"
+  },
+  "persistence": {
+    "engine": "existing native participant_responses",
+    "privateByDefault": true,
+    "computeScoresOnServer": true,
+    "explicitFinishRequired": true,
+    "retainCompletedRetakeHistory": true
+  },
+  "externalServicesRequired": []
+}
