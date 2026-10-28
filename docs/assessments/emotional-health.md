@@ -8,10 +8,10 @@ The 40 exact statements and the scale endpoints were extracted from the owner's 
 
 - Stable question identities q1–q40; source wording preserved.
 - Four fixed scoring groups of ten: q1–q10 Self-Awareness; q11–q20 Self-Management; q21–q30 Social Awareness; q31–q40 Relationship Management.
-- Five integer choices, 1–5. Endpoints are Strongly Disagree and Strongly Agree. The source has no descriptive labels for intermediate stops, so those remain 2, 3 and 4.
+- Five integer choices, 1–5. Endpoints are Strongly Disagree and Strongly Agree. At the owner’s request, the intermediate stops are labeled 2 Disagree, 3 Neither Agree nor Disagree, and 4 Agree.
 - Each section is the direct sum of its ten responses, 10–50 when complete. There are no reverse-scored items, weights, rankings, combined totals, or APEST primary/secondary categories in this native implementation. In particular, q5 remains a direct contribution as specified by the owner's sum rule.
 - Inclusive bands: 0–25 Area for enrichment; 26–38 Effective functioning; 39–50 Enhanced skills area. Preserve the supplied lower bound of 0, but never score an incomplete section as a completed zero.
-- Results use the supplied formative language and Wayfinders Team closing. The greeting/name merge field and email transport are omitted because this is an in-app result, not an email. No duplicate name/email collection or notification service is added.
+- Results use the supplied formative language. The owner requested removal of the gratitude sentence, “Grace and peace,” and Wayfinders Team sign-off from both PDF and native results. The greeting/name merge field and email transport are omitted because this is an in-app result, not an email. No duplicate name/email collection or notification service is added.
 - Internally, `emotional-health.config.json` records the native content/configuration. Runtime source of truth is `lib/experiences/builder/emotional-health.ts`; tests check the scoring and section membership.
 
 ## Shared assessment rules followed

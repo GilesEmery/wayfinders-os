@@ -22,6 +22,7 @@ test("forty original statements retain four fixed groups through shuffled presen
 });
 test("integer 1–5 stops sum directly, including item five; untouched or invalid answers cannot finish", () => {
   assert.deepEqual(EMOTIONAL_HEALTH_SCALE.map(s => s.value), [1, 2, 3, 4, 5]);
+  assert.deepEqual(EMOTIONAL_HEALTH_SCALE.map(s => s.label), ["Strongly Disagree", "Disagree", "Neither Agree nor Disagree", "Agree", "Strongly Agree"]);
   for (const { value } of EMOTIONAL_HEALTH_SCALE) assert.deepEqual(emotionalHealthResults(answers(value))?.scores.map(s => s.score), Array(4).fill(value * 10));
   const value = answers(1); value.q5 = 5;
   assert.equal(emotionalHealthResults(value)?.scores[0].score, 14);

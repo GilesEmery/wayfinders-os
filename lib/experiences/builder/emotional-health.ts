@@ -2,8 +2,8 @@ export const EMOTIONAL_HEALTH_RENDERER_KEY = "emotional-health-assessment.v1";
 export const EMOTIONAL_HEALTH_RESPONSE_KEY = "emotional_health_assessment";
 // Owner's native PurposeOS rule: direct integer sums, no reversal or weighting.
 export const EMOTIONAL_HEALTH_SCALE = [
-  { value: 1, label: "Strongly Disagree" }, { value: 2, label: "2" },
-  { value: 3, label: "3" }, { value: 4, label: "4" }, { value: 5, label: "Strongly Agree" },
+  { value: 1, label: "Strongly Disagree" }, { value: 2, label: "Disagree" },
+  { value: 3, label: "Neither Agree nor Disagree" }, { value: 4, label: "Agree" }, { value: 5, label: "Strongly Agree" },
 ] as const;
 export const EMOTIONAL_HEALTH_DOMAINS = [
   {

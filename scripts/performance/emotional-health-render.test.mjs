@@ -38,7 +38,7 @@ test('introduction and four independent results preserve the supplied formative 
  const html=renderPage(0,finished);
  for(const title of ['Self-Awareness','Self-Management','Social Awareness','Relationship Management','Enhanced skills area','Effective functioning','Area for enrichment'])assert.ok(html.includes(title));
  assert.match(html,/As you review your results, we encourage you to reflect prayerfully and honestly/);
- assert.match(html,/The Wayfinders Team/);
+ for (const removed of ['We are grateful you took this step','Grace and peace','The Wayfinders Team']) assert.ok(!html.includes(removed));
  assert.match(html,/Review all 40 responses/);
  assert.match(html,/Retake assessment/);
  assert.match(html,/Print results/);
