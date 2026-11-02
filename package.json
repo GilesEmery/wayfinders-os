@@ -20,6 +20,7 @@
     "test:participant-navigation": "node --test lib/platform/participant-navigation.test.ts",
     "test:public-landing": "node --test lib/platform/public-landing.test.ts",
     "test:admin-invitation-security": "node --test lib/admin/admin-invitation-security.test.ts",
+    "test:password-recovery": "node --test lib/admin/password-recovery.test.mjs",
     "test:existing-user-role-management": "node --test lib/admin/existing-user-role-management.test.ts",
     "test:authority-foundation": "node --test lib/platform/effective-access-policy.test.ts",
     "test:personal-impact-statement": "node --test lib/experiences/builder/personal-impact-statement.test.ts",

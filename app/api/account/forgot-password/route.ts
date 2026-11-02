@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     const supabase = await createServerSupabaseClient();
     const redirectTo = passwordRecoveryRedirectUrl(request.nextUrl.origin);
     const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
-    if (error) console.error("Participant password recovery email failed", { message: error.message });
+    if (error) console.error("Participant password recovery email failed", { code: error.code, status: error.status });
 
     // Supabase intentionally gives the same successful result for unknown emails.
     // Preserve that neutral response for every syntactically valid address.

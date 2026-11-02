@@ -33,6 +33,7 @@ export function ForgotPasswordForm() {
       <label>Email Address<input autoComplete="email" maxLength={254} name="email" required type="email" /></label>
       {message && <div className={`wayfinders-auth-error${success ? " is-success" : ""}`} role="status"><p>{message}</p></div>}
       <button className="wayfinders-auth-submit" disabled={busy} type="submit">{busy ? "Sending…" : "Send reset instructions"}<span aria-hidden="true">→</span></button>
+      {success && <p>Check your spam folder. If the email does not arrive within a few minutes, contact your Wayfinders Administrator for a temporary reset link.</p>}
       <Link className="wayfinders-auth-secondary" href="/">Back to Sign In</Link>
     </form>
   </RecoveryShell>;
@@ -47,7 +48,8 @@ export function ResetPasswordForm({ valid }: { valid: boolean }) {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setMessage("");
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     try {
       const response = await fetch("/api/account/reset-password", {
         method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" },
@@ -55,7 +57,7 @@ export function ResetPasswordForm({ valid }: { valid: boolean }) {
       });
       const payload = await response.json().catch(() => ({})) as ApiPayload;
       setMessage(payload.message || payload.error || "Unable to update your password.");
-      if (response.ok) { setSuccess(true); event.currentTarget.reset(); }
+      if (response.ok) { setSuccess(true); formElement.reset(); }
     } catch { setMessage("Unable to reach Purpose OS. Check your connection and try again."); }
     finally { setBusy(false); }
   }
