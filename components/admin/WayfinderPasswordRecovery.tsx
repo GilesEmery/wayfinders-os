@@ -30,16 +30,16 @@ export function WayfinderPasswordRecovery({ participantId, name }: { participant
     <p>Help {name} choose a new password. If email is delayed, generate a temporary, single-use reset link and share it directly through a verified channel. The person chooses their own password.</p>
     <label><input type="checkbox" checked={verified} disabled={busy} onChange={(event) => setVerified(event.target.checked)} /> I have verified this person&apos;s identity.</label>
     <div className="admin-page-actions">
-      <button type="button" className="admin-secondary" disabled={busy || !verified} onClick={recover}>{busy ? "Preparing…" : "Generate temporary reset link"}</button>
+      <button type="button" className="admin-secondary-button" disabled={busy || !verified} onClick={recover}>{busy ? "Preparing…" : "Generate temporary reset link"}</button>
     </div>
     {message && <p role="status">{message}</p>}
     {resetUrl && <div>
       <label>Temporary reset link<textarea readOnly rows={3} value={resetUrl} onFocus={(event) => event.currentTarget.select()} /></label>
       <p>Use promptly; the link expires under the account recovery settings. A newer recovery request can replace this link. Do not open it yourself or save it in CRM notes.</p>
-      <div className="admin-page-actions"><button type="button" className="admin-secondary" onClick={async () => {
+      <div className="admin-page-actions"><button type="button" className="admin-secondary-button" onClick={async () => {
         try { await navigator.clipboard.writeText(resetUrl); setMessage("Reset link copied."); }
         catch { setMessage("Select the reset link above and copy it manually."); }
-      }}>Copy reset link</button><button type="button" className="admin-secondary" onClick={() => { setResetUrl(""); setMessage(""); }}>Hide link</button></div>
+      }}>Copy reset link</button><button type="button" className="admin-secondary-button" onClick={() => { setResetUrl(""); setMessage(""); }}>Hide link</button></div>
     </div>}
   </article>;
 }
