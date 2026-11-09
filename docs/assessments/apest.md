@@ -14,7 +14,7 @@ The original scale is 1 Rarely, 2 Sometimes, 3 Always. The five selectable digit
 
 - Original mapping: q1–q5 Apostle; q6–q10 Prophet; q11–q15 Evangelist; q16–q20 Shepherd; q21–q25 Teacher.
 - Five pages of five shuffled statements, with stable IDs for scoring. Server-rendered launch order is passed into the client; draft order is saved and restored. Retakes reshuffle.
-- Range controls and accessible numbered stop buttons both select exact half-step values. Unselected center positions do not count as responses.
+- Five labeled radio choices select the same exact half-step values. New questions have no preselected response. Each page requires all five answers before Next, Back, or section jumps. Missing-answer counts distinguish a saved draft from completion; all 25 answers and explicit final completion are required for results.
 - Each domain totals five answers, ranges 5–15, and retains half points. Results appear in descending order, without numeric scores. Primary cards use dark blue with white text, secondary cards use light blue with white text, and the remaining cards use gray. Tied scores share a rank and are labeled as ties. There are no invented normative thresholds.
 - Drafts save without completing a first attempt. Finalization requires all 25 valid answers. The server computes scores rather than accepting client totals.
 - Retake drafts preserve the previous finished snapshot. A completed retake archives that snapshot, including five scores, before replacing the current result. Earlier rankings are viewable on the assessment's saved-results screen.

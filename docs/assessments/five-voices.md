@@ -21,3 +21,7 @@ Draft identities:
   "column": "fdb415ea-8539-5a98-9cea-53ea9d9f89ea",
   "block": "bd6df9bf-279b-5ce8-874d-dd87b13aa48b"
 }
+
+## Completion clarity
+
+Each question uses five initially unselected radio choices with unchanged scoring. All five questions on the current page must be answered before moving with Next, Back, or section navigation. Save for later remains available. Missing-answer counts and section links identify unfinished work; all 25 answers and explicit final completion are required for results. Completed result pages display a completion badge and consistent profile spacing.

@@ -4248,3 +4248,33 @@ button:focus-visible,a:focus-visible{outline-color:var(--wayfinders-blue)}
   .emotional-health-assessment .apest-pages button:nth-child(4)::after { display: none; }
   .emotional-health-results .apest-domain-detail h3 { flex-wrap: wrap; }
 }
+
+/* Shared APEST / Five Voices profile spacing and explicit answer states. */
+.apest-profile-results { padding: 0 clamp(1.25rem, 4vw, 3.25rem) 2.5rem; }
+.apest-profile-results > header { display: grid; gap: .75rem; margin: 0 0 1.75rem; }
+.apest-profile-results > header h2 { font-family: var(--font-editorial), Georgia, serif; font-size: clamp(1.6rem, 3vw, 2.2rem); line-height: 1.2; margin: 0; }
+.apest-profile-results > header p { margin: 0; line-height: 1.65; }
+.apest-profile-results .apest-score-grid { margin: 0 0 2rem; gap: 1rem; }
+.apest-profile-results .apest-domain-detail { padding: 1.75rem 0; }
+.apest-profile-results .apest-domain-detail h3 { flex-wrap: wrap; align-items: baseline; font-size: 1.3rem; margin: 0 0 .75rem; }
+.apest-profile-results .apest-domain-detail h3 small { font: 600 .8rem/1.5 var(--font-sans), sans-serif; }
+.apest-profile-results .apest-domain-detail p { margin: 0 0 1.25rem; line-height: 1.7; }
+.apest-profile-results dl { margin: 0; }
+.apest-profile-results dl > div { margin: 0 0 1.25rem; }
+.apest-profile-results > details { margin-top: 1rem; padding-top: 1.25rem; border-top: 1px solid #d6dad2; }
+.assessment-complete-badge { width: fit-content; padding: .4rem .75rem; border-radius: .4rem; color: #20513b; background: #edf5ef; font-weight: 600; font-size: .85rem; }
+.assessment-answer-status { margin: .75rem 0; color: #515d69; font-size: .9rem; }
+.assessment-answer-options { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .5rem; }
+.assessment-answer-options label { display: flex; flex-direction: column; align-items: center; gap: .65rem; padding: .85rem .35rem; border: 1px solid #cbd3dc; border-radius: .5rem; cursor: pointer; text-align: center; font-size: .85rem; line-height: 1.4; }
+.assessment-answer-options label.is-selected { border-color: #123d6b; background: #edf4fb; color: #123d6b; }
+.assessment-answer-options label:focus-within { outline: 2px solid #0054a1; outline-offset: 2px; }
+.assessment-answer-options input[type="radio"] { appearance: auto; width: 1.1rem; height: 1.1rem; margin: 0; accent-color: #123d6b; }
+.assessment-completion-notice { padding: 1rem 1.25rem; margin: 1rem 0; background: #f5f7fa; border: 1px solid #cbd3dc; border-radius: .6rem; }
+.assessment-completion-notice.is-ready { background: #edf5ef; border-color: #a9cbb4; }
+.assessment-completion-notice p { margin: 0 0 .6rem; line-height: 1.6; }
+.assessment-missing-sections { display: flex; flex-wrap: wrap; gap: .5rem; }
+.assessment-missing-sections button { padding: .5rem .75rem; font-size: .8rem; text-transform: none; }
+@media (max-width: 480px) { .assessment-answer-options { grid-template-columns: 1fr; } .assessment-answer-options label { flex-direction: row; text-align: left; gap: .75rem; padding: .75rem; } }
+@media print { .apest-profile-results { padding: 0; } .assessment-completion-notice { display: none; } }
+.assessment-page-requirement { margin: 1rem 0; color: #515d69; line-height: 1.6; }
+.assessment-page-error { padding: .85rem 1rem; border-left: 3px solid #9f3328; background: #fff3f0; color: #812b23; line-height: 1.6; }
