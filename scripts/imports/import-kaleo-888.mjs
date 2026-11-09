@@ -2,7 +2,7 @@
 
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { basename, extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
@@ -23,6 +23,34 @@ export const IMPORT_KEY = `tutorlms-${profile.id}-2026-09-22`;
 const ZIP_ENTRY = profile.zipEntry;
 const sourcePath = valueArg("--source");
 const apply = args.includes("--apply");
+
+// Course-local colors override the shared blue fallback without changing other courses.
+export function kaleoCourseConfiguration(thumbnailId = null) {
+  return {
+    terminology: { group_label: "week" },
+    companion_mode: "group",
+    card: { image_resource_id: thumbnailId, headline: null, supporting_text: "A 32-week journey of Spirit-led, relational, intentional, and replicable discipleship.", eyebrow: "Everyday Disciple" },
+    appearance: {
+      header_treatment: thumbnailId ? "image" : "color", reading_width: "standard",
+      accent_color: "#008037", cover_resource_id: thumbnailId, logo_resource_id: null,
+      header_logo_mode: "purposeos", header_logo_resource_id: null,
+      colors: { primaryAccent: "#008037", secondaryAccent: "#111111", background: "#f3f8f4", surface: "#ffffff", text: "#111111", mutedText: "#526158", borderColor: "#d5e4da", completion: "#008037" },
+    },
+  };
+}
+
+export function buildDraftPackage(envelope, course) {
+  if (envelope.keep_user_data !== false) throw new Error("Only content-only exports can be packaged.");
+  const proposal = buildProposal(course);
+  if (proposal.counts.lessons !== profile.lessons) throw new Error(`Expected ${profile.lessons} lessons; found ${proposal.counts.lessons}.`);
+  return {
+    format: "purposeos-kaleo-draft-review-v1",
+    source: { courseId: Number(course.ID), exportedAt: envelope.exported_at, sha256: createHash("sha256").update(JSON.stringify(course)).digest("hex") },
+    target: { experienceId: TARGET_EXPERIENCE_ID, slug: TARGET_SLUG, title: profile.title, status: "draft", deliveryMode: "builder", visibility: "private", admissionPolicy: "admin_assigned", publishedAt: null },
+    courseConfiguration: kaleoCourseConfiguration(),
+    ...proposal,
+  };
+}
 
 function decode(value) {
   const named = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
@@ -105,7 +133,7 @@ async function performImport(db, state, proposal, course) {
   const thumbnail = typeof course.thumbnail_url === "string" ? { url: course.thumbnail_url, kind: "image", title: profile.title, sourceIds: [SOURCE_COURSE_ID] } : null; if (thumbnail && !proposal.resources.some(r=>r.url===thumbnail.url)) proposal.resources.push(thumbnail);
   let experience=state.experience; if(!experience){const created=await db.from("experiences").insert({id:TARGET_EXPERIENCE_ID,slug:TARGET_SLUG,name:profile.title,description:htmlToMarkdown(course.post_content).slice(0,3000)||null,experience_type:"course",delivery_mode:"builder",status:"draft",accent_color:"#008037",visibility:"private",admission_policy:"admin_assigned"}).select("*").single();if(created.error)throw created.error;experience=created.data;}
   const resources=await resolveResources(db,proposal); const thumbnailId=thumbnail ? resources.map.get(thumbnail.url) ?? null : null;
-  const versionId=uuid("version"); const version=await db.from("experience_versions").insert({id:versionId,experience_id:experience.id,version_label:`TutorLMS ${SOURCE_COURSE_ID} import draft`,status:"draft",title:profile.title,description:htmlToMarkdown(course.post_content).slice(0,4000)||"A 32-week relational disciple-training journey imported from TutorLMS for Builder review.",published_at:null,release_type:"major",shell_mode:"enhanced",course_configuration:{terminology:{group_label:"week"},companion_mode:"enhanced",card:{image_resource_id:thumbnailId,headline:null,supporting_text:null,eyebrow:"Everyday Disciple"},appearance:{header_treatment:thumbnailId?"image":"minimal",reading_width:"standard",accent_color:"#008037",cover_resource_id:thumbnailId,logo_resource_id:null,header_logo_mode:"purposeos",header_logo_resource_id:null,colors:{}}}}).select("id").single(); if(version.error) throw version.error;
+  const versionId=uuid("version"); const version=await db.from("experience_versions").insert({id:versionId,experience_id:experience.id,version_label:`TutorLMS ${SOURCE_COURSE_ID} import draft`,status:"draft",title:profile.title,description:htmlToMarkdown(course.post_content).slice(0,4000)||"A 32-week relational disciple-training journey imported from TutorLMS for Builder review.",published_at:null,release_type:"major",shell_mode:"enhanced",course_configuration:kaleoCourseConfiguration(thumbnailId)}).select("id").single(); if(version.error) throw version.error;
   const updated=await db.from("experiences").update({name:profile.title,delivery_mode:"builder",status:"draft",accent_color:"#008037"}).eq("id",experience.id).is("current_published_version_id",null); if(updated.error) throw updated.error;
   const modules=proposal.modules.map(m=>({id:m.id,experience_version_id:versionId,module_key:m.key,title:m.title,sort_order:m.sortOrder,is_required:true,requirement_level:"required",metadata:{import:{key:IMPORT_KEY,source_course_id:SOURCE_COURSE_ID,source_topic_id:m.sourceId,source_title:m.sourceTitle}}}));
   const lessons=proposal.modules.flatMap(m=>m.lessons.map(l=>({id:l.id,module_id:m.id,experience_version_id:versionId,lesson_key:l.key,title:l.title,sort_order:l.sortOrder,is_required:l.required,requirement_level:l.required?"required":"recommended",completion_rule:"blocks_complete",metadata:{import:{key:IMPORT_KEY,source_course_id:SOURCE_COURSE_ID,source_topic_id:m.sourceId,source_post_id:l.sourceId,source_url:l.sourceGuid}}})));
@@ -117,5 +145,14 @@ async function performImport(db, state, proposal, course) {
   return {versionId,resources:{created:resources.created,reused:resources.reused,missing:resources.missing},blocks};
 }
 
-async function main() { if(!sourcePath)throw new Error(`Pass --source=/absolute/path/to/${SOURCE_COURSE_ID}.zip`); if(apply&&(valueArg("--confirm-source-course")!==String(SOURCE_COURSE_ID)||valueArg("--confirm-target")!==TARGET_EXPERIENCE_ID))throw new Error(`Apply requires --confirm-source-course=${SOURCE_COURSE_ID} and --confirm-target=${TARGET_EXPERIENCE_ID}.`); const {envelope,course}=loadExport(sourcePath); const proposal=buildProposal(course); if(proposal.counts.lessons!==profile.lessons)throw new Error(`Expected ${profile.lessons} lessons; found ${proposal.counts.lessons}.`); const db=dbClient(); const state=await targetState(db); const byType=Object.fromEntries([...new Set(proposal.modules.flatMap(m=>m.lessons.flatMap(l=>l.section.blocks.map(b=>b.type))))].sort().map(type=>[type,proposal.modules.flatMap(m=>m.lessons.flatMap(l=>l.section.blocks)).filter(b=>b.type===type).length])); const output={mode:apply?"apply":"dry-run",source:{courseId:course.ID,title:course.post_title,topics:course.contents.length,lessons:course.contents.flatMap(t=>t.children).length,keepUserData:envelope.keep_user_data,thumbnail:course.thumbnail_url},target:state.experience?{experienceId:state.experience.id,slug:state.experience.slug,name:state.experience.name,deliveryMode:state.experience.delivery_mode,versions:state.versions.map(v=>({id:v.id,status:v.status,label:v.version_label})),alreadyImported:state.alreadyImported}:{experienceId:TARGET_EXPERIENCE_ID,slug:TARGET_SLUG,name:profile.title,deliveryMode:"builder",versions:[],alreadyImported:false,willCreate:true},proposal:{...proposal.counts,blocksByType:byType,uniqueResources:proposal.resources.length,unsupported:proposal.unsupported}}; if(apply)output.created=await performImport(db,state,proposal,course); console.log(JSON.stringify(output,null,2)); if(!apply)console.error("DRY RUN ONLY — no rows, storage objects, or publication state changed."); }
+async function main() { if(!sourcePath)throw new Error(`Pass --source=/absolute/path/to/${SOURCE_COURSE_ID}.zip`); if(apply&&(valueArg("--confirm-source-course")!==String(SOURCE_COURSE_ID)||valueArg("--confirm-target")!==TARGET_EXPERIENCE_ID))throw new Error(`Apply requires --confirm-source-course=${SOURCE_COURSE_ID} and --confirm-target=${TARGET_EXPERIENCE_ID}.`); const {envelope,course}=loadExport(sourcePath); const proposal=buildProposal(course); if(proposal.counts.lessons!==profile.lessons)throw new Error(`Expected ${profile.lessons} lessons; found ${proposal.counts.lessons}.`); if (args.includes("--offline")) {
+    if (apply) throw new Error("--offline cannot be combined with --apply.");
+    const draft = buildDraftPackage(envelope, course);
+    const outputPath = valueArg("--output");
+    if (outputPath) writeFileSync(resolve(outputPath), `${JSON.stringify(draft, null, 2)}\n`, { flag: "wx" });
+    console.log(JSON.stringify({ mode: "offline-draft", target: draft.target, counts: draft.counts, resources: draft.resources.length, activitiesToReview: draft.unsupported, output: outputPath ?? null }, null, 2));
+    console.error("OFFLINE DRAFT ONLY — no database, network, or publication changes.");
+    return;
+  }
+  const db=dbClient(); const state=await targetState(db); const byType=Object.fromEntries([...new Set(proposal.modules.flatMap(m=>m.lessons.flatMap(l=>l.section.blocks.map(b=>b.type))))].sort().map(type=>[type,proposal.modules.flatMap(m=>m.lessons.flatMap(l=>l.section.blocks)).filter(b=>b.type===type).length])); const output={mode:apply?"apply":"dry-run",source:{courseId:course.ID,title:course.post_title,topics:course.contents.length,lessons:course.contents.flatMap(t=>t.children).length,keepUserData:envelope.keep_user_data,thumbnail:course.thumbnail_url},target:state.experience?{experienceId:state.experience.id,slug:state.experience.slug,name:state.experience.name,deliveryMode:state.experience.delivery_mode,versions:state.versions.map(v=>({id:v.id,status:v.status,label:v.version_label})),alreadyImported:state.alreadyImported}:{experienceId:TARGET_EXPERIENCE_ID,slug:TARGET_SLUG,name:profile.title,deliveryMode:"builder",versions:[],alreadyImported:false,willCreate:true},proposal:{...proposal.counts,blocksByType:byType,uniqueResources:proposal.resources.length,unsupported:proposal.unsupported}}; if(apply)output.created=await performImport(db,state,proposal,course); console.log(JSON.stringify(output,null,2)); if(!apply)console.error("DRY RUN ONLY — no rows, storage objects, or publication state changed."); }
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) main().catch(error=>{console.error(error);process.exitCode=1;});
